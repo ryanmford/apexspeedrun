@@ -351,7 +351,26 @@ export default function App() {
       setLoad(false); 
     }
   }, []);
+// --- SWIPE TO REFRESH LOGIC ---
+  useEffect(() => {
+    let touchStart = 0;
+    const handleStart = (e) => { touchStart = e.touches[0].pageY; };
+    const handleEnd = (e) => {
+      const touchEnd = e.changedTouches[0].pageY;
+      // If user swipes down more than 150px and is at the top of the page
+      if (touchEnd - touchStart > 150 && window.scrollY <= 0 && !load) {
+        fetchFromSheet();
+      }
+    };
 
+    window.addEventListener('touchstart', handleStart);
+    window.addEventListener('touchend', handleEnd);
+    return () => {
+      window.removeEventListener('touchstart', handleStart);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [fetchFromSheet, load]);
+  
   useEffect(() => { 
     fetchFromSheet(); 
   }, [fetchFromSheet]);
