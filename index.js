@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-
+import { createRoot } from 'react-dom/client';
 // --- ICONS (Custom SVG for specialized look) ---
 const IconZap = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.71 13.5 3l-1.5 9h8L10.5 21l1.5-9z"/></svg>;
 const IconSearch = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
@@ -493,3 +493,6 @@ export default function App() {
     </div>
   );
 }
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(<App />);
