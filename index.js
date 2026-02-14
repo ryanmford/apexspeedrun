@@ -1,3 +1,5 @@
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom/client'; // <--- Ensure this is here
 /**
  * APEX SPEED RUN (ASR) - ALL-TIME RANKINGS
  * Version: 2.1.0
@@ -7,8 +9,6 @@
  * Website: apexmovement.com
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-// ... rest of your imports
 const CustomStyles = () => (
   <style>{`
     @keyframes subtlePulse {
@@ -568,3 +568,10 @@ export default function App() {
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
+import ReactDOM from 'react-dom/client';
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
+}
