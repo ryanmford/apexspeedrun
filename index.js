@@ -249,7 +249,7 @@ const Modal = ({ isOpen, onClose, player: p, theme }) => {
           <div className="space-y-4 pt-2">
             <div className={`flex items-center px-5 mb-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-slate-500' : 'text-slate-700/60'}`}>
               <div className="w-12 sm:w-16 text-center shrink-0">RANK</div>
-              <div className="flex-1 ml-4 sm:ml-6 text-left truncate">COURSE</div>
+              <div className="flex-1 ml-4 sm:ml-6 text-left">COURSE</div>
               <div className="w-16 sm:w-24 text-right shrink-0">POINTS</div>
               <div className="w-16 sm:w-24 text-right shrink-0">TIME</div>
               <div className="w-16 sm:w-24 ml-2 shrink-0"></div>
@@ -257,8 +257,8 @@ const Modal = ({ isOpen, onClose, player: p, theme }) => {
             {p.coursePerformance.map((cp, idx) => (
               <div key={idx} className={`group flex items-center p-3 sm:p-5 border rounded-2xl transition-all duration-500 ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 hover:border-blue-500/30 shadow-sm'}`}>
                 <div className="w-12 sm:w-16 flex justify-center shrink-0"><RankBadge rank={cp.rank} theme={theme} size="lg" /></div>
-                <div className="flex-1 min-w-0 ml-4 sm:ml-6 text-left">
-                  <div className={`text-xs sm:text-sm font-bold uppercase tracking-tight truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{cp.name} <span className="ml-1 opacity-90">{cp.difficulty}</span></div>
+                <div className="flex-1 ml-4 sm:ml-6 text-left">
+                  <div className={`text-xs sm:text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{cp.name}</div>
                 </div>
                 <div className="w-16 sm:w-24 flex flex-col items-end shrink-0">
                   <div className={`text-xs sm:text-sm font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{Number(cp.rating).toFixed(2)}</div>
@@ -269,7 +269,6 @@ const Modal = ({ isOpen, onClose, player: p, theme }) => {
                   <div className="h-[12px]">{cp.rank !== 1 && cp.timeDiff && <div className="text-[9px] sm:text-[10px] font-bold leading-none opacity-40">+{cp.timeDiff.replace(/^\+/, '')}</div>}</div>
                 </div>
                 <div className="w-16 sm:w-24 ml-2 flex flex-wrap items-center justify-end gap-1.5 shrink-0 self-start pt-[3.5px] sm:pt-[4.5px]">
-                  {cp.rank === 1 && <span className="text-[8px] sm:text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-lg animate-subtle-pulse shrink-0">CR</span>}
                   <div className="shrink-0 leading-none flex items-center"><FireIcons time={cp.time} gender={p.gender} /></div>
                 </div>
               </div>
