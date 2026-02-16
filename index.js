@@ -1,12 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client'; // <--- Ensure this is here
 
-/**
- * APEX SPEED RUN - ALL-TIME & OPEN LEADERBOARDS
- * v14.4 Implementation
- */
-
-// --- GLOBAL UI REFINEMENTS ---
 const CustomStyles = () => (
   <style>{`
     @keyframes subtlePulse {
@@ -67,8 +61,8 @@ const IconMoon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="non
 const RankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
   const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
-  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-[24px] h-[24px] sm:w-10 sm:h-10';
-  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[8px] sm:text-[12px]';
+  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-[22px] h-[22px] sm:w-9 sm:h-9';
+  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[7px] sm:text-[11px]';
   const isPodium = rank === 1 || rank === 2 || rank === 3;
 
   const styles = {
@@ -293,23 +287,15 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
   
-  // REVERTED SORTING LOGIC: Records first -> Fastest Record Time -> Points Descending
+  // Reverted Sorting Logic: Records first -> Fastest Record Time -> Points Descending
   const courseData = useMemo(() => {
     const base = (performanceData?.[pKey] || []);
     return [...base].sort((a, b) => {
       const aIsRecord = a.rank === 1;
       const bIsRecord = b.rank === 1;
-
-      // 1. Course records (rank 1) always first
       if (aIsRecord && !bIsRecord) return -1;
       if (!aIsRecord && bIsRecord) return 1;
-
-      // 2. If both are records, sort by time (num) ascending (fastest record first)
-      if (aIsRecord && bIsRecord) {
-        return a.num - b.num;
-      }
-
-      // 3. Otherwise sort everything by points descending
+      if (aIsRecord && bIsRecord) return a.num - b.num;
       return b.points - a.points;
     });
   }, [performanceData, pKey]);
@@ -416,19 +402,23 @@ export function App() {
     const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(search.toLowerCase()) || p.region.toLowerCase().includes(search.toLowerCase())));
     const isQual = (p) => eventType === 'open' ? p.runs >= 2 : (p.gender === 'M' ? p.runs >= 4 : p.runs >= 2);
     let qual = filtered.filter(isQual), unranked = filtered.filter(p => !isQual(p));
-    if (eventType === 'open') {
-        qual.sort((a, b) => b.runs - a.runs || b.rating - a.rating || a.allTimeRank - b.allTimeRank);
-    } else {
-        qual.sort((a, b) => sort.direction === 'ascending' ? (a[sort.key] - b[sort.key] || 0) : (b[sort.key] - a[sort.key] || 0));
-    }
+    
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    qual.sort((a, b) => {
+      const aVal = a[sort.key] || 0;
+      const bVal = b[sort.key] || 0;
+      if (aVal !== bVal) return (aVal - bVal) * dir;
+      return (b.rating - a.rating);
+    });
+
     unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
     return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
   }, [search, sort, gen, eventType, data, openData]);
 
   const HeaderComp = ({ l, k, a = 'left', w = "" }) => (
-    <th className={`${w} px-3 py-5 cursor-pointer group select-none transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-300/30'} ${a === 'right' ? 'text-right' : 'text-left'}`} onClick={() => setSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+    <th className={`${w} px-2 py-5 cursor-pointer group select-none transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-300/30'} ${a === 'right' ? 'text-right' : 'text-left'}`} onClick={() => setSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-[0.15em] text-[7px] sm:text-[10px] font-black">{l}</span>
+        <span className="uppercase tracking-[0.1em] text-[7px] sm:text-[10px] font-black">{l}</span>
         <div className={`transition-opacity ${sort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === k ? sort.direction : 'descending'} /></div>
       </div>
     </th>
@@ -441,26 +431,27 @@ export function App() {
         <div className="flex items-center gap-2 shrink-0">
           <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}><IconSpeed /></div>
           <span className="font-black tracking-tighter text-lg sm:text-2xl uppercase italic leading-none transition-all">
-            <span>APEX SPEED RUN</span>
+            <span className="sm:hidden">ASR</span>
+            <span className="hidden sm:inline">APEX SPEED RUN</span>
           </span>
         </div>
         
-        {/* COMPACT CONTROL STRIP */}
+        {/* REORDERED TOGGLES */}
         <div className={`flex items-center p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-          <div className="flex">
-            {['M', 'F'].map(g => (
-              <button key={g} onClick={() => setGen(g)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
-                <span className="sm:hidden">{g}</span>
-                <span className="hidden sm:inline">{g === 'M' ? 'MEN' : 'WOMEN'}</span>
-              </button>
-            ))}
-          </div>
-          <div className={`w-[1px] h-6 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
           <div className="flex">
             {[{id:'all-time',l:'ALL-TIME',s:'ALL-TIME'},{id:'open',l:'OPEN',s:'OPEN'}].map(ev => (
               <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
                 <span className="sm:hidden">{ev.s}</span>
                 <span className="hidden sm:inline">{ev.l}</span>
+              </button>
+            ))}
+          </div>
+          <div className={`w-[1px] h-6 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
+          <div className="flex">
+            {['M', 'F'].map(g => (
+              <button key={g} onClick={() => setGen(g)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
+                <span className="sm:hidden">{g}</span>
+                <span className="hidden sm:inline">{g === 'M' ? 'MEN' : 'WOMEN'}</span>
               </button>
             ))}
           </div>
@@ -474,26 +465,23 @@ export function App() {
       <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} />
 
       <header className={`pt-24 pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
-        <div className="flex flex-row items-end justify-between gap-3 sm:gap-4 w-full">
-          {/* HEADER TITLE SECTION - MAXIMIZED WIDTH FOR MOBILE TITLES */}
-          <div className="space-y-2 sm:space-y-4 flex-grow min-w-0">
-            <div className={`inline-flex items-center gap-2 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full border text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] w-fit max-w-full ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${load ? 'bg-blue-400 animate-pulse' : 'bg-green-500'}`} />
-              <span className="whitespace-nowrap overflow-hidden">
-                {eventType === 'all-time' ? '184 COURSES, 86 CITIES, 18 COUNTRIES' : 'SUBMISSION PERIOD: MARCH 1 - MAY 31'}
-              </span>
-            </div>
-            <h1 className="text-[2.2rem] sm:text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.85] w-full">
-              <span className="block sm:inline whitespace-nowrap">{eventType === 'all-time' ? 'Apex All-Time' : '2026 Apex Open'}</span>
-              <span className="hidden sm:inline"><br /></span>
-              <span className="text-blue-500 opacity-90 tracking-[-0.05em] block sm:inline">LEADERBOARDS</span>
+        <div className="flex flex-row items-center w-full gap-4 sm:gap-8 overflow-hidden">
+          <div className="w-1/2 min-w-0">
+            <h1 className={`font-black tracking-tighter uppercase leading-none whitespace-nowrap overflow-hidden transition-all ${theme === 'dark' ? 'text-white' : 'text-black'} text-[6.2vw] sm:text-[5.5vw] lg:text-[6vw] xl:text-[76px]`}>
+              {eventType === 'all-time' ? 'ASR ALL-TIME' : '2026 ASR OPEN'}
             </h1>
           </div>
-
-          {/* SEARCH BAR - REDUCED MAX-WIDTH FOR SLEEK LAPTOP LOOK */}
-          <div className="w-24 sm:w-64 md:max-w-[200px] relative group mb-1 shrink-0">
-            <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
-            <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-9 sm:pl-11 pr-3 sm:pr-5 py-2.5 sm:py-4 w-full text-[12px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} />
+          <div className="w-1/2 flex justify-end min-w-0">
+            <div className="w-full relative group">
+              <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
+              <input 
+                type="text" 
+                placeholder="" 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                className={`rounded-xl sm:rounded-2xl pl-9 sm:pl-11 pr-3 sm:pr-5 py-2.5 sm:py-4 w-full text-[12px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} 
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -504,13 +492,14 @@ export function App() {
             <table className="table-fixed-layout text-left border-collapse">
               <thead>
                 <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-3 sm:px-4 md:px-5 lg:pl-12 py-5 text-left w-[50px] sm:w-24 lg:w-44">RANK</th>
-                  <th className="px-1 py-5 text-center w-[40px] sm:w-20 lg:w-24"><div className="flex justify-center items-center opacity-60"><IconFlag /></div></th>
-                  <th className="px-2 sm:px-4 md:px-6 py-5 text-left w-auto">ATHLETE</th>
-                  <HeaderComp l="OVR" k="rating" a="right" w="w-[70px] sm:w-[120px] lg:w-[150px]" />
-                  <HeaderComp l="RUNS" k="runs" a="right" w="w-[50px] sm:w-[90px] lg:w-[130px]" />
-                  <HeaderComp l="WINS" k="wins" a="right" w="w-[50px] sm:w-[90px] lg:w-[130px]" />
-                  <HeaderComp l="SETS" k="sets" a="right" w="w-[50px] sm:w-[90px] lg:w-[130px]" />
+                  <th className="pl-3 sm:pl-8 py-5 text-left w-[45px] sm:w-[90px]">RANK</th>
+                  <th className="px-1 py-5 text-center w-[35px] sm:w-[50px]"><div className="flex justify-center items-center opacity-60"><IconFlag /></div></th>
+                  {/* Renamed Column to NAME */}
+                  <th className="px-2 py-5 text-left w-auto">NAME</th>
+                  <HeaderComp l="OVR" k="rating" a="right" w="w-[50px] sm:w-[90px]" />
+                  <HeaderComp l="RUNS" k="runs" a="right" w="w-[45px] sm:w-[75px]" />
+                  <HeaderComp l="WINS" k="wins" a="right" w="w-[45px] sm:w-[75px]" />
+                  <HeaderComp l="SETS" k="sets" a="right" w="w-[45px] sm:pr-8 sm:w-[90px]" />
                 </tr>
               </thead>
               <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
@@ -519,17 +508,24 @@ export function App() {
                     <React.Fragment key={p.id}>
                       {idx > 0 && !p.isQualified && list[idx-1].isQualified && (
                         <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-200/50'} border-y-2 border-dashed ${theme === 'dark' ? 'border-white/10' : 'border-slate-400/30'}`}>
-                          <td colSpan="7" className="py-8 text-center"><span className="text-[10px] font-black uppercase tracking-[0.3em] italic opacity-40">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
+                          <td colSpan="7" className="py-6 text-center"><span className="text-[9px] font-black uppercase tracking-[0.2em] italic opacity-40">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
                         </tr>
                       )}
                       <tr onClick={() => setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!p.isQualified ? 'opacity-40' : ''}`}>
-                        <td className="pl-3 sm:px-4 md:px-5 lg:pl-12 py-4 sm:py-6"><RankBadge rank={p.currentRank} theme={theme} /></td>
-                        <td className="px-1 py-4 sm:py-6 text-center whitespace-nowrap"><span className="text-lg leading-none">{p.region || '🏳️'}</span></td>
-                        <td className="px-2 sm:px-4 md:px-6 py-4 sm:py-6 text-left"><div className="text-[10px] sm:text-lg font-bold truncate pr-1">{p.name}</div></td>
-                        <td className="px-2 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-lg tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
-                        <td className="px-2 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-lg tabular-nums">{p.runs}</td>
-                        <td className="px-2 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-lg tabular-nums">{p.wins}</td>
-                        <td className="px-2 pr-4 lg:pr-12 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-lg tabular-nums">{p.sets}</td>
+                        <td className="pl-3 sm:pl-8 py-4 sm:py-6"><RankBadge rank={p.currentRank} theme={theme} /></td>
+                        {/* Stacking Flags Vertically */}
+                        <td className="px-1 py-4 sm:py-6 text-center">
+                          <div className="flex flex-col items-center justify-center leading-[0.9] gap-0.5">
+                            <span className="text-base sm:text-2xl inline-block max-w-[1.2em] break-all text-center">
+                              {p.region || '🏳️'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-4 sm:py-6 text-left"><div className="text-[9px] sm:text-[15px] font-bold pr-1 break-words">{p.name}</div></td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.runs}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.wins}</td>
+                        <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.sets}</td>
                       </tr>
                     </React.Fragment>
                   ))
@@ -553,6 +549,7 @@ export function App() {
   );
 }
 
+export default App;
 export default App;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
