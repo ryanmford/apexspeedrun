@@ -340,7 +340,7 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseCli
     { l: 'OVR', v: (p.rating || 0).toFixed(2), c: 'text-blue-500' }, 
     { l: 'RUNS', v: p.runs || 0 }, { l: 'POINTS', v: (p.pts || 0).toFixed(2) }, 
     { l: '🪙', v: p.contributionScore || 0, g: 'glow-gold' }, 
-    { l: 'WIN %', v: typeof p.winPct === 'string' ? p.winPct : ((p.wins / (p.runs || 1)) * 100).toFixed(1) + '%' }, 
+    { l: 'WIN %', v: ((p.wins / (p.runs || 1)) * 100).toFixed(2) }, 
     { l: 'WINS', v: p.wins || 0 }, { l: 'SETS', v: p.sets || 0 }, 
     { l: '🔥', v: totalFires, g: 'glow-fire' }
   ];
@@ -469,6 +469,109 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
     );
 };
 
+// --- HALL OF FAME COMPONENT ---
+const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) => {
+  const HeaderCell = ({ l, k, a = 'center' }) => (
+    <th 
+      className={`px-2 py-4 cursor-pointer group select-none transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-300/30'} ${a === 'right' ? 'text-right' : a === 'left' ? 'text-left' : 'text-center'}`}
+      onClick={() => setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
+    >
+      <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : a === 'left' ? 'justify-start' : 'justify-center'}`}>
+        <span className="uppercase font-black">{l}</span>
+        <div className={`transition-opacity ${medalSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
+          <IconArrow direction={medalSort.key === k ? medalSort.direction : 'descending'} />
+        </div>
+      </div>
+    </th>
+  );
+
+  return (
+    <div className="space-y-12 animate-in fade-in duration-700 pb-24">
+      {/* Worldwide Medal Count */}
+      <div className={`rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className="p-6 border-b border-inherit bg-inherit">
+          <h3 className="text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT 🌎 🌍 🌏</h3>
+        </div>
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[500px]">
+            <thead>
+              <tr className={`text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
+                <HeaderCell l="RANK" k="rank" a="center" />
+                <HeaderCell l="COUNTRY" k="flag" a="left" />
+                <HeaderCell l="🥇" k="gold" />
+                <HeaderCell l="🥈" k="silver" />
+                <HeaderCell l="🥉" k="bronze" />
+                <HeaderCell l="TOTAL" k="total" a="right" />
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+              {stats.medalCount.map((c, i) => (
+                <tr key={c.country} className="group hover:bg-white/[0.03] transition-colors">
+                  <td className="px-2 py-4 text-center font-mono font-black opacity-30">{c.displayRank}</td>
+                  <td className="px-2 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl sm:text-2xl leading-none">{c.flag}</span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-yellow-500 text-sm sm:text-base">{c.gold}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-slate-400 text-sm sm:text-base">{c.silver}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-amber-600 text-sm sm:text-base">{c.bronze}</td>
+                  <td className="pr-6 py-4 text-right font-mono font-black text-blue-500 text-sm sm:text-base">{c.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Statistical Leaders Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {[
+          { l: 'TOP RATED', k: 'rating' },
+          { l: 'MOST WINS', k: 'wins' },
+          { l: 'MOST RUNS', k: 'runs' },
+          { l: 'MOST SETS', k: 'sets' },
+          { l: 'MOST 🪙', k: 'contributionScore' },
+          { l: 'MOST 🔥', k: 'totalFireCount' },
+          { l: 'MOST COURSES (CITY)', k: 'cityStats' },
+          { l: 'MOST COURSES (COUNTRY)', k: 'countryStats' }
+        ].map((sec) => (
+          <div key={sec.k} className={`rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+            <div className="p-4 border-b border-inherit bg-inherit flex items-center justify-between">
+              <h4 className="text-[9px] font-black uppercase tracking-wider">
+                {sec.l.split(' ').map((word, wi) => (
+                   <span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150' : 'opacity-60'}>
+                     {word}{' '}
+                   </span>
+                ))}
+              </h4>
+            </div>
+            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.02]' : 'divide-slate-100'}`}>
+              {stats.topStats[sec.k].map((p, i) => (
+                <div 
+                  key={i} 
+                  className={`flex items-center justify-between p-4 hover:bg-white/[0.03] transition-colors gap-3 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} 
+                  onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[9px] font-black opacity-20 w-4">{i + 1}</span>
+                    <span className={`text-[10px] font-black uppercase whitespace-normal leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover:item:text-blue-500' : ''} transition-colors`}>
+                        {p.name} <span className="ml-1 opacity-100">{p.region || ''}</span>
+                    </span>
+                  </div>
+                  <span className="font-mono font-black text-blue-500 text-[10px] shrink-0 tabular-nums">
+                    {sec.k === 'rating' ? p[sec.k].toFixed(2) : (p[sec.k] ?? p.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
@@ -479,6 +582,7 @@ function App() {
   const [selCourse, setSelCourse] = useState(null);
   const [sort, setSort] = useState({ key: 'rating', direction: 'descending' });
   const [courseSort, setCourseSort] = useState({ key: 'name', direction: 'ascending' });
+  const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
   const [load, setLoad] = useState(false);
   
   const [data, setData] = useState([]);
@@ -600,6 +704,92 @@ function App() {
     return baseList;
   }, [lbAT, lbOpen, eventType, search, courseSort, cMet]);
 
+  // --- HALL OF FAME AGGREGATION ---
+  const hofStats = useMemo(() => {
+    if (!data.length) return null;
+
+    const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
+
+    // Filter for Qualified set (Top 10 lists restricted to ranked players)
+    const qualifiedAthletes = data
+      .filter(p => (p.gender === 'M' && p.runs >= 4) || (p.gender === 'F' && p.runs >= 2))
+      .map(p => {
+        const performances = atPerfs[p.pKey] || [];
+        const totalFires = performances.reduce((sum, perf) => sum + getFires(perf.num, p.gender), 0);
+        return { ...p, totalFireCount: totalFires };
+      });
+
+    // Handle geographical mapping
+    const countriesMap = {};
+    const citiesMap = {};
+    Object.values(cMet).forEach(c => {
+      let countryName = c.country?.toUpperCase();
+      // Honor Puerto Rico as its own entity for country stats
+      if (c.city?.toUpperCase().includes("SAN JUAN") || c.city?.toUpperCase().includes("PUERTO RICO") || countryName?.includes("PUERTO RICO") || c.flag?.includes("🇵🇷")) {
+        countryName = "PUERTO RICO";
+      }
+      if (countryName) countriesMap[countryName] = (countriesMap[countryName] || 0) + 1;
+      if (c.city) citiesMap[c.city] = (citiesMap[c.city] || 0) + 1;
+    });
+
+    const cityStatsList = Object.entries(citiesMap).sort((a,b) => b[1]-a[1]).slice(0, 10).map(([name, count]) => {
+      const match = Object.values(cMet).find(m => m.city === name);
+      return { name, cityStats: count, region: match?.flag || '🏳️' };
+    });
+    const countryStatsList = Object.entries(countriesMap).sort((a,b) => b[1]-a[1]).slice(0, 10).map(([name, count]) => {
+      const match = Object.values(cMet).find(m => m.country?.toUpperCase() === name || (name === "PUERTO RICO" && m.flag?.includes("🇵🇷")));
+      return { name, countryStats: count, region: match?.flag || (name === "PUERTO RICO" ? "🇵🇷" : "🏳️") };
+    });
+
+    // Medal Tally Base Calculation (Includes all podium finishers)
+    const medalsBase = {};
+    const processMedals = (lb) => {
+      Object.entries(lb).forEach(([courseName, athletes]) => {
+        const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
+        sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
+          const regionStr = atMet[pKey]?.region || "🏳️";
+          // Handle individual entities (Puerto Rico, etc) separately via flag splitting
+          const flags = Array.from(new Set(regionStr.trim().split(/\s+/)));
+          flags.forEach(flag => {
+            if (!medalsBase[flag]) medalsBase[flag] = { country: flag, flag: flag, gold: 0, silver: 0, bronze: 0, total: 0 };
+            if (rankIdx === 0) medalsBase[flag].gold++;
+            else if (rankIdx === 1) medalsBase[flag].silver++;
+            else if (rankIdx === 2) medalsBase[flag].bronze++;
+            medalsBase[flag].total++;
+          });
+        });
+      });
+    };
+    processMedals(lbAT.M); processMedals(lbAT.F);
+    
+    // Sort Standings for Ranks
+    const medalStandings = Object.values(medalsBase).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
+    const medalWithRanks = medalStandings.map((c, i) => ({ ...c, rank: i + 1 }));
+
+    // Apply Sorting to UI table
+    const dir = medalSort.direction === 'ascending' ? 1 : -1;
+    const sortedMedalCount = [...medalWithRanks].sort((a, b) => {
+      const aVal = a[medalSort.key];
+      const bVal = b[medalSort.key];
+      if (typeof aVal === 'string') return aVal.localeCompare(bVal) * dir;
+      return (aVal - bVal) * dir;
+    }).map(c => ({ ...c, displayRank: c.rank }));
+
+    return {
+      medalCount: sortedMedalCount,
+      topStats: {
+        rating: [...qualifiedAthletes].sort((a,b) => b.rating - a.rating).slice(0, 10),
+        wins: [...qualifiedAthletes].sort((a,b) => b.wins - a.wins).slice(0, 10),
+        runs: [...qualifiedAthletes].sort((a,b) => b.runs - a.runs).slice(0, 10),
+        sets: [...qualifiedAthletes].sort((a,b) => b.sets - a.sets).slice(0, 10),
+        contributionScore: [...qualifiedAthletes].sort((a,b) => b.contributionScore - a.contributionScore).slice(0, 10),
+        totalFireCount: [...qualifiedAthletes].sort((a,b) => b.totalFireCount - a.totalFireCount).slice(0, 10),
+        cityStats: cityStatsList,
+        countryStats: countryStatsList
+      }
+    };
+  }, [data, lbAT, cMet, atMet, atPerfs, medalSort]);
+
   const HeaderComp = ({ l, k, a = 'left', w = "", isCourse = false }) => {
     const activeSort = isCourse ? courseSort : sort;
     const handler = isCourse ? setCourseSort : setSort;
@@ -628,7 +818,11 @@ function App() {
         
         <div className={`flex items-center p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
           <div className="flex">
-            {[{id:'players',l:'PLAYERS',s:'PLAYERS'},{id:'courses',l:'COURSES',s:'COURSES'}].map(v => (
+            {[
+              {id:'players',l:'PLAYERS',s:'PLAYERS'},
+              {id:'courses',l:'COURSES',s:'COURSES'},
+              {id:'hof',l:'HOF',s:'HOF'}
+            ].map(v => (
               <button key={v.id} onClick={() => setView(v.id)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
                 <span className="sm:hidden">{v.s}</span>
                 <span className="hidden sm:inline">{v.l}</span>
@@ -648,133 +842,143 @@ function App() {
       <header className={`pt-24 pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className={`font-black tracking-tighter uppercase leading-none transition-all ${theme === 'dark' ? 'text-white' : 'text-black'} text-[8vw] sm:text-[5vw] lg:text-[6vw] xl:text-[76px]`}>
-              {eventType === 'all-time' ? 'ASR ALL-TIME' : '2026 ASR OPEN'}
+              {view === 'hof' ? 'HALL OF FAME' : (eventType === 'all-time' ? 'ASR ALL-TIME' : '2026 ASR OPEN')}
             </h1>
-            <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-              <div className="flex">
-                {[{id:'all-time',l:'ALL-TIME'},{id:'open',l:'OPEN'}].map(ev => (
-                  <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
-                    {ev.l}
-                  </button>
-                ))}
-              </div>
-              {view === 'players' && (
-                <>
-                <div className={`w-[1px] h-4 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
+            {view !== 'hof' && (
+              <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                 <div className="flex">
-                    {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                      <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
-                        {g.l}
-                      </button>
-                    ))}
+                  {[{id:'all-time',l:'ALL-TIME'},{id:'open',l:'OPEN'}].map(ev => (
+                    <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
+                      {ev.l}
+                    </button>
+                  ))}
                 </div>
-                </>
-              )}
-            </div>
+                {view === 'players' && (
+                  <>
+                  <div className={`w-[1px] h-4 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
+                  <div className="flex">
+                      {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
+                        <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
+                          {g.l}
+                        </button>
+                      ))}
+                  </div>
+                  </>
+                )}
+              </div>
+            )}
         </div>
-        <div className="w-full relative group max-w-xl">
-          <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
-          <input 
-            type="text" 
-            placeholder=""
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            className={`rounded-2xl pl-11 pr-11 py-4 w-full text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} 
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                <IconX size={16} />
-            </button>
-          )}
-        </div>
+        {view !== 'hof' && (
+          <div className="w-full relative group max-w-xl">
+            <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
+            <input 
+              type="text" 
+              placeholder=""
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className={`rounded-2xl pl-11 pr-11 py-4 w-full text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} 
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <IconX size={16} />
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-1 sm:px-8 flex-grow w-full overflow-hidden">
-        <div className={`border rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
-          <div className="overflow-x-auto no-scrollbar">
-            {view === 'players' ? (
-              <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
-                <thead>
-                  <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                    <th className="pl-3 sm:pl-8 py-5 text-left w-[12%]">RANK</th>
-                    <th className="px-1 py-5 text-center w-[8%] cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setSort(p => ({ key: 'region', direction: p.key === 'region' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
-                      <div className="flex justify-center items-center gap-0.5">
-                        <div className="opacity-60"><IconFlag /></div>
-                        <div className={`transition-opacity ${sort.key === 'region' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === 'region' ? sort.direction : 'descending'} /></div>
-                      </div>
-                    </th>
-                    <HeaderComp l="NAME" k="name" w="w-auto" />
-                    <HeaderComp l="OVR" k="rating" a="right" w="w-[15%]" />
-                    <HeaderComp l="RUNS" k="runs" a="right" w="w-[11%]" />
-                    <HeaderComp l="WINS" k="wins" a="right" w="w-[11%]" />
-                    <HeaderComp l="SETS" k="sets" a="right" w="w-[11%] pr-3 sm:pr-8" />
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                  {list.map((p, idx) => (
-                    <React.Fragment key={p.id}>
-                      {idx > 0 && !p.isQualified && list[idx-1].isQualified && (
-                        <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-200/50'} border-y-2 border-dashed ${theme === 'dark' ? 'border-white/10' : 'border-slate-400/30'}`}>
-                          <td colSpan="7" className="py-6 text-center"><span className="text-[9px] font-black uppercase tracking-[0.2em] italic opacity-40 whitespace-nowrap">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
-                        </tr>
-                      )}
-                      <tr onClick={() => setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!p.isQualified ? 'opacity-40' : ''}`}>
-                        <td className="pl-3 sm:pl-8 py-4 sm:py-6"><RankBadge rank={p.currentRank} theme={theme} /></td>
-                        <td className="px-1 py-4 sm:py-6 text-center leading-none"><span className="text-sm sm:text-2xl">{p.region || '🏳️'}</span></td>
-                        <td className="px-2 py-4 sm:py-6 text-left">
-                          <span className="text-[10px] sm:text-[15px] font-bold block leading-tight">{p.name}</span>
-                        </td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.runs}</td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.wins}</td>
-                        <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.sets}</td>
-                      </tr>
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
-                <thead>
-                  <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                    <HeaderComp l="NAME" k="name" w="w-[20%] pl-3 sm:pl-8" isCourse={true} />
-                    <HeaderComp l="CITY" k="city" w="w-[17%] px-1" isCourse={true} />
-                    <HeaderComp l="COUNTRY" k="country" w="w-[17%] px-1" isCourse={true} />
-                    <th className="w-[10%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
-                      <div className="flex justify-center items-center gap-0.5">
-                        <div className="opacity-60"><IconFlag /></div>
-                        <div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} /></div>
-                      </div>
-                    </th>
-                    <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-[13%] px-1" isCourse={true} />
-                    <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-[13%] px-1" isCourse={true} />
-                    <HeaderComp l="RUNS" k="totalRuns" a="right" w="w-[10%] pr-3 sm:pr-8" isCourse={true} />
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                  {courseList.map((c) => (
-                    <tr key={c.name} onClick={() => setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                      <td className="pl-3 sm:pl-8 py-4 sm:py-6">
-                        <span className="text-[9px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span>
-                      </td>
-                      <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.city || '-'}</td>
-                      <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td>
-                      <td className="px-1 py-4 sm:py-6 text-center text-sm sm:text-2xl leading-none">{c.flag}</td>
-                      <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
-                      <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
-                      <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[14px] tabular-nums">{c.totalRuns}</td>
+        {view === 'hof' ? (
+          <HallOfFame stats={hofStats} theme={theme} onPlayerClick={setSel} medalSort={medalSort} setMedalSort={setMedalSort} />
+        ) : (
+          <div className={`border rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+            <div className="overflow-x-auto no-scrollbar">
+              {view === 'players' ? (
+                <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
+                  <thead>
+                    <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                      <th className="pl-3 sm:pl-8 py-5 text-left w-[12%]">RANK</th>
+                      <th className="px-1 py-5 text-center w-[8%] cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setSort(p => ({ key: 'region', direction: p.key === 'region' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                        <div className="flex justify-center items-center gap-0.5">
+                          <div className="opacity-60"><IconFlag /></div>
+                          <div className={`transition-opacity ${sort.key === 'region' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === 'region' ? sort.direction : 'descending'} /></div>
+                        </div>
+                      </th>
+                      <HeaderComp l="NAME" k="name" w="w-auto" />
+                      <HeaderComp l="OVR" k="rating" a="right" w="w-[15%]" />
+                      <HeaderComp l="RUNS" k="runs" a="right" w="w-[11%]" />
+                      <HeaderComp l="WINS" k="wins" a="right" w="w-[11%]" />
+                      <HeaderComp l="SETS" k="sets" a="right" w="w-[11%] pr-3 sm:pr-8" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+                    {list.map((p, idx) => (
+                      <React.Fragment key={p.id}>
+                        {idx > 0 && !p.isQualified && list[idx-1].isQualified && (
+                          <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-200/50'} border-y-2 border-dashed ${theme === 'dark' ? 'border-white/10' : 'border-slate-400/30'}`}>
+                            <td colSpan="7" className="py-6 text-center"><span className="text-[9px] font-black uppercase tracking-[0.2em] italic opacity-40 whitespace-nowrap">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
+                          </tr>
+                        )}
+                        <tr onClick={() => setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!p.isQualified ? 'opacity-40' : ''}`}>
+                          <td className="pl-3 sm:pl-8 py-4 sm:py-6"><RankBadge rank={p.currentRank} theme={theme} /></td>
+                          <td className="px-1 py-4 sm:py-6 text-center leading-none"><span className="text-sm sm:text-2xl">{p.region || '🏳️'}</span></td>
+                          <td className="px-2 py-4 sm:py-6 text-left">
+                            <span className="text-[10px] sm:text-[15px] font-bold block leading-tight">{p.name}</span>
+                          </td>
+                          <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
+                          <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.runs}</td>
+                          <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.wins}</td>
+                          <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.sets}</td>
+                        </tr>
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
+                  <thead>
+                    <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                      <HeaderComp l="NAME" k="name" w="w-[20%] pl-3 sm:pl-8" isCourse={true} />
+                      <HeaderComp l="CITY" k="city" w="w-[17%] px-1" isCourse={true} />
+                      <HeaderComp l="COUNTRY" k="country" w="w-[17%] px-1" isCourse={true} />
+                      <th className="w-[10%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                        <div className="flex justify-center items-center gap-0.5">
+                          <div className="opacity-60"><IconFlag /></div>
+                          <div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} /></div>
+                        </div>
+                      </th>
+                      <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-[13%] px-1" isCourse={true} />
+                      <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-[13%] px-1" isCourse={true} />
+                      <HeaderComp l="RUNS" k="totalRuns" a="right" w="w-[10%] pr-3 sm:pr-8" isCourse={true} />
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+                    {courseList.map((c) => (
+                      <tr key={c.name} onClick={() => setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
+                        <td className="pl-3 sm:pl-8 py-4 sm:py-6">
+                          <span className="text-[9px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span>
+                        </td>
+                        <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.city || '-'}</td>
+                        <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td>
+                        <td className="px-1 py-4 sm:py-6 text-center text-sm sm:text-2xl leading-none">{c.flag}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
+                        <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[14px] tabular-nums">{c.totalRuns}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
-      <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.8em] text-[10px]">FINDING THE FASTEST IRL 🌎 🌍 🌏</footer>
+      <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.4em] text-[10px]">© 2026 APEX SPEED RUN</footer>
     </div>
   );
 }
+
+export default App;
 
 export default App;
 
