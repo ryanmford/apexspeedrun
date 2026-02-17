@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom/client';
 
 const CustomStyles = () => (
   <style>{`
@@ -165,10 +166,10 @@ const processSetListData = (csv) => {
     if (lines.length < 2) return {};
     const headers = parseLine(lines[0]);
     const courseIdx = headers.findIndex(h => /course|track/i.test(h)) !== -1 ? headers.findIndex(h => /course|track/i.test(h)) : 1;
-    const ratingIdx = 5; // Column F
-    const cityIdx = 10; // Column K
-    const countryIdx = 12; // Column M
-    const flagIdx = 13; // Column N (Literal Emoji)
+    const ratingIdx = 5; 
+    const cityIdx = 10; 
+    const countryIdx = 12; 
+    const flagIdx = 13; 
     const dateIdx = 15;
     const map = {};
     lines.slice(1).forEach(l => {
@@ -267,7 +268,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     Object.keys(source).forEach(pKey => {
       const pGender = athleteMetadata[pKey]?.gender || 'M';
       res[pKey] = Object.entries(source[pKey]).map(([normL, data]) => {
-        const board = allTimeCourseLeaderboards[pGender][normL] || {};
+        const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
         const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
         const rank = sorted.findIndex(e => e[0] === pKey) + 1;
         const record = (pGender === 'F' ? atFRecs[normL] : atMRecs[normL]) || data.num;
@@ -468,7 +469,7 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
     );
 };
 
-export default function App() {
+function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('all-time');
@@ -554,13 +555,13 @@ export default function App() {
   const courseList = useMemo(() => {
     const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
     const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
-    const courseNames = Array.from(new Set([...Object.keys(contextM), ...Object.keys(contextF)]));
+    const courseNames = Array.from(new Set([...Object.keys(contextM || {}), ...Object.keys(contextF || {})])).filter(Boolean);
     
     const baseList = courseNames.map(name => {
-      const athletesMAll = Object.entries(lbAT.M[name] || {}).sort((a, b) => a[1] - b[1]);
-      const athletesFAll = Object.entries(lbAT.F[name] || {}).sort((a, b) => a[1] - b[1]);
-      const ctxM = Object.entries(contextM[name] || {});
-      const ctxF = Object.entries(contextF[name] || {});
+      const athletesMAll = Object.entries((lbAT?.M || {})[name] || {}).sort((a, b) => a[1] - b[1]);
+      const athletesFAll = Object.entries((lbAT?.F || {})[name] || {}).sort((a, b) => a[1] - b[1]);
+      const ctxM = Object.entries((contextM || {})[name] || {});
+      const ctxF = Object.entries((contextF || {})[name] || {});
       const meta = cMet[name] || {};
       return {
         name,
@@ -583,10 +584,10 @@ export default function App() {
 
     const dir = courseSort.direction === 'ascending' ? 1 : -1;
     baseList.sort((a, b) => {
-      const aVal = a[courseSort.key];
-      const bVal = b[courseSort.key];
+      const aVal = a[courseSort.key] || "";
+      const bVal = b[courseSort.key] || "";
       if (['name', 'city', 'country', 'flag'].includes(courseSort.key)) {
-        return aVal.localeCompare(bVal) * dir;
+        return String(aVal).localeCompare(String(bVal)) * dir;
       }
       if (courseSort.key === 'mRecord' || courseSort.key === 'fRecord') {
         const aValFixed = aVal === null ? (courseSort.direction === 'ascending' ? 999999 : -1) : aVal;
@@ -774,12 +775,12 @@ export default function App() {
     </div>
   );
 }
-export default App;
-export default App;
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-import ReactDOM from 'react-dom/client';
 
+export default App;
+
+// Entry point logic: 
+// If this file is being imported by index.js, the code below won't run.
+// If this file IS the entry point, it will mount to 'root'.
 const rootElement = document.getElementById('root');
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
