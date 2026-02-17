@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import ReactDOM from 'react-dom/client'; // <--- Ensure this is here
 
 const CustomStyles = () => (
   <style>{`
@@ -36,6 +35,12 @@ const CustomStyles = () => (
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
+    
+    .data-table td, .data-table th {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+    }
   `}</style>
 );
 
@@ -53,10 +58,15 @@ const IconFlag = () => (
   </svg>
 );
 const IconSearch = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-current"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
-const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+const IconX = ({ size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
 const IconArrow = ({ direction }) => <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-500 ${direction === 'ascending' ? 'rotate-180' : ''}`}><path d="M7 13l5 5 5-5M7 6l5 5 5-5" /></svg>;
 const IconSun = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v20M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2"/><path d="M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
 const IconMoon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+const IconCourse = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+  </svg>
+);
 
 const RankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
@@ -155,13 +165,27 @@ const processSetListData = (csv) => {
     if (lines.length < 2) return {};
     const headers = parseLine(lines[0]);
     const courseIdx = headers.findIndex(h => /course|track/i.test(h)) !== -1 ? headers.findIndex(h => /course|track/i.test(h)) : 1;
+    const ratingIdx = 5; // Column F
+    const cityIdx = 10; // Column K
+    const countryIdx = 12; // Column M
+    const flagIdx = 13; // Column N (Literal Emoji)
     const dateIdx = 15;
     const map = {};
     lines.slice(1).forEach(l => {
         const vals = parseLine(l);
         const course = (vals[courseIdx] || "").trim().toUpperCase();
+        const difficulty = (vals[ratingIdx] || "").trim();
+        const city = (vals[cityIdx] || "").trim();
+        const country = (vals[countryIdx] || "").trim();
+        const flagEmoji = (vals[flagIdx] || "").trim();
         const dateVal = vals[dateIdx] || "";
-        if (course) map[course] = dateVal.includes('2026');
+        if (course) map[course] = { 
+            is2026: dateVal.includes('2026'), 
+            flag: flagEmoji || '🏳️',
+            city: city.toUpperCase(),
+            country: country.toUpperCase(),
+            difficulty: difficulty
+        };
     });
     return map;
 };
@@ -226,7 +250,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       if (!openCourseLeaderboards[pGender][normalizedCourseName][pKey] || numericValue < openCourseLeaderboards[pGender][normalizedCourseName][pKey]) {
           openCourseLeaderboards[pGender][normalizedCourseName][pKey] = numericValue;
       }
-      if (courseSetMap[normalizedCourseName]) openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
+      if (courseSetMap[normalizedCourseName]?.is2026) openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
     }
   });
 
@@ -271,7 +295,16 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     };
   });
 
-  return { allTimePerformances: buildPerfs(allTimeAthleteBestTimes), openPerformances: buildPerfs(openAthleteBestTimes), openRankings: openRankingArray };
+  return { 
+    allTimePerformances: buildPerfs(allTimeAthleteBestTimes), 
+    openPerformances: buildPerfs(openAthleteBestTimes), 
+    openRankings: openRankingArray,
+    allTimeLeaderboards: allTimeCourseLeaderboards,
+    openLeaderboards: openCourseLeaderboards,
+    athleteMetadata: athleteMetadata,
+    athleteDisplayNameMap: athleteDisplayNameMap,
+    courseMetadata: courseSetMap
+  };
 };
 
 // --- UI COMPONENTS ---
@@ -283,11 +316,10 @@ const PerformanceBadge = ({ type, count = 1 }) => {
     </span>;
 };
 
-const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
+const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
   
-  // Reverted Sorting Logic: Records first -> Fastest Record Time -> Points Descending
   const courseData = useMemo(() => {
     const base = (performanceData?.[pKey] || []);
     return [...base].sort((a, b) => {
@@ -305,7 +337,7 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
 
   const stats = [
     { l: 'OVR', v: (p.rating || 0).toFixed(2), c: 'text-blue-500' }, 
-    { l: 'RUNS', v: p.runs || 0 }, { l: 'POINTS', v: Math.floor(p.pts || 0) }, 
+    { l: 'RUNS', v: p.runs || 0 }, { l: 'POINTS', v: (p.pts || 0).toFixed(2) }, 
     { l: '🪙', v: p.contributionScore || 0, g: 'glow-gold' }, 
     { l: 'WIN %', v: typeof p.winPct === 'string' ? p.winPct : ((p.wins / (p.runs || 1)) * 100).toFixed(1) + '%' }, 
     { l: 'WINS', v: p.wins || 0 }, { l: 'SETS', v: p.sets || 0 }, 
@@ -338,7 +370,7 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
           </div>
           <div className="grid grid-cols-1 gap-2">
             {courseData.map((c, i) => (
-              <div key={i} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+              <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                 <div className="flex flex-col">
                   <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -349,7 +381,7 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-xs sm:text-lg font-mono font-black text-blue-500">{c.points.toFixed(2)}</span>
-                  <span className="text-[9px] sm:text-[10px] font-mono font-bold -mt-1 opacity-70">{c.value}</span>
+                  <span className="text-[9px] sm:text-[10px] font-mono font-bold -mt-1 opacity-70">{c.num.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -360,18 +392,103 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData }) => {
   );
 };
 
-export function App() {
+// --- COURSE MODAL ---
+const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
+    if (!isOpen || !course) return null;
+    
+    const displayDifficulty = course.difficulty ? Array.from(course.difficulty).join(' ') : '-';
+
+    const stats = [
+        { l: 'CR (M)', v: course.mRecord?.toFixed(2) || '-', c: 'text-blue-500' },
+        { l: 'CR (W)', v: course.fRecord?.toFixed(2) || '-', c: 'text-blue-500' },
+        { l: 'DIFFICULTY', v: displayDifficulty },
+        { l: 'RUNS', v: course.totalRuns }
+    ];
+
+    const RankList = ({ title, athletes, genderRecord }) => (
+        <div className="space-y-3">
+            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
+            <div className="grid grid-cols-1 gap-2">
+                {athletes.slice(0, 10).map(([pKey, time], i) => {
+                    const meta = athleteMetadata[pKey] || {};
+                    const points = genderRecord ? (genderRecord / time) * 100 : 0;
+                    return (
+                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                            <div className="flex items-center gap-3">
+                                <RankBadge rank={i + 1} theme={theme} />
+                                <div className="flex flex-col">
+                                    <span className="text-[12px] font-black">{athleteDisplayNameMap[pKey]}</span>
+                                    <span className="text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-mono font-black text-white">{time.toFixed(2)}</span>
+                                <span className="text-[10px] font-mono font-black text-blue-500">{points.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[85vh] sm:max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+                <div className={`shrink-0 relative h-28 sm:h-36 p-6 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+                    <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors"><IconX /></button>
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border flex items-center justify-center text-blue-500 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse /></div>
+                        <div className="flex flex-col min-w-0">
+                            <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase truncate">{course.name} SPEED RUN</h2>
+                            <div className="text-[10px] sm:text-[12px] font-bold uppercase tracking-widest ml-1 truncate flex items-center gap-2">
+                                <span className="opacity-60">{course.city || 'UNKNOWN'}, {course.country || 'UNKNOWN'}</span>
+                                <span className="opacity-100">{course.flag}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {stats.map((s, i) => (
+                            <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                                <span className="text-[8px] font-black uppercase tracking-wider mb-2 opacity-50">{s.l}</span>
+                                <span className={`text-sm sm:text-base font-mono font-black ${s.c || ''}`}>{s.v}</span>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} />
+                        <RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('all-time');
+  const [view, setView] = useState('players'); 
   const [search, setSearch] = useState('');
   const [sel, setSel] = useState(null);
+  const [selCourse, setSelCourse] = useState(null);
   const [sort, setSort] = useState({ key: 'rating', direction: 'descending' });
+  const [courseSort, setCourseSort] = useState({ key: 'name', direction: 'ascending' });
   const [load, setLoad] = useState(false);
+  
   const [data, setData] = useState([]);
   const [openData, setOpenData] = useState([]);
   const [atPerfs, setAtPerfs] = useState({});
   const [opPerfs, setOpPerfs] = useState({});
+  const [lbAT, setLbAT] = useState({ M: {}, F: {} });
+  const [lbOpen, setLbOpen] = useState({ M: {}, F: {} });
+  const [atMet, setAtMet] = useState({});
+  const [dnMap, setDnMap] = useState({});
+  const [cMet, setCMet] = useState({});
 
   const fetchFromSheet = useCallback(async () => {
     setLoad(true);
@@ -383,16 +500,36 @@ export function App() {
         fetch(getCsv('gid=623600169')).then(r => r.text()),
         fetch(getCsv('gid=1961325686')).then(r => r.text())
       ]);
-      const athleteMetadata = {};
+      
       const pM = processRankingData(rM, 'M');
       const pF = processRankingData(rF, 'F');
-      pM.forEach((p, i) => athleteMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
-      pF.forEach((p, i) => athleteMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
-      const { allTimePerformances, openPerformances, openRankings } = processLiveFeedData(rLive, athleteMetadata, processSetListData(rSet));
-      setData([...pM, ...pF]); setOpenData(openRankings); setAtPerfs(allTimePerformances); setOpPerfs(openPerformances);
-    } catch(e) {
-      console.error("Data fetch failed:", e);
-    } finally { setLoad(false); }
+      
+      const initialMetadata = {};
+      pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
+      pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
+
+      const { 
+        allTimePerformances, 
+        openPerformances, 
+        openRankings, 
+        allTimeLeaderboards, 
+        openLeaderboards, 
+        athleteMetadata, 
+        athleteDisplayNameMap, 
+        courseMetadata 
+      } = processLiveFeedData(rLive, initialMetadata, processSetListData(rSet));
+      
+      setData([...pM, ...pF]); 
+      setOpenData(openRankings); 
+      setAtPerfs(allTimePerformances); 
+      setOpPerfs(openPerformances);
+      setLbAT(allTimeLeaderboards);
+      setLbOpen(openLeaderboards);
+      setAtMet(athleteMetadata);
+      setDnMap(athleteDisplayNameMap);
+      setCMet(courseMetadata);
+    } catch(e) { console.error("Data fetch failed:", e); } 
+    finally { setLoad(false); }
   }, []);
 
   useEffect(() => { fetchFromSheet(); }, [fetchFromSheet]);
@@ -410,19 +547,71 @@ export function App() {
       if (aVal !== bVal) return (aVal - bVal) * dir;
       return (b.rating - a.rating);
     });
-
     unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
     return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
   }, [search, sort, gen, eventType, data, openData]);
 
-  const HeaderComp = ({ l, k, a = 'left', w = "" }) => (
-    <th className={`${w} px-2 py-5 cursor-pointer group select-none transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-300/30'} ${a === 'right' ? 'text-right' : 'text-left'}`} onClick={() => setSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
-      <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-[0.1em] text-[7px] sm:text-[10px] font-black">{l}</span>
-        <div className={`transition-opacity ${sort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === k ? sort.direction : 'descending'} /></div>
-      </div>
-    </th>
-  );
+  const courseList = useMemo(() => {
+    const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
+    const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
+    const courseNames = Array.from(new Set([...Object.keys(contextM), ...Object.keys(contextF)]));
+    
+    const baseList = courseNames.map(name => {
+      const athletesMAll = Object.entries(lbAT.M[name] || {}).sort((a, b) => a[1] - b[1]);
+      const athletesFAll = Object.entries(lbAT.F[name] || {}).sort((a, b) => a[1] - b[1]);
+      const ctxM = Object.entries(contextM[name] || {});
+      const ctxF = Object.entries(contextF[name] || {});
+      const meta = cMet[name] || {};
+      return {
+        name,
+        flag: meta.flag || '🏳️',
+        city: meta.city || '',
+        country: meta.country || '',
+        difficulty: meta.difficulty || '-',
+        mRecord: athletesMAll[0]?.[1] || null,
+        fRecord: athletesFAll[0]?.[1] || null,
+        totalRuns: ctxM.length + ctxF.length,
+        totalAthletes: new Set([...ctxM.map(a => a[0]), ...ctxF.map(a => a[0])]).size,
+        athletesM: athletesMAll,
+        athletesF: athletesFAll
+      };
+    }).filter(c => 
+      c.name.toLowerCase().includes(search.toLowerCase()) || 
+      c.city.toLowerCase().includes(search.toLowerCase()) ||
+      c.country.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const dir = courseSort.direction === 'ascending' ? 1 : -1;
+    baseList.sort((a, b) => {
+      const aVal = a[courseSort.key];
+      const bVal = b[courseSort.key];
+      if (['name', 'city', 'country', 'flag'].includes(courseSort.key)) {
+        return aVal.localeCompare(bVal) * dir;
+      }
+      if (courseSort.key === 'mRecord' || courseSort.key === 'fRecord') {
+        const aValFixed = aVal === null ? (courseSort.direction === 'ascending' ? 999999 : -1) : aVal;
+        const bValFixed = bVal === null ? (courseSort.direction === 'ascending' ? 999999 : -1) : bVal;
+        return (aValFixed - bValFixed) * dir;
+      }
+      return (aVal - bVal) * dir;
+    });
+
+    return baseList;
+  }, [lbAT, lbOpen, eventType, search, courseSort, cMet]);
+
+  const HeaderComp = ({ l, k, a = 'left', w = "", isCourse = false }) => {
+    const activeSort = isCourse ? courseSort : sort;
+    const handler = isCourse ? setCourseSort : setSort;
+
+    return (
+      <th className={`${w} px-1 py-5 cursor-pointer group select-none transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-300/30'} ${a === 'right' ? 'text-right' : 'text-left'}`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+        <div className={`flex items-center gap-0.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
+          <span className="uppercase tracking-tighter text-[7.5px] sm:text-[10px] font-black whitespace-nowrap">{l}</span>
+          <div className={`transition-opacity ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} /></div>
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
@@ -436,22 +625,12 @@ export function App() {
           </span>
         </div>
         
-        {/* REORDERED TOGGLES */}
         <div className={`flex items-center p-1 rounded-2xl border ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
           <div className="flex">
-            {[{id:'all-time',l:'ALL-TIME',s:'ALL-TIME'},{id:'open',l:'OPEN',s:'OPEN'}].map(ev => (
-              <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
-                <span className="sm:hidden">{ev.s}</span>
-                <span className="hidden sm:inline">{ev.l}</span>
-              </button>
-            ))}
-          </div>
-          <div className={`w-[1px] h-6 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
-          <div className="flex">
-            {['M', 'F'].map(g => (
-              <button key={g} onClick={() => setGen(g)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
-                <span className="sm:hidden">{g}</span>
-                <span className="hidden sm:inline">{g === 'M' ? 'MEN' : 'WOMEN'}</span>
+            {[{id:'players',l:'PLAYERS',s:'PLAYERS'},{id:'courses',l:'COURSES',s:'COURSES'}].map(v => (
+              <button key={v.id} onClick={() => setView(v.id)} className={`px-2.5 sm:px-5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
+                <span className="sm:hidden">{v.s}</span>
+                <span className="hidden sm:inline">{v.l}</span>
               </button>
             ))}
           </div>
@@ -462,94 +641,139 @@ export function App() {
         </button>
       </nav>
 
-      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} />
+      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(courseList.find(c => c.name === name)); }} />
+      <CourseModal isOpen={!!selCourse} onClose={() => setSelCourse(null)} course={selCourse} theme={theme} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => { setSelCourse(null); setSel(p); }} />
 
       <header className={`pt-24 pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
-        <div className="flex flex-row items-center w-full gap-4 sm:gap-8 overflow-hidden">
-          <div className="w-1/2 min-w-0">
-            <h1 className={`font-black tracking-tighter uppercase leading-none whitespace-nowrap overflow-hidden transition-all ${theme === 'dark' ? 'text-white' : 'text-black'} text-[6.2vw] sm:text-[5.5vw] lg:text-[6vw] xl:text-[76px]`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h1 className={`font-black tracking-tighter uppercase leading-none transition-all ${theme === 'dark' ? 'text-white' : 'text-black'} text-[8vw] sm:text-[5vw] lg:text-[6vw] xl:text-[76px]`}>
               {eventType === 'all-time' ? 'ASR ALL-TIME' : '2026 ASR OPEN'}
             </h1>
-          </div>
-          <div className="w-1/2 flex justify-end min-w-0">
-            <div className="w-full relative group">
-              <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
-              <input 
-                type="text" 
-                placeholder="" 
-                value={search} 
-                onChange={e => setSearch(e.target.value)} 
-                className={`rounded-xl sm:rounded-2xl pl-9 sm:pl-11 pr-3 sm:pr-5 py-2.5 sm:py-4 w-full text-[12px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} 
-              />
+            <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+              <div className="flex">
+                {[{id:'all-time',l:'ALL-TIME'},{id:'open',l:'OPEN'}].map(ev => (
+                  <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
+                    {ev.l}
+                  </button>
+                ))}
+              </div>
+              {view === 'players' && (
+                <>
+                <div className={`w-[1px] h-4 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-400/30'} mx-2`} />
+                <div className="flex">
+                    {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
+                      <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>
+                        {g.l}
+                      </button>
+                    ))}
+                </div>
+                </>
+              )}
             </div>
-          </div>
+        </div>
+        <div className="w-full relative group max-w-xl">
+          <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}><IconSearch size={14} /></div>
+          <input 
+            type="text" 
+            placeholder=""
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            className={`rounded-2xl pl-11 pr-11 py-4 w-full text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} 
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                <IconX size={16} />
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-1 sm:px-8 flex-grow w-full">
+      <main className="max-w-7xl mx-auto px-1 sm:px-8 flex-grow w-full overflow-hidden">
         <div className={`border rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
           <div className="overflow-x-auto no-scrollbar">
-            <table className="table-fixed-layout text-left border-collapse">
-              <thead>
-                <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-3 sm:pl-8 py-5 text-left w-[45px] sm:w-[90px]">RANK</th>
-                  <th className="px-1 py-5 text-center w-[35px] sm:w-[50px]"><div className="flex justify-center items-center opacity-60"><IconFlag /></div></th>
-                  {/* Renamed Column to NAME */}
-                  <th className="px-2 py-5 text-left w-auto">NAME</th>
-                  <HeaderComp l="OVR" k="rating" a="right" w="w-[50px] sm:w-[90px]" />
-                  <HeaderComp l="RUNS" k="runs" a="right" w="w-[45px] sm:w-[75px]" />
-                  <HeaderComp l="WINS" k="wins" a="right" w="w-[45px] sm:w-[75px]" />
-                  <HeaderComp l="SETS" k="sets" a="right" w="w-[45px] sm:pr-8 sm:w-[90px]" />
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                {list.length > 0 ? (
-                  list.map((p, idx) => (
+            {view === 'players' ? (
+              <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
+                <thead>
+                  <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                    <th className="pl-3 sm:pl-8 py-5 text-left w-[12%]">RANK</th>
+                    <th className="px-1 py-5 text-center w-[8%] cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setSort(p => ({ key: 'region', direction: p.key === 'region' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                      <div className="flex justify-center items-center gap-0.5">
+                        <div className="opacity-60"><IconFlag /></div>
+                        <div className={`transition-opacity ${sort.key === 'region' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === 'region' ? sort.direction : 'descending'} /></div>
+                      </div>
+                    </th>
+                    <HeaderComp l="NAME" k="name" w="w-auto" />
+                    <HeaderComp l="OVR" k="rating" a="right" w="w-[15%]" />
+                    <HeaderComp l="RUNS" k="runs" a="right" w="w-[11%]" />
+                    <HeaderComp l="WINS" k="wins" a="right" w="w-[11%]" />
+                    <HeaderComp l="SETS" k="sets" a="right" w="w-[11%] pr-3 sm:pr-8" />
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+                  {list.map((p, idx) => (
                     <React.Fragment key={p.id}>
                       {idx > 0 && !p.isQualified && list[idx-1].isQualified && (
                         <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-200/50'} border-y-2 border-dashed ${theme === 'dark' ? 'border-white/10' : 'border-slate-400/30'}`}>
-                          <td colSpan="7" className="py-6 text-center"><span className="text-[9px] font-black uppercase tracking-[0.2em] italic opacity-40">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
+                          <td colSpan="7" className="py-6 text-center"><span className="text-[9px] font-black uppercase tracking-[0.2em] italic opacity-40 whitespace-nowrap">RUN {eventType === 'open' ? '2+' : (gen === 'M' ? '4+' : '2+')} COURSES TO GET RANKED</span></td>
                         </tr>
                       )}
                       <tr onClick={() => setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!p.isQualified ? 'opacity-40' : ''}`}>
                         <td className="pl-3 sm:pl-8 py-4 sm:py-6"><RankBadge rank={p.currentRank} theme={theme} /></td>
-                        {/* Stacking Flags Vertically */}
-                        <td className="px-1 py-4 sm:py-6 text-center">
-                          <div className="flex flex-col items-center justify-center leading-[0.9] gap-0.5">
-                            <span className="text-base sm:text-2xl inline-block max-w-[1.2em] break-all text-center">
-                              {p.region || '🏳️'}
-                            </span>
-                          </div>
+                        <td className="px-1 py-4 sm:py-6 text-center leading-none"><span className="text-sm sm:text-2xl">{p.region || '🏳️'}</span></td>
+                        <td className="px-2 py-4 sm:py-6 text-left">
+                          <span className="text-[10px] sm:text-[15px] font-bold block leading-tight">{p.name}</span>
                         </td>
-                        <td className="px-2 py-4 sm:py-6 text-left"><div className="text-[9px] sm:text-[15px] font-bold pr-1 break-words">{p.name}</div></td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.runs}</td>
-                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.wins}</td>
-                        <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[15px] tabular-nums">{p.sets}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums text-blue-500">{(p.rating || 0).toFixed(2)}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.runs}</td>
+                        <td className="px-1 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.wins}</td>
+                        <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[10px] sm:text-[15px] tabular-nums">{p.sets}</td>
                       </tr>
                     </React.Fragment>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="py-24 text-center">
-                      <div className="flex flex-col items-center gap-3 opacity-30">
-                        <div className="animate-spin text-blue-500"><IconSpeed /></div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Leaderboard Data...</span>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="table-fixed-layout text-left border-collapse min-w-[320px] data-table">
+                <thead>
+                  <tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                    <HeaderComp l="NAME" k="name" w="w-[20%] pl-3 sm:pl-8" isCourse={true} />
+                    <HeaderComp l="CITY" k="city" w="w-[17%] px-1" isCourse={true} />
+                    <HeaderComp l="COUNTRY" k="country" w="w-[17%] px-1" isCourse={true} />
+                    <th className="w-[10%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                      <div className="flex justify-center items-center gap-0.5">
+                        <div className="opacity-60"><IconFlag /></div>
+                        <div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} /></div>
                       </div>
-                    </td>
+                    </th>
+                    <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-[13%] px-1" isCourse={true} />
+                    <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-[13%] px-1" isCourse={true} />
+                    <HeaderComp l="RUNS" k="totalRuns" a="right" w="w-[10%] pr-3 sm:pr-8" isCourse={true} />
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+                  {courseList.map((c) => (
+                    <tr key={c.name} onClick={() => setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
+                      <td className="pl-3 sm:pl-8 py-4 sm:py-6">
+                        <span className="text-[9px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span>
+                      </td>
+                      <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.city || '-'}</td>
+                      <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td>
+                      <td className="px-1 py-4 sm:py-6 text-center text-sm sm:text-2xl leading-none">{c.flag}</td>
+                      <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
+                      <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
+                      <td className="px-1 pr-3 sm:pr-8 py-4 sm:py-6 text-right font-bold text-[9px] sm:text-[14px] tabular-nums">{c.totalRuns}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </main>
-      <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.8em] text-[10px]">FINDING THE FASTEST IN THE REAL WORLD 🔥</footer>
+      <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.8em] text-[10px]">FINDING THE FASTEST IRL 🌎 🌍 🌏</footer>
     </div>
   );
 }
-
-export default App;
 export default App;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
