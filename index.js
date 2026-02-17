@@ -477,7 +477,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
       onClick={() => setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
     >
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : a === 'left' ? 'justify-start' : 'justify-center'}`}>
-        <span className="uppercase font-black">{l}</span>
+        <span className="uppercase font-black text-[9px] sm:text-[10px]">{l}</span>
         <div className={`transition-opacity ${medalSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={medalSort.key === k ? medalSort.direction : 'descending'} />
         </div>
@@ -489,13 +489,13 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
     <div className="space-y-12 animate-in fade-in duration-700 pb-24">
       {/* Worldwide Medal Count */}
       <div className={`rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-6 border-b border-inherit bg-inherit">
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit">
           <h3 className="text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT 🌎 🌍 🌏</h3>
         </div>
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[500px]">
+          <table className="w-full text-left border-collapse min-w-[320px]">
             <thead>
-              <tr className={`text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
+              <tr className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
                 <HeaderCell l="RANK" k="rank" a="center" />
                 <HeaderCell l="COUNTRY" k="flag" a="left" />
                 <HeaderCell l="🥇" k="gold" />
@@ -505,18 +505,18 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
               </tr>
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-              {stats.medalCount.map((c, i) => (
+              {stats.medalCount.map((c) => (
                 <tr key={c.country} className="group hover:bg-white/[0.03] transition-colors">
-                  <td className="px-2 py-4 text-center font-mono font-black opacity-30">{c.displayRank}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black opacity-30 text-xs">{c.displayRank}</td>
                   <td className="px-2 py-4">
                     <div className="flex items-center gap-3">
                       <span className="text-xl sm:text-2xl leading-none">{c.flag}</span>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-center font-mono font-black text-yellow-500 text-sm sm:text-base">{c.gold}</td>
-                  <td className="px-2 py-4 text-center font-mono font-black text-slate-400 text-sm sm:text-base">{c.silver}</td>
-                  <td className="px-2 py-4 text-center font-mono font-black text-amber-600 text-sm sm:text-base">{c.bronze}</td>
-                  <td className="pr-6 py-4 text-right font-mono font-black text-blue-500 text-sm sm:text-base">{c.total}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-yellow-500 text-xs sm:text-base">{c.gold}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-slate-400 text-xs sm:text-base">{c.silver}</td>
+                  <td className="px-2 py-4 text-center font-mono font-black text-amber-600 text-xs sm:text-base">{c.bronze}</td>
+                  <td className="pr-4 sm:pr-8 py-4 text-right font-mono font-black text-blue-500 text-xs sm:text-base">{c.total}</td>
                 </tr>
               ))}
             </tbody>
@@ -525,7 +525,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
       </div>
 
       {/* Statistical Leaders Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         {[
           { l: 'TOP RATED', k: 'rating' },
           { l: 'MOST WINS', k: 'wins' },
@@ -546,11 +546,11 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
                 ))}
               </h4>
             </div>
-            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.02]' : 'divide-slate-100'}`}>
+            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
               {stats.topStats[sec.k].map((p, i) => (
                 <div 
                   key={i} 
-                  className={`flex items-center justify-between p-4 hover:bg-white/[0.03] transition-colors gap-3 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} 
+                  className={`flex items-center justify-between p-3 sm:p-4 hover:bg-white/[0.03] transition-colors gap-3 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} 
                   onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}
                 >
                   <div className="flex items-center gap-2.5">
@@ -710,7 +710,6 @@ function App() {
 
     const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
 
-    // Filter for Qualified set (Top 10 lists restricted to ranked players)
     const qualifiedAthletes = data
       .filter(p => (p.gender === 'M' && p.runs >= 4) || (p.gender === 'F' && p.runs >= 2))
       .map(p => {
@@ -719,12 +718,11 @@ function App() {
         return { ...p, totalFireCount: totalFires };
       });
 
-    // Handle geographical mapping
     const countriesMap = {};
     const citiesMap = {};
     Object.values(cMet).forEach(c => {
       let countryName = c.country?.toUpperCase();
-      // Honor Puerto Rico as its own entity for country stats
+      // Honor Puerto Rico as its own entity
       if (c.city?.toUpperCase().includes("SAN JUAN") || c.city?.toUpperCase().includes("PUERTO RICO") || countryName?.includes("PUERTO RICO") || c.flag?.includes("🇵🇷")) {
         countryName = "PUERTO RICO";
       }
@@ -741,14 +739,12 @@ function App() {
       return { name, countryStats: count, region: match?.flag || (name === "PUERTO RICO" ? "🇵🇷" : "🏳️") };
     });
 
-    // Medal Tally Base Calculation (Includes all podium finishers)
     const medalsBase = {};
     const processMedals = (lb) => {
       Object.entries(lb).forEach(([courseName, athletes]) => {
         const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
         sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
           const regionStr = atMet[pKey]?.region || "🏳️";
-          // Handle individual entities (Puerto Rico, etc) separately via flag splitting
           const flags = Array.from(new Set(regionStr.trim().split(/\s+/)));
           flags.forEach(flag => {
             if (!medalsBase[flag]) medalsBase[flag] = { country: flag, flag: flag, gold: 0, silver: 0, bronze: 0, total: 0 };
@@ -762,11 +758,9 @@ function App() {
     };
     processMedals(lbAT.M); processMedals(lbAT.F);
     
-    // Sort Standings for Ranks
     const medalStandings = Object.values(medalsBase).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
     const medalWithRanks = medalStandings.map((c, i) => ({ ...c, rank: i + 1 }));
 
-    // Apply Sorting to UI table
     const dir = medalSort.direction === 'ascending' ? 1 : -1;
     const sortedMedalCount = [...medalWithRanks].sort((a, b) => {
       const aVal = a[medalSort.key];
@@ -959,7 +953,7 @@ function App() {
                           <span className="text-[9px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span>
                         </td>
                         <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.city || '-'}</td>
-                        <td className="px-1 py-4 sm:py-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td>
+                        <td className="px-1 py-4 sm:p-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td>
                         <td className="px-1 py-4 sm:py-6 text-center text-sm sm:text-2xl leading-none">{c.flag}</td>
                         <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
                         <td className="px-1 py-4 sm:py-6 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
@@ -976,6 +970,9 @@ function App() {
       <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.4em] text-[10px]">© 2026 APEX SPEED RUN</footer>
     </div>
   );
+}
+
+export default App;
 }
 
 export default App;
