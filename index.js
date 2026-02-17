@@ -775,6 +775,7 @@ export default function App() {
   );
 }
 export default App;
+export default App;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
 import ReactDOM from 'react-dom/client';
