@@ -16,17 +16,15 @@ const CustomStyles = () => (
       -ms-overflow-style: none; 
       scrollbar-width: none; 
       -webkit-tap-highlight-color: transparent;
-      word-break: keep-all !important;
-      overflow-wrap: normal !important;
-      hyphens: none !important;
+      -webkit-font-smoothing: antialiased;
     }
     
     html, body { 
       text-rendering: optimizeLegibility; 
-      -webkit-font-smoothing: antialiased; 
       width: 100%; 
       margin: 0; 
       padding: 0; 
+      overflow-x: hidden;
     }
 
     .data-table, .hof-table { 
@@ -37,7 +35,8 @@ const CustomStyles = () => (
 
     .data-table td, .data-table th, .hof-table td, .hof-table th {
       vertical-align: middle;
-      white-space: normal; 
+      white-space: normal;
+      word-break: break-word; /* Ensure long names wrap instead of truncating or pushing width */
     }
 
     .data-table th, .hof-table th {
@@ -49,7 +48,7 @@ const CustomStyles = () => (
     }
 
     .hof-table th, .hof-table td, .data-table th, .data-table td { 
-      padding: 1rem 0.5rem; 
+      padding: 1rem 0.4rem; 
     }
     @media (min-width: 640px) {
       .hof-table th, .hof-table td, .data-table th, .data-table td { padding: 1.5rem 1rem; }
@@ -118,10 +117,10 @@ const CountdownTimer = ({ targetDate, theme }) => {
     }, [targetDate]);
 
     const textColor = theme === 'dark' ? 'text-white' : 'text-slate-800';
-    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]';
+    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4_rgba(0,0,0,0.1)]';
 
     return (
-        <div className="flex gap-4 sm:gap-10 font-mono text-center">
+        <div className="flex gap-2 sm:gap-10 font-mono text-center">
             {[
                 { label: 'Days', value: timeLeft.days },
                 { label: 'Hours', value: timeLeft.hours },
@@ -129,10 +128,10 @@ const CountdownTimer = ({ targetDate, theme }) => {
                 { label: 'Secs', value: timeLeft.seconds },
             ].map((unit) => (
                 <div key={unit.label} className="flex flex-col items-center">
-                    <span className={`text-4xl sm:text-7xl font-black tracking-tighter tabular-nums ${textColor} ${shadowColor}`}>
+                    <span className={`text-2xl xs:text-3xl sm:text-7xl font-black tracking-tighter tabular-nums ${textColor} ${shadowColor}`}>
                         {String(unit.value).padStart(2, '0')}
                     </span>
-                    <span className={`text-[7px] sm:text-[10px] uppercase font-black tracking-[0.2em] mt-1 ${textColor}`}>
+                    <span className={`text-[5px] sm:text-[10px] uppercase font-black tracking-[0.1em] sm:tracking-[0.2em] mt-0.5 ${textColor}`}>
                         {unit.label}
                     </span>
                 </div>
@@ -173,8 +172,8 @@ const fixCountryEntity = (name, flag) => {
 const RankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
   const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
-  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-7 h-7 sm:w-9 sm:h-9';
-  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[9px] sm:text-[11px]';
+  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-6 h-6 sm:w-9 sm:h-9';
+  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[8px] sm:text-[11px]';
   const isPodium = rank === 1 || rank === 2 || rank === 3;
   const styles = {
     1: { border: theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600', text: theme === 'dark' ? 'text-yellow-500' : 'text-yellow-700', glow: 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' },
@@ -401,6 +400,92 @@ const PerformanceBadge = ({ type, count = 1 }) => {
     </span>;
 };
 
+const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue }) => {
+    return (
+        <div className="grid grid-cols-1 gap-2">
+            {courses
+                .filter(c => c[filterKey] === filterValue)
+                .sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0))
+                .map(c => (
+                <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-3 pr-4 min-w-0">
+                        <IconCourse />
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] sm:text-sm font-black uppercase">{c.name}</span>
+                            {filterKey === 'country' && <span className="text-[7px] sm:text-[8px] font-black opacity-40 uppercase">{c.city}</span>}
+                        </div>
+                    </div>
+                    <div className="flex gap-2 sm:gap-6 shrink-0">
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (M)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.mRecord?.toFixed(2) || '-'}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (W)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.fRecord?.toFixed(2) || '-'}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">PLR</span><span className="text-[9px] sm:text-xs font-mono font-bold">{c.totalAthletes}</span></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const CityModal = ({ isOpen, onClose, city, theme, courses, onCourseClick }) => {
+    if (!isOpen || !city) return null;
+    const stats = [
+        { l: 'COURSES', v: city.courses, c: 'text-blue-500' },
+        { l: 'RUNS', v: city.runs },
+        { l: 'PLAYERS', v: city.players },
+        { l: 'AVG ELEV', v: city.avgElevation ? `${city.avgElevation.toFixed(0)}m` : '-' }
+    ];
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCity /></div>
+                        <div className="flex flex-col min-w-0">
+                            <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase">{city.name}</h2>
+                            <div className="text-sm sm:text-xl leading-none mt-1">{city.flag}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
+                    <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="city" filterValue={city.name} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CountryModal = ({ isOpen, onClose, country, theme, courses, onCourseClick }) => {
+    if (!isOpen || !country) return null;
+    const stats = [
+        { l: 'CITIES', v: country.cities, c: 'text-blue-500' },
+        { l: 'COURSES', v: country.courses },
+        { l: 'RUNS', v: country.runs },
+        { l: 'PLAYERS', v: country.players }
+    ];
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconGlobe /></div>
+                        <div className="flex flex-col min-w-0">
+                            <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase">{country.name}</h2>
+                            <div className="text-sm sm:text-xl leading-none mt-1">{country.flag}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
+                    <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="country" filterValue={country.name} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
@@ -423,43 +508,43 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseCli
     { l: 'SETS', v: p.sets || 0 }, { l: '🔥', v: totalFires, g: 'glow-fire' }
   ];
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[85vh] sm:max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-        <div className={`shrink-0 relative h-fit min-h-[112px] sm:min-h-[160px] p-6 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-          <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX /></button>
-          <div className="flex items-center gap-4 sm:gap-8 min-w-0 w-full pr-10">
-            <div className={`w-14 h-14 sm:w-24 sm:h-24 rounded-3xl border flex items-center justify-center text-lg sm:text-3xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+        <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[160px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
+          <div className="flex items-center gap-3 sm:gap-8 min-w-0 w-full pr-8">
+            <div className={`w-12 h-12 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl border flex items-center justify-center text-sm sm:text-3xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
             <div className="min-w-0 flex-1">
-              <div className="text-xl sm:text-4xl leading-tight flex items-center gap-2 flex-wrap">
+              <div className="text-lg sm:text-4xl leading-tight flex items-center gap-2 flex-wrap">
                 <span className="shrink-0">{p.region || '🏳️'}</span><h2 className="font-black tracking-tight">{p.name}</h2>
               </div>
-              {p.countryName && <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest opacity-50 ml-1">{p.countryName}</div>}
+              {p.countryName && <div className="text-[8px] sm:text-xs font-black uppercase tracking-widest opacity-50 ml-0.5">{p.countryName}</div>}
             </div>
           </div>
         </div>
-        <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {stats.map((s, i) => (
-              <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.15em] mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
-                <span className={`text-base sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
+              <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                <span className={`text-[6px] sm:text-[8px] font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
+                <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {courseData.map((c, i) => (
-              <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                <div className="flex flex-col min-w-0 pr-4">
-                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                <div className="flex flex-col min-w-0 pr-3">
+                  <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     {c.rank > 0 && c.rank <= 3 && <PerformanceBadge type={c.rank} />}
-                    {c.rank >= 4 && <span className="text-[10px] font-mono font-black italic opacity-40">{c.rank}</span>}
+                    {c.rank >= 4 && <span className="text-[8px] font-mono font-black italic opacity-40">{c.rank}</span>}
                     {getFires(c.num, p.gender) > 0 && <PerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
                   </div>
                 </div>
                 <div className="flex flex-col items-end shrink-0">
-                  <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
-                  <span className="text-[9px] sm:text-[10px] font-mono font-bold -mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
+                  <span className="text-[10px] sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
+                  <span className="text-[8px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -477,31 +562,31 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
     const stats = [
         { l: 'CR (M)', v: course.mRecord?.toFixed(2) || '-', c: 'text-blue-500' },
         { l: 'CR (W)', v: course.fRecord?.toFixed(2) || '-', c: 'text-blue-500' },
-        { l: 'DIFFICULTY', v: displayDifficulty }, 
+        { l: 'DIFF', v: displayDifficulty }, 
         { l: 'PLAYERS', v: course.totalAthletes },
-        { l: 'LENGTH (M)', v: course.length || '-' },
-        { l: 'ELEVATION (M)', v: course.elevation || '-' },
+        { l: 'LEN (M)', v: course.length || '-' },
+        { l: 'ELEV (M)', v: course.elevation || '-' },
         { l: 'TYPE', v: course.type || '-' },
-        { l: 'DATE SET', v: course.dateSet || '-' }
+        { l: 'SET DATE', v: course.dateSet || '-' }
     ];
 
     const RankList = ({ title, athletes, genderRecord }) => (
-        <div className="space-y-3">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
-            <div className="grid grid-cols-1 gap-2">
+        <div className="space-y-2 sm:space-y-3">
+            <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
+            <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
                 {athletes.slice(0, 10).map(([pKey, time], i) => {
                     const meta = athleteMetadata[pKey] || {};
                     const points = genderRecord ? (genderRecord / time) * 100 : 0;
                     return (
-                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                            <div className="flex items-center gap-3 min-w-0 pr-4">
+                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                                 <RankBadge rank={i + 1} theme={theme} />
                                 <div className="flex flex-col min-w-0">
-                                  <span className={`text-[12px] font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
-                                  <span className="text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
+                                  <span className={`text-[9px] sm:text-[12px] font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
+                                  <span className="text-[7px] sm:text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end shrink-0"><span className="text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
+                            <div className="flex flex-col items-end shrink-0"><span className="text-[10px] sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[8px] sm:text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
                         </div>
                     );
                 })}
@@ -509,108 +594,18 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
         </div>
     );
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[85vh] sm:max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[112px] sm:min-h-[144px] p-6 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX /></button>
-                    <div className="flex items-center gap-4 min-w-0 w-full pr-10">
-                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse /></div>
-                        <div className="flex flex-col min-w-0"><h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase">{course.name} SPEED RUN</h2><div className="text-[10px] sm:text-[12px] font-bold uppercase tracking-widest ml-1 flex items-center gap-2 flex-wrap"><span className="opacity-60">{course.city || 'UNKNOWN'}, {course.country || 'UNKNOWN'}</span><span className="opacity-100 shrink-0">{course.flag}</span></div></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse /></div>
+                        <div className="flex flex-col min-w-0"><h2 className="text-sm sm:text-3xl font-black tracking-tight uppercase">{course.name}</h2><div className="text-[7px] sm:text-[12px] font-bold uppercase tracking-wider sm:tracking-widest ml-0.5 flex items-center gap-1.5 flex-wrap"><span className="opacity-60">{course.city || '??'}, {course.country || '??'}</span><span className="opacity-100 shrink-0">{course.flag}</span></div></div>
                     </div>
                 </div>
-                <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[8px] font-black uppercase tracking-wider mb-2 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-sm sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} /><RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} /></div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue }) => {
-    return (
-        <div className="grid grid-cols-1 gap-2">
-            {courses
-                .filter(c => c[filterKey] === filterValue)
-                .sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0))
-                .map(c => (
-                <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                    <div className="flex items-center gap-3 pr-4 min-w-0">
-                        <IconCourse />
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-black uppercase truncate">{c.name}</span>
-                            {filterKey === 'country' && <span className="text-[8px] font-black opacity-40 uppercase truncate">{c.city}</span>}
-                        </div>
-                    </div>
-                    <div className="flex gap-4 sm:gap-6 shrink-0">
-                        <div className="flex flex-col items-end"><span className="text-[8px] font-black opacity-40">CR (M)</span><span className="text-[10px] sm:text-xs font-mono font-bold text-blue-500">{c.mRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[8px] font-black opacity-40">CR (W)</span><span className="text-[10px] sm:text-xs font-mono font-bold text-blue-500">{c.fRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[8px] font-black opacity-40">PLAYERS</span><span className="text-[10px] sm:text-xs font-mono font-bold">{c.totalAthletes}</span></div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
-
-const CityModal = ({ isOpen, onClose, city, theme, courses, onCourseClick }) => {
-    if (!isOpen || !city) return null;
-    const stats = [
-        { l: 'COURSES', v: city.courses, c: 'text-blue-500' },
-        { l: 'RUNS', v: city.runs },
-        { l: 'PLAYERS', v: city.players },
-        { l: 'AVG ELEVATION', v: city.avgElevation ? `${city.avgElevation.toFixed(0)}m` : '-' }
-    ];
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[85vh] sm:max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[112px] sm:min-h-[144px] p-6 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX /></button>
-                    <div className="flex items-center gap-4 min-w-0 w-full pr-10">
-                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCity /></div>
-                        <div className="flex flex-col min-w-0">
-                            <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase">{city.name}</h2>
-                            <div className="text-lg sm:text-xl leading-none mt-1">{city.flag}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[8px] font-black uppercase tracking-wider mb-2 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-sm sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <div className="space-y-3">
-                        <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="city" filterValue={city.name} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const CountryModal = ({ isOpen, onClose, country, theme, courses, onCourseClick }) => {
-    if (!isOpen || !country) return null;
-    const stats = [
-        { l: 'CITIES', v: country.cities, c: 'text-blue-500' },
-        { l: 'COURSES', v: country.courses },
-        { l: 'RUNS', v: country.runs },
-        { l: 'PLAYERS', v: country.players }
-    ];
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[85vh] sm:max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[112px] sm:min-h-[144px] p-6 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX /></button>
-                    <div className="flex items-center gap-4 min-w-0 w-full pr-10">
-                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconGlobe /></div>
-                        <div className="flex flex-col min-w-0">
-                            <h2 className="text-xl sm:text-3xl font-black tracking-tight uppercase">{country.name}</h2>
-                            <div className="text-lg sm:text-xl leading-none mt-1">{country.flag}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[8px] font-black uppercase tracking-wider mb-2 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-sm sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <div className="space-y-3">
-                        <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="country" filterValue={country.name} />
-                    </div>
+                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8"><RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} /><RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} /></div>
                 </div>
             </div>
         </div>
@@ -621,7 +616,7 @@ const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
   return (
     <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-tighter text-[8px] sm:text-[10px] font-black leading-none">{l}</span>
+        <span className="uppercase tracking-tighter text-[7px] sm:text-[10px] font-black leading-none">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
         </div>
@@ -633,56 +628,58 @@ const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
 const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) => {
   if (!stats) return null;
   const tColor = theme === 'dark' ? 'text-white' : 'text-slate-900';
-  const tMuted = theme === 'dark' ? 'text-white/40' : 'text-slate-400';
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700 pb-24">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-        {[{ l: 'TOP RATED', k: 'rating' },{ l: 'MOST COURSE RECORDS', k: 'wins' },{ l: 'MOST RUNS', k: 'runs' },{ l: 'MOST SETS', k: 'sets' },{ l: 'MOST 🪙', k: 'contributionScore' },{ l: 'MOST 🔥', k: 'totalFireCount' },{ l: 'MOST COURSES (CITY)', k: 'cityStats' },{ l: 'MOST COURSES (COUNTRY)', k: 'countryStats' }].map((sec) => (
-          <div key={sec.k} className={`rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
+    <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-700 pb-24">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        {[{ l: 'TOP RATED', k: 'rating' },{ l: 'MOST CRS', k: 'wins' },{ l: 'MOST RUNS', k: 'runs' },{ l: 'MOST SETS', k: 'sets' },{ l: 'MOST 🪙', k: 'contributionScore' },{ l: 'MOST 🔥', k: 'totalFireCount' },{ l: 'CITIES', k: 'cityStats' },{ l: 'COUNTRIES', k: 'countryStats' }].map((sec) => (
+          <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
-              {stats.topStats[sec.k].map((p, i) => (
-                <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-3 sm:p-4 hover:bg-white/[0.03] transition-colors gap-3 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}>
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <RankBadge rank={i + 1} theme={theme} />
-                    <div className="flex flex-col ml-1">
-                      <span className={`text-[10px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
-                      <span className="text-lg sm:text-xl mt-1 leading-none">{p.region || '🏳️'}</span>
+              {stats.topStats[sec.k].map((p, i) => {
+                const displayVal = sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (p[sec.k] !== undefined ? String(p[sec.k]) : String(p.value || 0));
+                return (
+                  <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-2.5 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}>
+                    <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
+                      <RankBadge rank={i + 1} theme={theme} />
+                      <div className="flex flex-col ml-0.5">
+                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
+                      </div>
                     </div>
+                    <span className={`font-mono font-black text-blue-500 text-[8px] sm:text-[14px] shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{displayVal}</span>
                   </div>
-                  <span className={`font-mono font-black text-blue-500 text-[10px] sm:text-[14px] shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{sec.k === 'rating' ? p[sec.k].toFixed(2) : (p[sec.k] ?? p.value)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
-      <div className={`rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
+      <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
         <div className="overflow-x-auto scrollbar-hide">
           <table className="hof-table min-w-full">
-            <thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-              <HeaderComp l="RANK" k="rank" a="left" w="w-20 sm:w-28" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="COUNTRY" k="name" a="left" w="w-auto px-2" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥇" k="gold" a="center" w="w-16 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥈" k="silver" a="center" w="w-16 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥉" k="bronze" a="center" w="w-16 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="TOTAL" k="total" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={medalSort} handler={setMedalSort} />
+            <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+              <HeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="NATION" k="name" a="left" w="w-auto px-2" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥇" k="gold" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥈" k="silver" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥉" k="bronze" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="TOTAL" k="total" a="right" w="w-12 sm:w-32 pr-4 sm:pr-10" activeSort={medalSort} handler={setMedalSort} />
             </tr></thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
                 <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-black/[0.02] transition-colors">
-                  <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.displayRank} theme={theme} /></td>
-                  <td className="px-2 py-4 sm:py-8 min-w-[140px]">
+                  <td className="pl-2 sm:pl-10 py-3 sm:py-8 text-center sm:text-left"><RankBadge rank={c.displayRank} theme={theme} /></td>
+                  <td className="px-2 py-3 sm:py-8 min-w-[80px] sm:min-w-[140px]">
                     <div className="flex flex-col">
-                      <span className={`text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
-                      <span className="text-lg sm:text-xl mt-1 leading-none select-none drop-shadow-sm shrink-0">{c.flag}</span>
+                      <span className={`text-[8px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
+                      <span className="text-sm sm:text-xl mt-0.5 leading-none drop-shadow-sm shrink-0">{c.flag}</span>
                     </div>
                   </td>
-                  <td className={`text-center font-mono font-black text-[9px] sm:text-[14px] glow-gold tabular-nums num-col ${tColor}`}>{c.gold}</td>
-                  <td className={`text-center font-mono font-black text-[9px] sm:text-[14px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
-                  <td className={`text-center font-mono font-black text-[9px] sm:text-[14px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-gold tabular-nums num-col ${tColor}`}>{c.gold}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
                   <td className="pr-4 sm:pr-10 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[20px] tabular-nums num-col">{c.total}</td>
                 </tr>
               ))}
@@ -694,7 +691,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
   );
 };
 
-const App = () => {
+export default function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('all-time');
@@ -955,57 +952,68 @@ const App = () => {
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
       <CustomStyles />
-      <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-16 flex items-center justify-between px-3 sm:px-8 gap-3 sm:gap-6 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
-        <div className="flex items-center gap-2 shrink-0"><div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}><IconSpeed /></div><span className="font-black tracking-tighter text-lg sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap"><span className="sm:hidden">ASR</span><span className="hidden sm:inline">APEX SPEED RUN</span></span></div>
-        <div className={`flex items-center p-1 rounded-2xl border shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-            <div className="flex">
+      <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-16 flex items-center justify-between px-2 sm:px-8 gap-1 sm:gap-6 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
+            <IconSpeed />
+          </div>
+          <span className="font-black tracking-tighter text-[9px] xs:text-[11px] sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
+            ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
+          </span>
+        </div>
+        
+        <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-2xl border shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+            <div className="flex items-center">
                 {[{id:'players',l:'PLAYERS'},{id:'courses',l:'COURSES'},{id:'cities',l:'CITIES'},{id:'countries',l:'COUNTRIES'},{id:'hof',l:'HOF'}].map(v => (
-                    <button key={v.id} onClick={() => setView(v.id)} className={`px-1.5 sm:px-4 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
+                    <button key={v.id} onClick={() => setView(v.id)} className={`px-0.5 xs:px-1 sm:px-4 py-1.5 rounded-md sm:rounded-xl text-[5px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
                         {v.l}
                     </button>
                 ))}
             </div>
         </div>
-        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-10 h-10 flex items-center justify-center border rounded-2xl transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400' : 'bg-slate-300/50 border-slate-400/20 text-slate-600'}`}>{theme === 'dark' ? <IconSun /> : <IconMoon />}</button>
+        
+        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center border rounded-lg sm:rounded-2xl transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400' : 'bg-slate-300/50 border-slate-400/20 text-slate-600'}`}>
+          {theme === 'dark' ? <IconSun /> : <IconMoon />}
+        </button>
       </nav>
       
-      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(courseList.find(c => c.name === name)); }} />
+      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(rawCourseList.find(c => c.name === name)); }} />
       <CourseModal isOpen={!!selCourse} onClose={() => setSelCourse(null)} course={selCourse} theme={theme} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => { setSelCourse(null); setSel(p); }} />
       <CityModal isOpen={!!selCity} onClose={() => setSelCity(null)} city={selCity} theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCity(null); setSelCourse(c); }} />
       <CountryModal isOpen={!!selCountry} onClose={() => setSelCountry(null)} country={selCountry} theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCountry(null); setSelCourse(c); }} />
       
-      <header className={`pt-24 pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <header className={`pt-20 sm:pt-24 pb-6 sm:pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             {view !== 'hof' ? (
-                <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-                    <div className="flex">
+                <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+                    <div className="flex flex-wrap gap-0.5">
                         {[{id:'all-time',l:'ASR ALL-TIME'},{id:'open',l:'2026 ASR OPEN'}].map(ev => (
-                            <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-3 sm:px-4 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{ev.l}</button>
+                            <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-2 sm:px-4 py-1.5 rounded-lg text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{ev.l}</button>
                         ))}
                     </div>
                 </div>
             ) : <div />}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center flex-wrap gap-2 sm:gap-3">
                 {['courses', 'cities', 'countries'].includes(view) && (
-                    <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+                    <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                         <a 
                             href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="px-4 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-2"
+                            className="px-2 sm:px-4 py-1 rounded-md sm:rounded-xl text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
                         >
                             ASR MAP
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         </a>
                     </div>
                 )}
 
                 {view === 'players' && (
-                    <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+                    <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                         <div className="flex">
-                            {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                                <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{g.l}</button>
+                            {[{id:'M',l:'MEN'},{id:'F',l:'WOMEN'}].map(g => (
+                                <button key={g.id} onClick={() => setGen(g.id)} className={`px-2.5 sm:px-4 py-1 rounded-md sm:rounded-xl text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{g.l}</button>
                             ))}
                         </div>
                     </div>
@@ -1014,12 +1022,12 @@ const App = () => {
         </div>
 
         {eventType === 'open' && view !== 'hof' && (
-            <div className={`p-5 sm:p-8 rounded-[2rem] border animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
-                <div className="flex items-start gap-4">
-                    <div className="p-2 rounded-xl bg-blue-600 text-white shrink-0"><IconInfo /></div>
-                    <div className="space-y-3">
-                        <p className="text-[10px] sm:text-xs font-bold opacity-80 leading-relaxed max-w-4xl tracking-wide">
-                            The 2026 ASR Open is a worldwide speed parkour competition running March 1 thru May 31. Players must complete and submit at least 3 new runs on 3 qualifying courses to get ranked. Top 6 men and top 6 women qualify for the Parkour Earth World Championships this October in Brno, Czechia.
+            <div className={`p-3 sm:p-8 rounded-xl sm:rounded-[2rem] border animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
+                <div className="flex items-start gap-2.5 sm:gap-4">
+                    <div className="p-1 sm:p-2 rounded-lg bg-blue-600 text-white shrink-0"><IconInfo /></div>
+                    <div className="space-y-2 sm:space-y-3">
+                        <p className="text-[7px] sm:text-xs font-bold opacity-80 leading-relaxed max-w-4xl tracking-wide">
+                            The 2026 ASR Open runs March 1 thru May 31. Players must submit at least 3 new runs on qualifying courses to get ranked. Top 6 men and women qualify for the World Championships in Brno, Czechia.
                         </p>
                     </div>
                 </div>
@@ -1028,13 +1036,13 @@ const App = () => {
         
         {view !== 'hof' && eventType !== 'open' && (
             <div className="w-full relative group">
-                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
-                    <IconSearch size={14} />
+                <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
+                    <IconSearch size={12} />
                 </div>
-                <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-2xl pl-11 pr-11 py-4 w-full text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-2xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-lg'}`} />
+                <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-[11px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
                 {search && (
-                    <button onClick={() => setSearch('')} className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <IconX size={16} />
+                    <button onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <IconX size={14} />
                     </button>
                 )}
             </div>
@@ -1043,14 +1051,14 @@ const App = () => {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
         {view === 'hof' ? (<HallOfFame stats={hofStats} theme={theme} onPlayerClick={setSel} medalSort={medalSort} setMedalSort={setMedalSort} />) : (
-          <div className={`border rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+          <div className={`border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
             <div className="overflow-x-auto scrollbar-hide relative">
               
               {/* Overlay for Open View */}
               {eventType === 'open' && (
-                <div className={`absolute inset-0 z-10 flex flex-col items-center pt-24 sm:pt-32 p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-300/40 via-transparent to-transparent'}`}>
+                <div className={`absolute inset-0 z-10 flex flex-col items-center pt-16 sm:pt-32 p-4 sm:p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-300/40 via-transparent to-transparent'}`}>
                     <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
-                    <h4 className={`mt-8 text-sm sm:text-lg font-black uppercase tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                    <h4 className={`mt-4 sm:mt-8 text-[8px] sm:text-lg font-black uppercase tracking-[0.1em] sm:tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                         Coming Soon to a Spot Near You
                     </h4>
                 </div>
@@ -1058,96 +1066,96 @@ const App = () => {
 
               {view === 'players' ? (
                 <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}>
-                    <thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                    <th className="pl-4 sm:pl-10 py-5 text-left w-20 sm:w-28 whitespace-nowrap">RANK</th>
-                    <HeaderComp l="PLAYER" k="name" w="w-auto px-2 py-5" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="OVR" k="rating" a="right" w="w-20 sm:w-32" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="RUNS" k="runs" a="right" w="w-16 sm:w-24" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="WINS" k="wins" a="right" w="w-16 sm:w-24" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="SETS" k="sets" a="right" w="w-16 sm:w-24 pr-4 sm:pr-10" activeSort={sort} handler={setSort} /></tr></thead>
+                    <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                    <th className="pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
+                    <HeaderComp l="PLAYER" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={sort} handler={setSort} />
+                    <HeaderComp l="OVR" k="rating" a="right" w="w-12 sm:w-32" activeSort={sort} handler={setSort} />
+                    <HeaderComp l="RUN" k="runs" a="right" w="w-8 sm:w-24" activeSort={sort} handler={setSort} />
+                    <HeaderComp l="WIN" k="wins" a="right" w="w-8 sm:w-24" activeSort={sort} handler={setSort} />
+                    <HeaderComp l="SET" k="sets" a="right" w="w-8 sm:w-24 pr-3 sm:pr-10" activeSort={sort} handler={setSort} /></tr></thead>
                     <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
                         {(eventType === 'open' ? shadowAthletes : list).map((p, idx) => (
                         <tr key={`p-${p.id}`} onClick={() => eventType !== 'open' && setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${eventType !== 'open' && !p.isQualified ? 'opacity-40' : ''}`}>
-                            <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={p.currentRank} theme={theme} /></td>
-                            <td className="px-2 py-4 sm:py-8 text-left min-w-[120px]">
+                            <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={p.currentRank} theme={theme} /></td>
+                            <td className="px-2 py-3 sm:py-8 text-left min-w-[90px] sm:min-w-[120px]">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{p.name}</span>
-                                    <span className="text-lg sm:text-xl mt-1 leading-none">{p.region || '🏳️'}</span>
+                                    <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{p.name}</span>
+                                    <span className="text-sm sm:text-xl mt-0.5 sm:mt-1 leading-none">{p.region || '🏳️'}</span>
                                 </div>
                             </td>
-                            <td className="px-2 py-4 sm:py-8 text-right font-bold text-[10px] sm:text-[14px] tabular-nums text-blue-500 num-col">{(p.rating || 0).toFixed(2)}</td>
-                            <td className="px-2 py-4 sm:py-8 text-right font-bold text-[10px] sm:text-[14px] tabular-nums num-col">{p.runs}</td>
-                            <td className="px-2 py-4 sm:py-8 text-right font-bold text-[10px] sm:text-[14px] tabular-nums num-col">{p.wins}</td>
-                            <td className="px-2 pr-4 sm:pr-10 py-4 sm:py-8 text-right font-bold text-[10px] sm:text-[14px] tabular-nums num-col">{p.sets}</td>
+                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums text-blue-500 num-col">{(p.rating || 0).toFixed(2)}</td>
+                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.runs}</td>
+                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.wins}</td>
+                            <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.sets}</td>
                         </tr>
                         ))}
                     </tbody>
                 </table>
               ) : view === 'courses' ? (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-4 sm:pl-10 py-5 text-left w-20 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="COURSE" k="name" w="w-auto px-2 py-5" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="PLAYERS" k="totalAthletes" a="right" w="w-16 sm:w-24" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-20 sm:w-32" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={courseSort} handler={setCourseSort} />
+                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
+                  <HeaderComp l="COURSE" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="PLR" k="totalAthletes" a="right" w="w-8 sm:w-24" activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="CR(M)" k="mRecord" a="right" w="w-12 sm:w-32" activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="CR(W)" k="fRecord" a="right" w="w-12 sm:w-32 pr-3 sm:pr-10" activeSort={courseSort} handler={setCourseSort} />
                 </tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
                     {(eventType === 'open' ? shadowCourses : courseList).map((c) => (<tr key={`course-${c.name}`} onClick={() => eventType !== 'open' && setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                        <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                        <td className="px-2 py-4 sm:py-8 min-w-[140px]">
+                        <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
+                        <td className="px-2 py-3 sm:py-8 min-w-[100px] sm:min-w-[120px]">
                             <div className="flex flex-col">
-                                <span className="text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span>
-                                <span className="text-lg sm:text-xl mt-1 leading-none">{c.flag}</span>
+                                <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
+                                <span className="text-sm sm:text-xl mt-0.5 sm:mt-1 leading-none">{c.flag}</span>
                             </div>
                         </td>
-                        <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] opacity-60 tabular-nums">{c.totalAthletes}</td>
-                        <td className="px-2 py-4 sm:py-8 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500 num-col">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
-                        <td className="px-2 pr-4 sm:pr-10 py-4 sm:py-8 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500 num-col">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
+                        <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.totalAthletes}</td>
+                        <td className="px-2 py-3 sm:py-8 text-right font-mono font-black text-[7px] sm:text-[14px] text-blue-500 num-col">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
+                        <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-[7px] sm:text-[14px] text-blue-500 num-col">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
                     </tr>))}
                   </tbody>
                 </table>
               ) : view === 'cities' ? (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-4 sm:pl-10 py-5 text-left w-20 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="CITY" k="name" w="w-auto px-2 py-5" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="PLAYERS" k="players" a="right" w="w-16 sm:w-24" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="RUNS" k="runs" a="right" w="w-16 sm:w-24" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="COURSES" k="courses" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={citySort} handler={setCitySort} /></tr></thead>
+                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
+                  <HeaderComp l="CITY" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={citySort} handler={setCitySort} />
+                  <HeaderComp l="PLR" k="players" a="right" w="w-8 sm:w-24" activeSort={citySort} handler={setCitySort} />
+                  <HeaderComp l="RUN" k="runs" a="right" w="w-8 sm:w-24" activeSort={citySort} handler={setCitySort} />
+                  <HeaderComp l="CRS" k="courses" a="right" w="w-12 sm:w-32 pr-3 sm:pr-10" activeSort={citySort} handler={setCitySort} /></tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
                     {(eventType === 'open' ? shadowCities : cityList).map((c) => (<tr key={`city-${c.name}`} onClick={() => eventType !== 'open' && setSelCity(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                      <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                      <td className="px-2 py-4 sm:py-8 min-w-[140px]">
+                      <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
+                      <td className="px-2 py-3 sm:py-8 min-w-[100px] sm:min-w-[140px]">
                         <div className="flex flex-col">
-                          <span className="text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight">{c.name}</span>
-                          <span className="text-lg sm:text-xl mt-1 leading-none">{c.flag}</span>
+                          <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
+                          <span className="text-sm sm:text-xl mt-0.5 leading-none">{c.flag}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
-                      <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
-                      <td className="px-2 pr-4 sm:pr-10 py-4 sm:py-8 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
+                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
+                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
+                      <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-blue-500 text-[8px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
                   </tbody>
                 </table>
               ) : (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-4 sm:pl-10 py-5 text-left w-20 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="COUNTRY" k="name" w="w-auto px-2 py-5" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="CITIES" k="cities" a="right" w="w-16 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="PLAYERS" k="players" a="right" w="w-16 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="RUNS" k="runs" a="right" w="w-16 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="COURSES" k="courses" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={countrySort} handler={setCountrySort} /></tr></thead>
+                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
+                  <HeaderComp l="COUNTRY" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={countrySort} handler={setCountrySort} />
+                  <HeaderComp l="CTY" k="cities" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
+                  <HeaderComp l="PLR" k="players" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
+                  <HeaderComp l="RUN" k="runs" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
+                  <HeaderComp l="CRS" k="courses" a="right" w="w-10 sm:w-32 pr-3 sm:pr-10" activeSort={countrySort} handler={setCountrySort} /></tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
                     {(eventType === 'open' ? shadowCountries : countryList).map((c) => (<tr key={`country-${c.name}`} onClick={() => eventType !== 'open' && setSelCountry(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                      <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                      <td className="px-2 py-4 sm:py-8 min-w-[140px]">
+                      <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
+                      <td className="px-2 py-3 sm:py-8 min-w-[90px] sm:min-w-[140px]">
                         <div className="flex flex-col">
-                          <span className="text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight">{c.name}</span>
-                          <span className="text-lg sm:text-xl mt-1 leading-none">{c.flag}</span>
+                          <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
+                          <span className="text-sm sm:text-xl mt-0.5 leading-none">{c.flag}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] uppercase opacity-60 tabular-nums">{c.cities}</td>
-                      <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
-                      <td className="px-2 py-4 sm:py-8 text-right font-mono font-bold text-[9px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
-                      <td className="px-2 pr-4 sm:pr-10 py-4 sm:py-8 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
+                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] uppercase opacity-60 tabular-nums">{c.cities}</td>
+                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
+                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
+                      <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-blue-500 text-[8px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
                   </tbody>
                 </table>
               )}
@@ -1155,7 +1163,7 @@ const App = () => {
           </div>
         )}
       </main>
-      <footer className="mt-24 text-center pb-24 opacity-20 font-black uppercase tracking-[0.4em] text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
+      <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
     </div>
   );
 }
