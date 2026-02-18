@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import ReactDOM from 'react-dom/client';
-
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
@@ -636,7 +634,7 @@ function App() {
                   <th className="w-[8%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5 border-inherit whitespace-nowrap" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
                     <div className="flex justify-center items-center gap-0.5">
                       <div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
-                        <IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} />
+                        <IconArrow direction={sort.key === 'flag' ? courseSort.direction : 'descending'} />
                       </div>
                     </div>
                   </th>
@@ -658,13 +656,8 @@ function App() {
   );
 }
 
-export default App;
-
-// Entry point logic: 
-// If this file is being imported by index.js, the code below won't run.
-// If this file IS the entry point, it will mount to 'root'.
 const rootElement = document.getElementById('root');
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<App />);
-}
+const root = createRoot(rootElement);
+root.render(<App />);
+
+export default App;
