@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
@@ -1167,9 +1166,3 @@ export default function App() {
     </div>
   );
 }
-
-const rootElement = document.getElementById('root');
-const root = createRoot(rootElement);
-root.render(<App />);
-
-export default App;
