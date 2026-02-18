@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
   <style>{`
@@ -23,7 +25,6 @@ const CustomStyles = () => (
       padding: 0; 
     }
 
-    /* MANDATORY: Prevent word-splitting globally. Entire words wrap, characters do not. */
     .data-table td, .data-table th, .hof-table td, .hof-table th {
       word-break: keep-all; 
       overflow-wrap: break-word;
@@ -34,9 +35,8 @@ const CustomStyles = () => (
     .table-fixed-layout { table-layout: fixed; width: 100%; }
     .no-scrollbar { overflow-x: hidden !important; }
     
-    /* Spacious padding across all pages for consistency */
     .hof-table th, .hof-table td, .data-table th, .data-table td { 
-      padding: 1rem 0.4rem; 
+      padding: 1rem 0.5rem; 
     }
     @media (min-width: 640px) {
       .hof-table th, .hof-table td, .data-table th, .data-table td { padding: 1.5rem 1rem; }
@@ -48,11 +48,6 @@ const CustomStyles = () => (
 const IconSpeed = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'skewX(-18deg)' }} className="overflow-visible">
     <path d="M3 19l6-7-6-7" opacity="0.2" /><path d="M9 19l6-7-6-7" opacity="0.5" /><path d="M15 19l6-7-6-7" />
-  </svg>
-);
-const IconFlag = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 5c2.5-1.5 5.5 1.5 9 0s6.5-1.5 9 0v11c-2.5-1.5-5.5 1.5-9 0s-6.5-1.5-9 0V5z" />
   </svg>
 );
 const IconSearch = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-current"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
@@ -360,9 +355,9 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
                     return (
                         <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                             <div className="flex items-center gap-3">
-                                <RankBadge rank={i + 1} theme={theme} /><div className="flex flex-col"><span className="text-[12px] font-black">{athleteDisplayNameMap[pKey]}</span><span className="text-[10px] uppercase font-black">{meta.region || '🏳️'}</span></div>
+                                <RankBadge rank={i + 1} theme={theme} /><div className="flex flex-col"><span className={`text-[12px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span><span className="text-[10px] uppercase font-black">{meta.region || '🏳️'}</span></div>
                             </div>
-                            <div className="flex flex-col items-end"><span className="text-sm font-mono font-black text-blue-500">{time.toFixed(2)}</span><span className="text-[10px] font-mono font-black text-white">{points.toFixed(2)}</span></div>
+                            <div className="flex flex-col items-end"><span className="text-sm font-mono font-black text-blue-500">{time.toFixed(2)}</span><span className={`text-[10px] font-mono font-black ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
                         </div>
                     );
                 })}
@@ -391,13 +386,21 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
 const HeaderComp = ({ l, k, a = 'left', w = "", isCourse = false, activeSort, handler }) => {
   return (
     <th className={`${w} px-1 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
-      <div className={`flex items-center gap-0.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}><span className="uppercase tracking-tighter text-[7.5px] sm:text-[10px] font-black whitespace-nowrap leading-none">{l}</span><div className={`transition-opacity ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} /></div></div>
+      <div className={`flex items-center gap-0.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
+        <span className="uppercase tracking-tighter text-[7.5px] sm:text-[10px] font-black whitespace-nowrap leading-none">{l}</span>
+        <div className={`transition-opacity ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
+          <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
+        </div>
+      </div>
     </th>
   );
 };
 
 const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) => {
   if (!stats) return null;
+  const tColor = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const tMuted = theme === 'dark' ? 'text-white/40' : 'text-slate-400';
+
   return (
     <div className="space-y-12 animate-in fade-in duration-700 pb-24">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -407,7 +410,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
               {stats.topStats[sec.k].map((p, i) => (
                 <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-3 sm:p-4 hover:bg-white/[0.03] transition-colors gap-3 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}>
-                  <div className="flex items-center gap-2.5"><span className="text-[9px] font-black opacity-20 w-4">{i + 1}</span><span className={`text-[10px] font-black uppercase whitespace-normal leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name} <span className="ml-1 opacity-100">{p.region || ''}</span></span></div>
+                  <div className="flex items-center gap-2.5"><span className={`text-[9px] font-black opacity-20 w-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{i + 1}</span><span className={`text-[10px] font-black uppercase whitespace-normal leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name} <span className="ml-1 opacity-100">{p.region || ''}</span></span></div>
                   <span className={`font-mono font-black text-blue-500 text-[10px] shrink-0 tabular-nums ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{sec.k === 'rating' ? p[sec.k].toFixed(2) : (p[sec.k] ?? p.value)}</span>
                 </div>
               ))}
@@ -421,7 +424,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
           <table className="w-full text-left border-collapse hof-table table-fixed-layout no-scrollbar">
             <thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
               <HeaderComp l="RANK" k="rank" a="center" w="w-[8%]" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l={<div className="text-blue-500"><IconFlag /></div>} k="flag" a="center" w="w-[10%]" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="" k="flag" a="center" w="w-[10%]" activeSort={medalSort} handler={setMedalSort} />
               <HeaderComp l="COUNTRY" k="name" a="left" w="w-auto" activeSort={medalSort} handler={setMedalSort} />
               <HeaderComp l="🥇" k="gold" a="center" w="w-[11%]" activeSort={medalSort} handler={setMedalSort} />
               <HeaderComp l="🥈" k="silver" a="center" w="w-[11%]" activeSort={medalSort} handler={setMedalSort} />
@@ -430,13 +433,13 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
             </tr></thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
-                <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-white/[0.03] transition-colors">
-                  <td className="text-center font-mono font-black text-white text-[8px] sm:text-xs opacity-40 tabular-nums">{c.displayRank}</td>
+                <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-black/[0.02] transition-colors">
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-xs tabular-nums ${tMuted}`}>{c.displayRank}</td>
                   <td className="text-center"><div className="flex items-center justify-center"><span className="text-lg sm:text-4xl leading-none select-none drop-shadow-sm">{c.flag}</span></div></td>
-                  <td className="text-[7.5px] sm:text-[14px] font-black uppercase tracking-tight text-white leading-tight pr-1">{c.name}</td>
-                  <td className="text-center font-mono font-black text-white text-[9px] sm:text-base glow-gold tabular-nums">{c.gold}</td>
-                  <td className="text-center font-mono font-black text-white text-[9px] sm:text-base glow-silver tabular-nums">{c.silver}</td>
-                  <td className="text-center font-mono font-black text-white text-[9px] sm:text-base glow-bronze tabular-nums">{c.bronze}</td>
+                  <td className={`text-[7.5px] sm:text-[14px] font-black uppercase tracking-tight leading-tight pr-1 ${tColor}`}>{c.name}</td>
+                  <td className={`text-center font-mono font-black text-[9px] sm:text-base glow-gold tabular-nums ${tColor}`}>{c.gold}</td>
+                  <td className={`text-center font-mono font-black text-[9px] sm:text-base glow-silver tabular-nums ${tColor}`}>{c.silver}</td>
+                  <td className={`text-center font-mono font-black text-[9px] sm:text-base glow-bronze tabular-nums ${tColor}`}>{c.bronze}</td>
                   <td className="pr-2 sm:pr-8 text-right font-mono font-black text-blue-500 text-[10px] sm:text-xl tabular-nums">{c.total}</td>
                 </tr>
               ))}
@@ -472,13 +475,27 @@ function App() {
   const fetchFromSheet = useCallback(async () => {
     const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&t=${Date.now()}`;
     try {
-      const [rM, rF, rLive, rSet] = await Promise.all([fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()), fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()), fetch(getCsv('gid=623600169')).then(r => r.text()), fetch(getCsv('gid=1961325686')).then(r => r.text())]);
-      const pM = processRankingData(rM, 'M'); const pF = processRankingData(rF, 'F');
+      const [rM, rF, rLive, rSet] = await Promise.all([
+        fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()),
+        fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()),
+        fetch(getCsv('gid=623600169')).then(r => r.text()),
+        fetch(getCsv('gid=1961325686')).then(r => r.text())
+      ]);
+      const pM = processRankingData(rM, 'M'); 
+      const pF = processRankingData(rF, 'F');
       const initialMetadata = {};
       pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive, initialMetadata, processSetListData(rSet));
-      setData([...pM, ...pF]); setOpenData(processed.openRankings); setAtPerfs(processed.allTimePerformances); setOpPerfs(processed.openPerformances); setLbAT(processed.allTimeLeaderboards); setLbOpen(processed.openLeaderboards); setAtMet(processed.athleteMetadata); setDnMap(processed.athleteDisplayNameMap); setCMet(processed.courseMetadata);
+      setData([...pM, ...pF]); 
+      setOpenData(processed.openRankings); 
+      setAtPerfs(processed.allTimePerformances); 
+      setOpPerfs(processed.openPerformances); 
+      setLbAT(processed.allTimeLeaderboards); 
+      setLbOpen(processed.openLeaderboards); 
+      setAtMet(processed.athleteMetadata); 
+      setDnMap(processed.athleteDisplayNameMap); 
+      setCMet(processed.courseMetadata);
     } catch(e) { console.error("Data fetch failed:", e); }
   }, []);
 
@@ -490,7 +507,31 @@ function App() {
     const isQual = (p) => eventType === 'open' ? p.runs >= 3 : (p.gender === 'M' ? p.runs >= 4 : p.gender === 'F' ? p.runs >= 2 : false);
     let qual = filtered.filter(isQual), unranked = filtered.filter(p => !isQual(p));
     const dir = sort.direction === 'ascending' ? 1 : -1;
-    qual.sort((a, b) => { const aVal = a[sort.key] || 0; const bVal = b[sort.key] || 0; if (aVal !== bVal) return (aVal - bVal) * dir; return (b.rating - a.rating); });
+    
+    qual.sort((a, b) => { 
+      let aVal = a[sort.key];
+      let bVal = b[sort.key];
+
+      if (sort.key === 'name') {
+        const getLastName = (n) => {
+          const parts = String(n).trim().split(/\s+/);
+          return parts[parts.length - 1].toLowerCase();
+        };
+        const lnA = getLastName(aVal);
+        const lnB = getLastName(bVal);
+        return lnA.localeCompare(lnB) * dir;
+      }
+
+      if (typeof aVal === 'string') {
+        return aVal.localeCompare(bVal) * dir;
+      }
+
+      const aNum = aVal || 0;
+      const bNum = bVal || 0;
+      if (aNum !== bNum) return (aNum - bNum) * dir;
+      return (b.rating - a.rating);
+    });
+
     unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
     return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
   }, [search, sort, gen, eventType, data, openData]);
@@ -569,10 +610,16 @@ function App() {
           <div className={`border rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}><div className="overflow-hidden">
               {view === 'players' ? (
                 <table className="table-fixed-layout text-left border-collapse data-table"><thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-4 sm:pl-10 py-5 text-left w-[10%]">RANK</th>
-                  <th className="px-1 py-5 text-center w-[10%] cursor-pointer group transition-colors hover:bg-white/5" onClick={() => setSort(p => ({ key: 'region', direction: p.key === 'region' && p.direction === 'descending' ? 'ascending' : 'descending' }))}><div className="flex justify-center items-center gap-0.5"><div className="opacity-60"><IconFlag /></div><div className={`transition-opacity ${sort.key === 'region' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={sort.key === 'region' ? sort.direction : 'descending'} /></div></div></th>
+                  <th className="pl-4 sm:pl-10 py-5 text-left w-[10%] whitespace-nowrap">RANK</th>
+                  <th className="px-1 py-5 text-center w-[10%] cursor-pointer group transition-colors hover:bg-white/5 whitespace-nowrap" onClick={() => setSort(p => ({ key: 'region', direction: p.key === 'region' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                    <div className="flex justify-center items-center gap-0.5">
+                      <div className={`transition-opacity ${sort.key === 'region' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
+                        <IconArrow direction={sort.key === 'region' ? sort.direction : 'descending'} />
+                      </div>
+                    </div>
+                  </th>
                   <HeaderComp l="NAME" k="name" w="w-auto" activeSort={sort} handler={setSort} />
-                  <HeaderComp l="OVR" k="rating" a="right" w="w-[15%]" activeSort={sort} handler={setSort} />
+                  <HeaderComp l="OVR" k="rating" a="right" w="w-[14%]" activeSort={sort} handler={setSort} />
                   <HeaderComp l="RUNS" k="runs" a="right" w="w-[11%]" activeSort={sort} handler={setSort} />
                   <HeaderComp l="WINS" k="wins" a="right" w="w-[11%]" activeSort={sort} handler={setSort} />
                   <HeaderComp l="SETS" k="sets" a="right" w="w-[11%] pr-4 sm:pr-10" activeSort={sort} handler={setSort} /></tr></thead>
@@ -585,12 +632,18 @@ function App() {
                 </table>
               ) : (
                 <table className="table-fixed-layout text-left border-collapse data-table"><thead><tr className={`border-b text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <HeaderComp l="NAME" k="name" w="w-[25%] pl-4 sm:pl-10" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
-                  <th className="w-[10%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5 border-inherit" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}><div className="flex justify-center items-center gap-0.5"><div className="opacity-60"><IconFlag /></div><div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}><IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} /></div></div></th>
-                  <HeaderComp l="CITY" k="city" w="w-[18%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="COUNTRY" k="country" w="w-[18%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-[14.5%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-[14.5%] pr-4 sm:pr-10" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="NAME" k="name" w="w-[28%] pl-4 sm:pl-10" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
+                  <th className="w-[8%] px-1 py-5 text-center cursor-pointer group transition-colors hover:bg-white/5 border-inherit whitespace-nowrap" onClick={() => setCourseSort(p => ({ key: 'flag', direction: p.key === 'flag' && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+                    <div className="flex justify-center items-center gap-0.5">
+                      <div className={`transition-opacity ${courseSort.key === 'flag' ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
+                        <IconArrow direction={courseSort.key === 'flag' ? courseSort.direction : 'descending'} />
+                      </div>
+                    </div>
+                  </th>
+                  <HeaderComp l="CITY" k="city" w="w-[17%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="COUNTRY" k="country" w="w-[17%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="CR (M)" k="mRecord" a="right" w="w-[15%] px-1" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
+                  <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-[15%] pr-4 sm:pr-10" isCourse={true} activeSort={courseSort} handler={setCourseSort} />
                 </tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
                     {courseList.map((c) => (<tr key={`course-${c.name}`} onClick={() => setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}><td className="pl-4 sm:pl-10 py-4 sm:py-8"><span className="text-[10px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block">{c.name}</span></td><td className="px-1 py-4 sm:py-8 text-center text-xl sm:text-3xl leading-none">{c.flag}</td><td className="px-1 py-4 sm:py-8 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.city || '-'}</td><td className="px-1 py-4 sm:p-6 text-[8px] sm:text-[13px] font-bold uppercase opacity-60 leading-tight">{c.country || '-'}</td><td className="px-1 py-4 sm:py-8 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td><td className="px-1 pr-4 sm:pr-10 py-4 sm:py-8 text-right font-mono font-black text-[9px] sm:text-[14px] text-blue-500">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td></tr>))}
@@ -604,10 +657,6 @@ function App() {
     </div>
   );
 }
-
-export default App;
-
-export default App;
 
 export default App;
 
