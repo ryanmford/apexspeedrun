@@ -57,8 +57,7 @@ const CustomStyles = () => (
     .blur-locked {
         filter: blur(12px) grayscale(0.5);
         opacity: 0.25;
-        pointer-events: none;
-        user-select: none;
+        pointer-events: none; user-select: none;
     }
   `}</style>
 );
@@ -118,8 +117,8 @@ const CountdownTimer = ({ targetDate, theme }) => {
         return () => clearInterval(timer);
     }, [targetDate]);
 
-    const textColor = theme === 'dark' ? 'text-white' : 'text-slate-900';
-    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_0_10px_rgba(0,0,0,0.1)]';
+    const textColor = theme === 'dark' ? 'text-white' : 'text-slate-800';
+    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]';
 
     return (
         <div className="flex gap-4 sm:gap-10 font-mono text-center">
@@ -160,9 +159,13 @@ const robustSort = (a, b, key, dir) => {
 };
 
 const fixCountryEntity = (name, flag) => {
-    const upperName = (name || "").toUpperCase().trim();
-    if (upperName === "PUERTO RICO") {
+    const n = (name || "").toUpperCase().trim();
+    const f = (flag || "").trim();
+    if (n === "PUERTO RICO" || f === "🇵🇷") {
         return { name: "PUERTO RICO", flag: "🇵🇷" };
+    }
+    if (n === "USA" || n === "UNITED STATES" || n === "UNITED STATES OF AMERICA") {
+        return { name: "USA", flag: "🇺🇸" };
     }
     return { name, flag };
 };
@@ -691,7 +694,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
   );
 };
 
-function App() {
+const App = () => {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('all-time');
@@ -702,7 +705,6 @@ function App() {
   const [selCity, setSelCity] = useState(null);
   const [selCountry, setSelCountry] = useState(null);
   
-  // Robust Sorting states
   const [sort, setSort] = useState({ key: 'rating', direction: 'descending' });
   const [courseSort, setCourseSort] = useState({ key: 'totalAthletes', direction: 'descending' });
   const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
@@ -830,14 +832,15 @@ function App() {
   const countryList = useMemo(() => {
     const countryMap = {};
     rawCourseList.forEach(c => {
-        if (!countryMap[c.country]) countryMap[c.country] = { name: c.country, flag: c.flag, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, citiesSet: new Set(), playersSet: new Set() };
-        countryMap[c.country].courses++;
-        countryMap[c.country].runs += c.totalRuns;
+        const fixed = fixCountryEntity(c.country, c.flag);
+        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, citiesSet: new Set(), playersSet: new Set() };
+        countryMap[fixed.name].courses++;
+        countryMap[fixed.name].runs += c.totalRuns;
         const elev = cleanNumeric(c.elevation);
-        if (elev !== null) { countryMap[c.country].totalElevation += elev; countryMap[c.country].elevationCount++; }
-        countryMap[c.country].citiesSet.add(c.city);
-        c.athletesM.forEach(a => countryMap[c.country].playersSet.add(a[0]));
-        c.athletesF.forEach(a => countryMap[c.country].playersSet.add(a[0]));
+        if (elev !== null) { countryMap[fixed.name].totalElevation += elev; countryMap[fixed.name].elevationCount++; }
+        countryMap[fixed.name].citiesSet.add(c.city);
+        c.athletesM.forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
+        c.athletesF.forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
     });
     
     const dir = countrySort.direction === 'ascending' ? 1 : -1;
@@ -869,8 +872,7 @@ function App() {
           const names = athlete.countryName ? athlete.countryName.split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean) : [];
           const flags = athlete.region ? (athlete.region.match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g) || athlete.region.split(/[,\/]/).map(s => s.trim())) : [];
           names.forEach((name, i) => {
-            const cleanFlag = (flags[i] || flags[0] || '🏳️').trim();
-            const fixed = fixCountryEntity(name, cleanFlag);
+            const fixed = fixCountryEntity(name, (flags[i] || flags[0] || '🏳️').trim());
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
             medalsBase[fixed.name].total++;
@@ -895,18 +897,57 @@ function App() {
     }};
   }, [data, lbAT, cityList, countryList, atMet, atPerfs, medalSort]);
 
-  // Generate shadow data for Open View Countdown
   const shadowAthletes = useMemo(() => {
     const names = ["Marcus Chen", "Sarah Jenkins", "Leo Dubois", "Elena Petrova", "Jack Thorne", "Yuki Tanaka", "Alex Rivera", "Mia Rossi", "Noah Berg", "Sofia Costa", "Erik Vogt", "Aria Moon"];
     const flags = ["🇺🇸", "🇬🇧", "🇫🇷", "🇷🇺", "🇨🇦", "🇯🇵", "🇲🇽", "🇮🇹", "🇳🇴", "🇧🇷", "🇩🇪", "🇦🇺"];
     return names.map((name, i) => ({
-        id: `shadow-${i}`,
+        id: `shadow-p-${i}`,
         name,
         region: flags[i],
         rating: 98.45 - (i * 1.2),
         runs: 5 + (i % 3),
         wins: Math.max(0, 3 - Math.floor(i / 3)),
         sets: 4 + (i % 2),
+        currentRank: i + 1
+    }));
+  }, []);
+
+  const shadowCourses = useMemo(() => {
+    const names = ["ASR ORIGINS", "NEON DISTRICT", "QUARTZ QUARRY", "MISTY PEAK", "RUST HARBOR", "COBALT CANYON", "IVORY TOWER", "EMERALD ISLE"];
+    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
+    return names.map((name, i) => ({
+        name,
+        flag: flags[i],
+        totalAthletes: 12 + (i * 2),
+        mRecord: 6.45 + (i * 0.1),
+        fRecord: 8.22 + (i * 0.12),
+        currentRank: i + 1
+    }));
+  }, []);
+
+  const shadowCities = useMemo(() => {
+    const names = ["NEW YORK", "TOKYO", "BERLIN", "VANCOUVER", "LONDON", "SYDNEY", "PARIS", "DUBLIN"];
+    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
+    return names.map((name, i) => ({
+        name,
+        flag: flags[i],
+        players: 45 - i,
+        runs: 120 + (i * 15),
+        courses: 3 + (i % 2),
+        currentRank: i + 1
+    }));
+  }, []);
+
+  const shadowCountries = useMemo(() => {
+    const names = ["USA", "JAPAN", "GERMANY", "CANADA", "UK", "AUSTRALIA", "FRANCE", "IRELAND"];
+    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
+    return names.map((name, i) => ({
+        name,
+        flag: flags[i],
+        cities: 4 + (i % 3),
+        players: 80 - (i * 5),
+        runs: 350 + (i * 20),
+        courses: 12 + (i % 4),
         currentRank: i + 1
     }));
   }, []);
@@ -949,7 +990,7 @@ function App() {
                 {['courses', 'cities', 'countries'].includes(view) && (
                     <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                         <a 
-                            href="https://maps.google.com" 
+                            href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="px-4 py-1.5 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-2"
@@ -1007,9 +1048,9 @@ function App() {
               
               {/* Overlay for Open View */}
               {eventType === 'open' && (
-                <div className={`absolute inset-0 z-10 flex flex-col items-center pt-24 sm:pt-32 p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-200/40 via-transparent to-transparent'}`}>
+                <div className={`absolute inset-0 z-10 flex flex-col items-center pt-24 sm:pt-32 p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-300/40 via-transparent to-transparent'}`}>
                     <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
-                    <h4 className={`mt-8 text-sm sm:text-lg font-black uppercase tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    <h4 className={`mt-8 text-sm sm:text-lg font-black uppercase tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                         Coming Soon to a Spot Near You
                     </h4>
                 </div>
@@ -1051,7 +1092,7 @@ function App() {
                   <HeaderComp l="CR (W)" k="fRecord" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={courseSort} handler={setCourseSort} />
                 </tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {courseList.map((c) => (<tr key={`course-${c.name}`} onClick={() => eventType !== 'open' && setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
+                    {(eventType === 'open' ? shadowCourses : courseList).map((c) => (<tr key={`course-${c.name}`} onClick={() => eventType !== 'open' && setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
                         <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
                         <td className="px-2 py-4 sm:py-8 min-w-[140px]">
                             <div className="flex flex-col">
@@ -1073,7 +1114,7 @@ function App() {
                   <HeaderComp l="RUNS" k="runs" a="right" w="w-16 sm:w-24" activeSort={citySort} handler={setCitySort} />
                   <HeaderComp l="COURSES" k="courses" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={citySort} handler={setCitySort} /></tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {cityList.map((c) => (<tr key={`city-${c.name}`} onClick={() => eventType !== 'open' && setSelCity(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
+                    {(eventType === 'open' ? shadowCities : cityList).map((c) => (<tr key={`city-${c.name}`} onClick={() => eventType !== 'open' && setSelCity(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
                       <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
                       <td className="px-2 py-4 sm:py-8 min-w-[140px]">
                         <div className="flex flex-col">
@@ -1095,7 +1136,7 @@ function App() {
                   <HeaderComp l="RUNS" k="runs" a="right" w="w-16 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
                   <HeaderComp l="COURSES" k="courses" a="right" w="w-20 sm:w-32 pr-4 sm:pr-10" activeSort={countrySort} handler={setCountrySort} /></tr></thead>
                   <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {countryList.map((c) => (<tr key={`country-${c.name}`} onClick={() => eventType !== 'open' && setSelCountry(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
+                    {(eventType === 'open' ? shadowCountries : countryList).map((c) => (<tr key={`country-${c.name}`} onClick={() => eventType !== 'open' && setSelCountry(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
                       <td className="pl-4 sm:pl-10 py-4 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
                       <td className="px-2 py-4 sm:py-8 min-w-[140px]">
                         <div className="flex flex-col">
