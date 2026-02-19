@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
@@ -35,7 +36,7 @@ const CustomStyles = () => (
     .data-table td, .data-table th, .hof-table td, .hof-table th {
       vertical-align: middle;
       white-space: normal;
-      word-break: break-word; /* Ensure long names wrap instead of truncating or pushing width */
+      word-break: break-word;
     }
 
     .data-table th, .hof-table th {
@@ -47,7 +48,7 @@ const CustomStyles = () => (
     }
 
     .hof-table th, .hof-table td, .data-table th, .data-table td { 
-      padding: 1rem 0.4rem; 
+      padding: 1rem 0.35rem; 
     }
     @media (min-width: 640px) {
       .hof-table th, .hof-table td, .data-table th, .data-table td { padding: 1.5rem 1rem; }
@@ -139,18 +140,13 @@ const CountdownTimer = ({ targetDate, theme }) => {
     );
 };
 
-// --- HELPERS ---
+// --- DATA HELPERS ---
 const robustSort = (a, b, key, dir) => {
     let aVal = a[key];
     let bVal = b[key];
-    
     const isANum = aVal !== null && aVal !== undefined && !isNaN(parseFloat(aVal)) && isFinite(aVal);
     const isBNum = bVal !== null && bVal !== undefined && !isNaN(parseFloat(bVal)) && isFinite(bVal);
-
-    if (isANum && isBNum) {
-        return (parseFloat(aVal) - parseFloat(bVal)) * dir;
-    }
-    
+    if (isANum && isBNum) return (parseFloat(aVal) - parseFloat(bVal)) * dir;
     const aStr = String(aVal || "").toLowerCase();
     const bStr = String(bVal || "").toLowerCase();
     return aStr.localeCompare(bStr) * dir;
@@ -159,34 +155,9 @@ const robustSort = (a, b, key, dir) => {
 const fixCountryEntity = (name, flag) => {
     const n = (name || "").toUpperCase().trim();
     const f = (flag || "").trim();
-    if (n === "PUERTO RICO" || f === "🇵🇷") {
-        return { name: "PUERTO RICO", flag: "🇵🇷" };
-    }
-    if (n === "USA" || n === "UNITED STATES" || n === "UNITED STATES OF AMERICA") {
-        return { name: "USA", flag: "🇺🇸" };
-    }
+    if (n === "PUERTO RICO" || f === "🇵🇷") return { name: "PUERTO RICO", flag: "🇵🇷" };
+    if (n === "USA" || n === "UNITED STATES" || n === "UNITED STATES OF AMERICA") return { name: "USA", flag: "🇺🇸" };
     return { name, flag };
-};
-
-const RankBadge = ({ rank, theme, size = 'md' }) => {
-  const isUnranked = rank === "UR";
-  const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
-  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-6 h-6 sm:w-9 sm:h-9';
-  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[8px] sm:text-[11px]';
-  const isPodium = rank === 1 || rank === 2 || rank === 3;
-  const styles = {
-    1: { border: theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600', text: theme === 'dark' ? 'text-yellow-500' : 'text-yellow-700', glow: 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' },
-    2: { border: theme === 'dark' ? 'border-zinc-400' : 'border-zinc-500', text: theme === 'dark' ? 'text-zinc-300' : 'text-zinc-600', glow: 'shadow-[0_0_15px_rgba(161,161,170,0.25)]' },
-    3: { border: 'border-[#CE8946]', text: 'text-[#CE8946]', glow: 'shadow-[0_0_15px_rgba(206,137,70,0.3)]' },
-    unranked: { border: 'border-dashed border-slate-500/30', text: 'text-slate-500', glow: 'shadow-none' },
-    default: { border: 'border-transparent', text: theme === 'dark' ? 'text-white' : 'text-black', glow: 'shadow-none' }
-  };
-  const current = isUnranked ? styles.unranked : (styles[rank] || styles.default);
-  return (
-    <span className={`inline-flex items-center justify-center rounded-full font-mono font-black transition-all duration-500 shrink-0 ${dim} ${textClass} ${current.border} ${current.text} ${current.glow} ${isPodium ? 'border-[2px] sm:border-[3px] animate-subtle-pulse' : isUnranked ? 'border' : 'border-0'}`}>
-      {rankNum}
-    </span>
-  );
 };
 
 const parseLine = (line = '') => {
@@ -217,6 +188,7 @@ const cleanNumeric = (v) => {
   return (isNaN(num) || num < 0) ? null : num;
 };
 
+// --- DATA PROCESSORS ---
 const processRankingData = (csv, gender) => {
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   const hIdx = lines.findIndex(l => l.toLowerCase().includes('name') || l.toLowerCase().includes('athlete')); 
@@ -239,11 +211,9 @@ const processRankingData = (csv, gender) => {
     const vals = parseLine(line); 
     const pName = (vals[nameIdx] || "").trim();
     if (pName.length < 2) return null;
-
     const rawCountry = countryNameIdx !== -1 ? vals[countryNameIdx]?.trim() : "";
     const rawFlag = flagEmojiIdx !== -1 ? (vals[flagEmojiIdx]?.trim() || "🏳️") : "🏳️";
     const fixed = fixCountryEntity(rawCountry, rawFlag);
-
     return { 
       id: `${gender}-${normalizeName(pName)}-${i}`, 
       name: pName, pKey: normalizeName(pName), gender, 
@@ -260,10 +230,8 @@ const processRankingData = (csv, gender) => {
 const processSetListData = (csv) => {
     const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 1) return {};
-    
     const headers = parseLine(lines[0]);
     const findIdx = (keys) => headers.findIndex(h => keys.some(k => h.toLowerCase().trim().includes(k.toLowerCase())));
-    
     const courseIdx = Math.max(0, findIdx(['course', 'track', 'level']));
     const lengthIdx = findIdx(['length', 'dist']);
     const elevIdx = findIdx(['elev', 'gain']);
@@ -274,7 +242,6 @@ const processSetListData = (csv) => {
     const flagIdx = findIdx(['flag', 'emoji']);
     const dateIdx = findIdx(['date', 'year']);
     const dateSetIdx = findIdx(['set on', 'updated', 'date set']);
-    
     const map = {};
     lines.slice(1).forEach(l => {
         const vals = parseLine(l);
@@ -283,7 +250,6 @@ const processSetListData = (csv) => {
             const rawCountry = (vals[countryIdx] || "").trim();
             const rawFlag = (vals[flagIdx] || "").trim();
             const fixed = fixCountryEntity(rawCountry, rawFlag);
-            
             map[course] = { 
                 is2026: (vals[dateIdx] || "").includes('2026'), 
                 flag: fixed.flag || '🏳️',
@@ -391,418 +357,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
   };
 };
 
-const PerformanceBadge = ({ type, count = 1 }) => {
-    const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
-    const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-fire" };
-    return <span className={`inline-flex items-center gap-1 text-[11px] select-none shrink-0 ${glows[type]}`}>
-        {Array.from({ length: count }).map((_, i) => <span key={i}>{badges[type]}</span>)}
-    </span>;
-};
-
-const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue }) => {
-    return (
-        <div className="grid grid-cols-1 gap-2">
-            {courses
-                .filter(c => c[filterKey] === filterValue)
-                .sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0))
-                .map(c => (
-                <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                    <div className="flex items-center gap-3 pr-4 min-w-0">
-                        <IconCourse />
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] sm:text-sm font-black uppercase">{c.name}</span>
-                            {filterKey === 'country' && <span className="text-[7px] sm:text-[8px] font-black opacity-40 uppercase">{c.city}</span>}
-                        </div>
-                    </div>
-                    <div className="flex gap-2 sm:gap-6 shrink-0">
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (M)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.mRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (W)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.fRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">PLR</span><span className="text-[9px] sm:text-xs font-mono font-bold">{c.totalAthletes}</span></div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
-
-const CityModal = ({ isOpen, onClose, city, theme, courses, onCourseClick }) => {
-    if (!isOpen || !city) return null;
-    const stats = [
-        { l: 'COURSES', v: city.courses, c: 'text-blue-500' },
-        { l: 'RUNS', v: city.runs },
-        { l: 'PLAYERS', v: city.players },
-        { l: 'AVG ELEV', v: city.avgElevation ? `${city.avgElevation.toFixed(0)}m` : '-' }
-    ];
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
-                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCity /></div>
-                        <div className="flex flex-col min-w-0">
-                            <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase">{city.name}</h2>
-                            <div className="text-sm sm:text-xl leading-none mt-1">{city.flag}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="city" filterValue={city.name} />
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const CountryModal = ({ isOpen, onClose, country, theme, courses, onCourseClick }) => {
-    if (!isOpen || !country) return null;
-    const stats = [
-        { l: 'CITIES', v: country.cities, c: 'text-blue-500' },
-        { l: 'COURSES', v: country.courses },
-        { l: 'RUNS', v: country.runs },
-        { l: 'PLAYERS', v: country.players }
-    ];
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
-                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconGlobe /></div>
-                        <div className="flex flex-col min-w-0">
-                            <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase">{country.name}</h2>
-                            <div className="text-sm sm:text-xl leading-none mt-1">{country.flag}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey="country" filterValue={country.name} />
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
-  if (!isOpen || !p) return null;
-  const pKey = p.pKey || normalizeName(p.name);
-  const courseData = useMemo(() => {
-    const base = (performanceData?.[pKey] || []);
-    return [...base].sort((a, b) => {
-      const aIsRecord = a.rank === 1; const bIsRecord = b.rank === 1;
-      if (aIsRecord && !bIsRecord) return -1;
-      if (!aIsRecord && bIsRecord) return 1;
-      if (aIsRecord && bIsRecord) return a.num - b.num;
-      return b.points - a.points;
-    });
-  }, [performanceData, pKey]);
-  const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
-  const totalFires = courseData.reduce((acc, c) => acc + getFires(c.num, p.gender), 0);
-  const stats = [
-    { l: 'OVR', v: (p.rating || 0).toFixed(2), c: 'text-blue-500' }, { l: 'RUNS', v: p.runs || 0 }, 
-    { l: 'POINTS', v: (p.pts || 0).toFixed(2) }, { l: '🪙', v: p.contributionScore || 0, g: 'glow-gold' }, 
-    { l: 'WIN %', v: ((p.wins / (p.runs || 1)) * 100).toFixed(2) }, { l: 'WINS', v: p.wins || 0 }, 
-    { l: 'SETS', v: p.sets || 0 }, { l: '🔥', v: totalFires, g: 'glow-fire' }
-  ];
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-        <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[160px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-          <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
-          <div className="flex items-center gap-3 sm:gap-8 min-w-0 w-full pr-8">
-            <div className={`w-12 h-12 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl border flex items-center justify-center text-sm sm:text-3xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
-            <div className="min-w-0 flex-1">
-              <div className="text-lg sm:text-4xl leading-tight flex items-center gap-2 flex-wrap">
-                <span className="shrink-0">{p.region || '🏳️'}</span><h2 className="font-black tracking-tight">{p.name}</h2>
-              </div>
-              {p.countryName && <div className="text-[8px] sm:text-xs font-black uppercase tracking-widest opacity-50 ml-0.5">{p.countryName}</div>}
-            </div>
-          </div>
-        </div>
-        <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            {stats.map((s, i) => (
-              <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                <span className={`text-[6px] sm:text-[8px] font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
-                <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
-            {courseData.map((c, i) => (
-              <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                <div className="flex flex-col min-w-0 pr-3">
-                  <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
-                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                    {c.rank > 0 && c.rank <= 3 && <PerformanceBadge type={c.rank} />}
-                    {c.rank >= 4 && <span className="text-[8px] font-mono font-black italic opacity-40">{c.rank}</span>}
-                    {getFires(c.num, p.gender) > 0 && <PerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <span className="text-[10px] sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
-                  <span className="text-[8px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
-    if (!isOpen || !course) return null;
-    const displayDifficulty = course.difficulty ? Array.from(course.difficulty).join(' ') : '-';
-    
-    const stats = [
-        { l: 'CR (M)', v: course.mRecord?.toFixed(2) || '-', c: 'text-blue-500' },
-        { l: 'CR (W)', v: course.fRecord?.toFixed(2) || '-', c: 'text-blue-500' },
-        { l: 'DIFF', v: displayDifficulty }, 
-        { l: 'PLAYERS', v: course.totalAthletes },
-        { l: 'LEN (M)', v: course.length || '-' },
-        { l: 'ELEV (M)', v: course.elevation || '-' },
-        { l: 'TYPE', v: course.type || '-' },
-        { l: 'SET DATE', v: course.dateSet || '-' }
-    ];
-
-    const RankList = ({ title, athletes, genderRecord }) => (
-        <div className="space-y-2 sm:space-y-3">
-            <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
-            <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
-                {athletes.slice(0, 10).map(([pKey, time], i) => {
-                    const meta = athleteMetadata[pKey] || {};
-                    const points = genderRecord ? (genderRecord / time) * 100 : 0;
-                    return (
-                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
-                                <RankBadge rank={i + 1} theme={theme} />
-                                <div className="flex flex-col min-w-0">
-                                  <span className={`text-[9px] sm:text-[12px] font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
-                                  <span className="text-[7px] sm:text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end shrink-0"><span className="text-[10px] sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[8px] sm:text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-            <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-                <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
-                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse /></div>
-                        <div className="flex flex-col min-w-0"><h2 className="text-sm sm:text-3xl font-black tracking-tight uppercase">{course.name}</h2><div className="text-[7px] sm:text-[12px] font-bold uppercase tracking-wider sm:tracking-widest ml-0.5 flex items-center gap-1.5 flex-wrap"><span className="opacity-60">{course.city || '??'}, {course.country || '??'}</span><span className="opacity-100 shrink-0">{course.flag}</span></div></div>
-                    </div>
-                </div>
-                <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-8 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8"><RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} /><RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} /></div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
-  return (
-    <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
-      <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-tighter text-[7px] sm:text-[10px] font-black leading-none">{l}</span>
-        <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
-          <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
-        </div>
-      </div>
-    </th>
-  );
-};
-
-const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) => {
-  if (!stats) return null;
-  const tColor = theme === 'dark' ? 'text-white' : 'text-slate-900';
-
-  return (
-    <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-700 pb-24">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-        {[{ l: 'TOP RATED', k: 'rating' },{ l: 'MOST CRS', k: 'wins' },{ l: 'MOST RUNS', k: 'runs' },{ l: 'MOST SETS', k: 'sets' },{ l: 'MOST 🪙', k: 'contributionScore' },{ l: 'MOST 🔥', k: 'totalFireCount' },{ l: 'CITIES', k: 'cityStats' },{ l: 'COUNTRIES', k: 'countryStats' }].map((sec) => (
-          <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
-            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
-              {stats.topStats[sec.k].map((p, i) => {
-                const displayVal = sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (p[sec.k] !== undefined ? String(p[sec.k]) : String(p.value || 0));
-                return (
-                  <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-2.5 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}>
-                    <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
-                      <RankBadge rank={i + 1} theme={theme} />
-                      <div className="flex flex-col ml-0.5">
-                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
-                        <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
-                      </div>
-                    </div>
-                    <span className={`font-mono font-black text-blue-500 text-[8px] sm:text-[14px] shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{displayVal}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="hof-table min-w-full">
-            <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-              <HeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="NATION" k="name" a="left" w="w-auto px-2" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥇" k="gold" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥈" k="silver" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="🥉" k="bronze" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="TOTAL" k="total" a="right" w="w-12 sm:w-32 pr-4 sm:pr-10" activeSort={medalSort} handler={setMedalSort} />
-            </tr></thead>
-            <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-              {stats.medalCount.map((c) => (
-                <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-black/[0.02] transition-colors">
-                  <td className="pl-2 sm:pl-10 py-3 sm:py-8 text-center sm:text-left"><RankBadge rank={c.displayRank} theme={theme} /></td>
-                  <td className="px-2 py-3 sm:py-8 min-w-[80px] sm:min-w-[140px]">
-                    <div className="flex flex-col">
-                      <span className={`text-[8px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
-                      <span className="text-sm sm:text-xl mt-0.5 leading-none drop-shadow-sm shrink-0">{c.flag}</span>
-                    </div>
-                  </td>
-                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-gold tabular-nums num-col ${tColor}`}>{c.gold}</td>
-                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
-                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
-                  <td className="pr-4 sm:pr-10 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[20px] tabular-nums num-col">{c.total}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default function App() {
-  const [theme, setTheme] = useState('dark');
-  const [gen, setGen] = useState('M');
-  const [eventType, setEventType] = useState('all-time');
-  const [view, setView] = useState('players'); 
-  const [search, setSearch] = useState('');
-  const [sel, setSel] = useState(null);
-  const [selCourse, setSelCourse] = useState(null);
-  const [selCity, setSelCity] = useState(null);
-  const [selCountry, setSelCountry] = useState(null);
-  
-  const [sort, setSort] = useState({ key: 'rating', direction: 'descending' });
-  const [courseSort, setCourseSort] = useState({ key: 'totalAthletes', direction: 'descending' });
-  const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
-  const [citySort, setCitySort] = useState({ key: 'courses', direction: 'descending' });
-  const [countrySort, setCountrySort] = useState({ key: 'courses', direction: 'descending' });
-  
-  const [data, setData] = useState([]);
-  const [openData, setOpenData] = useState([]);
-  const [atPerfs, setAtPerfs] = useState({});
-  const [opPerfs, setOpPerfs] = useState({});
-  const [lbAT, setLbAT] = useState({ M: {}, F: {} });
-  const [lbOpen, setLbOpen] = useState({ M: {}, F: {} });
-  const [atMet, setAtMet] = useState({});
-  const [dnMap, setDnMap] = useState({});
-  const [cMet, setCMet] = useState({});
-
-  const fetchFromSheet = useCallback(async () => {
-    const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&t=${Date.now()}`;
-    try {
-      const [rM, rF, rLive, rSet] = await Promise.all([
-        fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()),
-        fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()),
-        fetch(getCsv('gid=623600169')).then(r => r.text()),
-        fetch(getCsv('gid=1961325686')).then(r => r.text())
-      ]);
-      const pM = processRankingData(rM, 'M'); 
-      const pF = processRankingData(rF, 'F');
-      const initialMetadata = {};
-      pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
-      pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
-      const processed = processLiveFeedData(rLive, initialMetadata, processSetListData(rSet));
-      setData([...pM, ...pF]); 
-      setOpenData(processed.openRankings); 
-      setAtPerfs(processed.allTimePerformances); 
-      setOpPerfs(processed.openPerformances); 
-      setLbAT(processed.allTimeLeaderboards); 
-      setLbOpen(processed.openLeaderboards); 
-      setAtMet(processed.athleteMetadata); 
-      setDnMap(processed.athleteDisplayNameMap); 
-      setCMet(processed.courseMetadata);
-    } catch(e) { console.error("Data fetch failed:", e); }
-  }, []);
-
-  useEffect(() => { fetchFromSheet(); }, [fetchFromSheet]);
-
-  const list = useMemo(() => {
-    const src = eventType === 'all-time' ? data : openData;
-    const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.countryName || "").toLowerCase().includes(search.toLowerCase())));
-    const isQual = (p) => p.gender === 'M' ? p.runs >= 4 : (p.gender === 'F' ? p.runs >= 2 : false);
-    let qual = filtered.filter(isQual), unranked = filtered.filter(p => !isQual(p));
-    const dir = sort.direction === 'ascending' ? 1 : -1;
-    
-    qual.sort((a, b) => { 
-        if (sort.key === 'name') {
-            const lnA = String(a.name).trim().split(/\s+/).pop().toLowerCase();
-            const lnB = String(b.name).trim().split(/\s+/).pop().toLowerCase();
-            return lnA.localeCompare(lnB) * dir;
-        }
-        return robustSort(a, b, sort.key, dir) || (b.rating - a.rating);
-    });
-    
-    unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
-    return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
-  }, [search, sort, gen, eventType, data, openData]);
-
-  const rawCourseList = useMemo(() => {
-    const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
-    const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
-    const courseNames = Array.from(new Set([...Object.keys(contextM || {}), ...Object.keys(contextF || {})])).filter(Boolean);
-    return courseNames.map(name => {
-      const athletesMAll = Object.entries((lbAT?.M || {})[name] || {}).sort((a, b) => a[1] - b[1]);
-      const athletesFAll = Object.entries((lbAT?.F || {})[name] || {}).sort((a, b) => a[1] - b[1]);
-      const ctxM = Object.entries((contextM || {})[name] || {});
-      const ctxF = Object.entries((contextF || {})[name] || {});
-      const meta = cMet[name] || {};
-      return {
-        name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️',
-        mRecord: athletesMAll[0]?.[1] || null, fRecord: athletesFAll[0]?.[1] || null,
-        totalAthletes: new Set([...ctxM.map(a => a[0]), ...ctxF.map(a => a[0])]).size,
-        totalRuns: ctxM.length + ctxF.length,
-        athletesM: athletesMAll, athletesF: athletesFAll,
-        ...meta
-      };
-    });
-  }, [lbAT, lbOpen, eventType, cMet]);
-
-  const courseList = useMemo(() => {
-    const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase()) || c.country.toLowerCase().includes(search.toLowerCase()));
-    const dir = courseSort.direction === 'ascending' ? 1 : -1;
-    
-    const sorted = filtered.sort((a, b) => { 
-        if (['mRecord', 'fRecord'].includes(courseSort.key)) {
-            const aVal = a[courseSort.key]; const bVal = b[courseSort.key];
-            return ((aVal === null ? (dir === 1 ? 999999 : -1) : aVal) - (bVal === null ? (dir === 1 ? 999999 : -1) : bVal)) * dir;
-        }
-        return robustSort(a, b, courseSort.key, dir);
-    });
-
-    return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, search, courseSort]);
-
-  const cityList = useMemo(() => {
+const calculateCityStats = (rawCourseList) => {
     const cityMap = {};
     rawCourseList.forEach(c => {
         if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, playersSet: new Set() };
@@ -813,19 +368,14 @@ export default function App() {
         c.athletesM.forEach(a => cityMap[c.city].playersSet.add(a[0]));
         c.athletesF.forEach(a => cityMap[c.city].playersSet.add(a[0]));
     });
-    
-    const dir = citySort.direction === 'ascending' ? 1 : -1;
-    const result = Object.values(cityMap).map(city => ({ 
+    return Object.values(cityMap).map(city => ({ 
         ...city, 
         players: city.playersSet.size,
         avgElevation: city.elevationCount > 0 ? (city.totalElevation / city.elevationCount) : 0
-    })).filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.countryName.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => robustSort(a, b, citySort.key, dir));
+    }));
+};
 
-    return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, citySort, search]);
-
-  const countryList = useMemo(() => {
+const calculateCountryStats = (rawCourseList) => {
     const countryMap = {};
     rawCourseList.forEach(c => {
         const fixed = fixCountryEntity(c.country, c.flag);
@@ -838,20 +388,15 @@ export default function App() {
         c.athletesM.forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
         c.athletesF.forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
     });
-    
-    const dir = countrySort.direction === 'ascending' ? 1 : -1;
-    const result = Object.values(countryMap).map(country => ({ 
+    return Object.values(countryMap).map(country => ({ 
         ...country, 
         players: country.playersSet.size, 
         cities: country.citiesSet.size,
         avgElevation: country.elevationCount > 0 ? (country.totalElevation / country.elevationCount) : 0
-    })).filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => robustSort(a, b, countrySort.key, dir));
+    }));
+};
 
-    return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, countrySort, search]);
-
-  const hofStats = useMemo(() => {
+const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, medalSort) => {
     if (!data.length) return null;
     const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
     const qualifiedAthletes = data.filter(p => (p.gender === 'M' && p.runs >= 4) || (p.gender === 'F' && p.runs >= 2)).map(p => { 
@@ -891,74 +436,391 @@ export default function App() {
         cityStats: [...cityList].sort((a,b) => b.courses - a.courses).slice(0, 10).map(c => ({ name: c.name, cityStats: c.courses, region: c.flag })), 
         countryStats: [...countryList].sort((a,b) => b.courses - a.courses).slice(0, 10).map(c => ({ name: c.name, countryStats: c.courses, region: c.flag })) 
     }};
-  }, [data, lbAT, cityList, countryList, atMet, atPerfs, medalSort]);
+};
 
-  const shadowAthletes = useMemo(() => {
-    const names = ["Marcus Chen", "Sarah Jenkins", "Leo Dubois", "Elena Petrova", "Jack Thorne", "Yuki Tanaka", "Alex Rivera", "Mia Rossi", "Noah Berg", "Sofia Costa", "Erik Vogt", "Aria Moon"];
-    const flags = ["🇺🇸", "🇬🇧", "🇫🇷", "🇷🇺", "🇨🇦", "🇯🇵", "🇲🇽", "🇮🇹", "🇳🇴", "🇧🇷", "🇩🇪", "🇦🇺"];
-    return names.map((name, i) => ({
-        id: `shadow-p-${i}`,
-        name,
-        region: flags[i],
-        rating: 98.45 - (i * 1.2),
-        runs: 5 + (i % 3),
-        wins: Math.max(0, 3 - Math.floor(i / 3)),
-        sets: 4 + (i % 2),
-        currentRank: i + 1
-    }));
-  }, []);
+const PerformanceBadge = ({ type, count = 1 }) => {
+    const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
+    const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-fire" };
+    return <span className={`inline-flex items-center gap-1 text-[11px] select-none shrink-0 ${glows[type]}`}>
+        {Array.from({ length: count }).map((_, i) => <span key={i}>{badges[type]}</span>)}
+    </span>;
+};
 
-  const shadowCourses = useMemo(() => {
-    const names = ["ASR ORIGINS", "NEON DISTRICT", "QUARTZ QUARRY", "MISTY PEAK", "RUST HARBOR", "COBALT CANYON", "IVORY TOWER", "EMERALD ISLE"];
-    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
-    return names.map((name, i) => ({
-        name,
-        flag: flags[i],
-        totalAthletes: 12 + (i * 2),
-        mRecord: 6.45 + (i * 0.1),
-        fRecord: 8.22 + (i * 0.12),
-        currentRank: i + 1
-    }));
-  }, []);
+const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue }) => {
+    return (
+        <div className="grid grid-cols-1 gap-2">
+            {courses
+                .filter(c => c[filterKey] === filterValue)
+                .sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0))
+                .map(c => (
+                <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div className="flex items-center gap-3 pr-4 min-w-0">
+                        <IconCourse />
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] sm:text-sm font-black uppercase">{c.name}</span>
+                            {filterKey === 'country' && <span className="text-[7px] sm:text-[8px] font-black opacity-40 uppercase">{c.city}</span>}
+                        </div>
+                    </div>
+                    <div className="flex gap-2 sm:gap-6 shrink-0">
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (M)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.mRecord?.toFixed(2) || '-'}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (W)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.fRecord?.toFixed(2) || '-'}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">PLAYERS</span><span className="text-[9px] sm:text-xs font-mono font-bold">{c.totalAthletes}</span></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
-  const shadowCities = useMemo(() => {
-    const names = ["NEW YORK", "TOKYO", "BERLIN", "VANCOUVER", "LONDON", "SYDNEY", "PARIS", "DUBLIN"];
-    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
-    return names.map((name, i) => ({
-        name,
-        flag: flags[i],
-        players: 45 - i,
-        runs: 120 + (i * 15),
-        courses: 3 + (i % 2),
-        currentRank: i + 1
-    }));
-  }, []);
+// --- COMPONENTS ---
 
-  const shadowCountries = useMemo(() => {
-    const names = ["USA", "JAPAN", "GERMANY", "CANADA", "UK", "AUSTRALIA", "FRANCE", "IRELAND"];
-    const flags = ["🇺🇸", "🇯🇵", "🇩🇪", "🇨🇦", "🇬🇧", "🇦🇺", "🇫🇷", "🇮🇪"];
-    return names.map((name, i) => ({
-        name,
-        flag: flags[i],
-        cities: 4 + (i % 3),
-        players: 80 - (i * 5),
-        runs: 350 + (i * 20),
-        courses: 12 + (i % 4),
-        currentRank: i + 1
-    }));
-  }, []);
+const RankBadge = ({ rank, theme, size = 'md' }) => {
+  const isUnranked = rank === "UR";
+  const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
+  const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-6 h-6 sm:w-9 sm:h-9';
+  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[8px] sm:text-[11px]';
+  const isPodium = rank === 1 || rank === 2 || rank === 3;
+  const styles = {
+    1: { border: theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600', text: theme === 'dark' ? 'text-yellow-500' : 'text-yellow-700', glow: 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' },
+    2: { border: theme === 'dark' ? 'border-zinc-400' : 'border-zinc-500', text: theme === 'dark' ? 'text-zinc-300' : 'text-zinc-600', glow: 'shadow-[0_0_15px_rgba(161,161,170,0.25)]' },
+    3: { border: 'border-[#CE8946]', text: 'text-[#CE8946]', glow: 'shadow-[0_0_15px_rgba(206,137,70,0.3)]' },
+    unranked: { border: 'border-dashed border-slate-500/30', text: 'text-slate-500', glow: 'shadow-none' },
+    default: { border: 'border-transparent', text: theme === 'dark' ? 'text-white' : 'text-black', glow: 'shadow-none' }
+  };
+  const current = isUnranked ? styles.unranked : (styles[rank] || styles.default);
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full font-mono font-black transition-all duration-500 shrink-0 ${dim} ${textClass} ${current.border} ${current.text} ${current.glow} ${isPodium ? 'border-[2px] sm:border-[3px] animate-subtle-pulse' : isUnranked ? 'border' : 'border-0'}`}>
+      {rankNum}
+    </span>
+  );
+};
+
+const BaseModal = ({ isOpen, onClose, theme, header, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
+      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+        <div className={`shrink-0 relative h-fit min-h-[90px] sm:min-h-[144px] p-4 sm:p-10 flex items-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/30' : 'from-slate-400/40'} to-transparent`}>
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"><IconX size={16} /></button>
+          {header}
+        </div>
+        <div className={`flex-grow overflow-y-auto p-4 sm:p-10 space-y-6 scrollbar-hide ${theme === 'dark' ? 'bg-[#09090b]' : 'bg-slate-100'}`}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LocationModal = ({ isOpen, onClose, data, type, theme, courses, onCourseClick }) => {
+    if (!isOpen || !data) return null;
+    const isCity = type === 'city';
+    const stats = isCity ? [
+        { l: 'COURSES', v: data.courses, c: 'text-blue-500' },
+        { l: 'RUNS', v: data.runs },
+        { l: 'PLAYERS', v: data.players },
+        { l: 'AVG ELEVATION', v: data.avgElevation ? `${data.avgElevation.toFixed(0)}m` : '-' }
+    ] : [
+        { l: 'CITIES', v: data.cities, c: 'text-blue-500' },
+        { l: 'COURSES', v: data.courses },
+        { l: 'RUNS', v: data.runs },
+        { l: 'PLAYERS', v: data.players }
+    ];
+
+    const Header = (
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+            <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}>
+                {isCity ? <IconCity /> : <IconGlobe />}
+            </div>
+            <div className="flex flex-col min-w-0">
+                <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase truncate">{data.name}</h2>
+                <div className="text-sm sm:text-xl leading-none mt-1">{data.flag}</div>
+            </div>
+        </div>
+    );
+
+    return (
+        <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                {stats.map((s, i) => (
+                    <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                        <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                    </div>
+                ))}
+            </div>
+            <ProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey={type} filterValue={data.name} />
+        </BaseModal>
+    );
+};
+
+const DataTable = ({ columns, data, sort, onSort, theme, onRowClick, isLocked }) => {
+    const renderCell = (col, item) => {
+        const val = item[col.key];
+        if (col.isRank) return <RankBadge rank={item.currentRank} theme={theme} />;
+        
+        if (col.type === 'profile') {
+            const sub = col.subKey ? item[col.subKey] : null;
+            return (
+                <div className="flex flex-col">
+                    <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{val}</span>
+                    {sub && <span className="text-sm sm:text-xl mt-0.5 sm:mt-1 leading-none">{sub || '🏳️'}</span>}
+                </div>
+            );
+        }
+        
+        if (col.type === 'number' || col.type === 'highlight') {
+            const display = (val === null || val === undefined) ? '-' : (typeof val === 'number' && col.decimals !== undefined ? val.toFixed(col.decimals) : val);
+            const colorClass = col.type === 'highlight' ? 'text-blue-500' : (col.opacity ? 'opacity-60' : '');
+            return <span className={`font-mono font-bold text-[7px] sm:text-[14px] tabular-nums num-col ${colorClass}`}>{display}</span>;
+        }
+        
+        return <span className="text-[8px] sm:text-[14px] font-bold">{val}</span>;
+    };
+
+    return (
+        <table className={`data-table min-w-full ${isLocked ? 'blur-locked' : ''}`}>
+            <thead>
+                <tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                    {columns.map((col, i) => (
+                        col.isRank ? 
+                            <th key={i} className="pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th> :
+                            <HeaderComp key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} activeSort={sort} handler={onSort} />
+                    ))}
+                </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+                {data.map((item) => (
+                    <tr key={item.id || item.name} onClick={() => onRowClick && onRowClick(item)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!onRowClick ? '' : ''} ${item.isQualified === false ? 'opacity-40' : ''}`}>
+                        {columns.map((col, i) => (
+                            <td key={i} className={`${col.isRank ? 'pl-3 sm:pl-10 py-3 sm:py-8' : (col.cellClass || `px-2 py-3 sm:py-8 ${col.align === 'right' ? 'text-right' : 'text-left'}`)}`}>
+                                {renderCell(col, item)}
+                            </td>
+                        ))}
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+};
+
+const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
+  return (
+    <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+      <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
+        <span className="uppercase tracking-tighter text-[6px] xs:text-[7px] sm:text-[10px] font-black leading-none">{l}</span>
+        <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
+          <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
+        </div>
+      </div>
+    </th>
+  );
+};
+
+const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
+  if (!isOpen || !p) return null;
+  const pKey = p.pKey || normalizeName(p.name);
+  const courseData = useMemo(() => {
+    const base = (performanceData?.[pKey] || []);
+    return [...base].sort((a, b) => {
+      const aIsRecord = a.rank === 1; const bIsRecord = b.rank === 1;
+      if (aIsRecord && !bIsRecord) return -1;
+      if (!aIsRecord && bIsRecord) return 1;
+      if (aIsRecord && bIsRecord) return a.num - b.num;
+      return b.points - a.points;
+    });
+  }, [performanceData, pKey]);
+  const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
+  const totalFires = courseData.reduce((acc, c) => acc + getFires(c.num, p.gender), 0);
+  const stats = [
+    { l: 'RATING', v: (p.rating || 0).toFixed(2), c: 'text-blue-500' }, { l: 'RUNS', v: p.runs || 0 }, 
+    { l: 'POINTS', v: (p.pts || 0).toFixed(2) }, { l: '🪙', v: p.contributionScore || 0, g: 'glow-gold' }, 
+    { l: 'WIN %', v: ((p.wins / (p.runs || 1)) * 100).toFixed(2) }, { l: 'WINS', v: p.wins || 0 }, 
+    { l: 'SETS', v: p.sets || 0 }, { l: '🔥', v: totalFires, g: 'glow-fire' }
+  ];
+
+  const Header = (
+    <div className="flex items-center gap-3 sm:gap-8 min-w-0 w-full pr-8">
+        <div className={`w-12 h-12 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl border flex items-center justify-center text-sm sm:text-3xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
+        <div className="min-w-0 flex-1">
+            <div className="text-lg sm:text-4xl leading-tight flex items-center gap-2 flex-wrap">
+            <span className="shrink-0">{p.region || '🏳️'}</span><h2 className="font-black tracking-tight">{p.name}</h2>
+            </div>
+            {p.countryName && <div className="text-[8px] sm:text-xs font-black uppercase tracking-widest opacity-50 ml-0.5">{p.countryName}</div>}
+        </div>
+    </div>
+  );
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
-      <CustomStyles />
-      <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-16 flex items-center justify-between px-2 sm:px-8 gap-1 sm:gap-6 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
-            <IconSpeed />
+    <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {stats.map((s, i) => (
+            <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+            <span className={`text-[6px] sm:text-[8px] font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
+            <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
+            </div>
+        ))}
+        </div>
+        <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+        {courseData.map((c, i) => (
+            <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+            <div className="flex flex-col min-w-0 pr-3">
+                <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
+                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                {c.rank > 0 && c.rank <= 3 && <PerformanceBadge type={c.rank} />}
+                {c.rank >= 4 && <span className="text-[8px] font-mono font-black italic opacity-40">{c.rank}</span>}
+                {getFires(c.num, p.gender) > 0 && <PerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
+                </div>
+            </div>
+            <div className="flex flex-col items-end shrink-0">
+                <span className="text-[10px] sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
+                <span className="text-[8px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
+            </div>
+            </div>
+        ))}
+        </div>
+    </BaseModal>
+  );
+};
+
+const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
+    if (!isOpen || !course) return null;
+    const displayDifficulty = course.difficulty ? Array.from(course.difficulty).join(' ') : '-';
+    
+    const stats = [
+        { l: 'CR (M)', v: course.mRecord?.toFixed(2) || '-', c: 'text-blue-500' },
+        { l: 'CR (W)', v: course.fRecord?.toFixed(2) || '-', c: 'text-blue-500' },
+        { l: 'DIFFICULTY', v: displayDifficulty }, 
+        { l: 'PLAYERS', v: course.totalAthletes },
+        { l: 'LENGTH (M)', v: course.length || '-' },
+        { l: 'ELEVATION (M)', v: course.elevation || '-' },
+        { l: 'TYPE', v: course.type || '-' },
+        { l: 'DATE SET', v: course.dateSet || '-' }
+    ];
+
+    const RankList = ({ title, athletes, genderRecord }) => (
+        <div className="space-y-2 sm:space-y-3">
+            <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
+            <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+                {athletes.slice(0, 10).map(([pKey, time], i) => {
+                    const meta = athleteMetadata[pKey] || {};
+                    const points = genderRecord ? (genderRecord / time) * 100 : 0;
+                    return (
+                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
+                                <RankBadge rank={i + 1} theme={theme} />
+                                <div className="flex flex-col min-w-0">
+                                  <span className={`text-[9px] sm:text-[12px] font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
+                                  <span className="text-[7px] sm:text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0"><span className="text-[10px] sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[8px] sm:text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const Header = (
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+            <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse /></div>
+            <div className="flex flex-col min-w-0"><h2 className="text-sm sm:text-3xl font-black tracking-tight uppercase">{course.name} SPEED RUN</h2><div className="text-[7px] sm:text-[12px] font-bold uppercase tracking-wider sm:tracking-widest ml-0.5 flex items-center gap-1.5 flex-wrap"><span className="opacity-60">{course.city || '??'}, {course.country || '??'}</span><span className="opacity-100 shrink-0">{course.flag}</span></div></div>
+        </div>
+    );
+
+    return (
+        <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8"><RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} /><RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} /></div>
+        </BaseModal>
+    );
+};
+
+const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) => {
+  if (!stats) return null;
+  const tColor = theme === 'dark' ? 'text-white' : 'text-slate-900';
+
+  return (
+    <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-700 pb-24">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        {[
+          { l: 'TOP RATED', k: 'rating' },
+          { l: 'MOST COURSE RECORDS', k: 'wins' },
+          { l: 'MOST RUNS', k: 'runs' },
+          { l: 'MOST SETS', k: 'sets' },
+          { l: 'MOST COINS', k: 'contributionScore' },
+          { l: 'MOST FIRE', k: 'totalFireCount' },
+          { l: 'MOST CITIES', k: 'cityStats' },
+          { l: 'MOST COUNTRIES', k: 'countryStats' }
+        ].map((sec) => (
+          <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === 'FIRE' || word === 'COINS' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
+            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
+              {stats.topStats[sec.k].map((p, i) => {
+                const displayVal = sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (p[sec.k] !== undefined ? String(p[sec.k]) : String(p.value || 0));
+                return (
+                  <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-2.5 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => !['cityStats', 'countryStats'].includes(sec.k) && onPlayerClick(p)}>
+                    <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
+                      <RankBadge rank={i + 1} theme={theme} />
+                      <div className="flex flex-col ml-0.5">
+                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
+                      </div>
+                    </div>
+                    <span className={`font-mono font-black text-blue-500 text-[8px] sm:text-[14px] shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{displayVal}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <span className="font-black tracking-tighter text-[9px] xs:text-[11px] sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
-            ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
-          </span>
+        ))}
+      </div>
+      <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="hof-table min-w-full">
+            <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+              <HeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="COUNTRY" k="name" a="left" w="w-auto px-2" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="GOLD" k="gold" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="SILVER" k="silver" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="BRONZE" k="bronze" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="TOTAL" k="total" a="right" w="w-12 sm:w-32 pr-4 sm:pr-10" activeSort={medalSort} handler={setMedalSort} />
+            </tr></thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+              {stats.medalCount.map((c) => (
+                <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-black/[0.02] transition-colors">
+                  <td className="pl-2 sm:pl-10 py-3 sm:py-8 text-center sm:text-left"><RankBadge rank={c.displayRank} theme={theme} /></td>
+                  <td className="px-2 py-3 sm:py-8 min-w-[80px] sm:min-w-[140px]">
+                    <div className="flex flex-col">
+                      <span className={`text-[8px] sm:text-[14px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
+                      <span className="text-sm sm:text-xl mt-0.5 leading-none drop-shadow-sm shrink-0">{c.flag}</span>
+                    </div>
+                  </td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-gold tabular-nums num-col ${tColor}`}>{c.gold}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
+                  <td className="pr-4 sm:pr-10 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[20px] tabular-nums num-col">{c.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NavBar = ({ theme, setTheme, view, setView }) => (
+    <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-16 flex items-center justify-between px-2 sm:px-8 gap-1 sm:gap-6 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
+        <div className="flex items-center gap-1.5 shrink-0">
+            <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
+                <IconSpeed />
+            </div>
+            <span className="font-black tracking-tighter text-[9px] xs:text-[11px] sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
+                ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
+            </span>
         </div>
         
         <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-2xl border shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
@@ -972,16 +834,13 @@ export default function App() {
         </div>
         
         <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center border rounded-lg sm:rounded-2xl transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400' : 'bg-slate-300/50 border-slate-400/20 text-slate-600'}`}>
-          {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            {theme === 'dark' ? <IconSun /> : <IconMoon />}
         </button>
-      </nav>
-      
-      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(rawCourseList.find(c => c.name === name)); }} />
-      <CourseModal isOpen={!!selCourse} onClose={() => setSelCourse(null)} course={selCourse} theme={theme} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => { setSelCourse(null); setSel(p); }} />
-      <CityModal isOpen={!!selCity} onClose={() => setSelCity(null)} city={selCity} theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCity(null); setSelCourse(c); }} />
-      <CountryModal isOpen={!!selCountry} onClose={() => setSelCountry(null)} country={selCountry} theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCountry(null); setSelCourse(c); }} />
-      
-      <header className={`pt-20 sm:pt-24 pb-6 sm:pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
+    </nav>
+);
+
+const ControlBar = ({ view, eventType, setEventType, gen, setGen, search, setSearch, theme }) => (
+    <header className={`pt-20 sm:pt-24 pb-6 sm:pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             {view !== 'hof' ? (
                 <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
@@ -1046,123 +905,294 @@ export default function App() {
                 )}
             </div>
         )}
-      </header>
+    </header>
+);
+
+const Footer = () => (
+    <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
+);
+
+// --- STATIC DATA & CONFIGURATION ---
+const SHADOW_ATHLETES = [
+    { id: 'shadow-p-0', name: "Marcus Chen", region: "🇺🇸", rating: 98.45, runs: 5, wins: 3, sets: 4, currentRank: 1 },
+    { id: 'shadow-p-1', name: "Sarah Jenkins", region: "🇬🇧", rating: 97.25, runs: 6, wins: 3, sets: 5, currentRank: 2 },
+    { id: 'shadow-p-2', name: "Leo Dubois", region: "🇫🇷", rating: 96.05, runs: 7, wins: 3, sets: 4, currentRank: 3 },
+    { id: 'shadow-p-3', name: "Elena Petrova", region: "🇷🇺", rating: 94.85, runs: 5, wins: 2, sets: 5, currentRank: 4 },
+    { id: 'shadow-p-4', name: "Jack Thorne", region: "🇨🇦", rating: 93.65, runs: 6, wins: 2, sets: 4, currentRank: 5 },
+    { id: 'shadow-p-5', name: "Yuki Tanaka", region: "🇯🇵", rating: 92.45, runs: 7, wins: 2, sets: 5, currentRank: 6 },
+    { id: 'shadow-p-6', name: "Alex Rivera", region: "🇲🇽", rating: 91.25, runs: 5, wins: 1, sets: 4, currentRank: 7 },
+    { id: 'shadow-p-7', name: "Mia Rossi", region: "🇮🇹", rating: 90.05, runs: 6, wins: 1, sets: 5, currentRank: 8 },
+    { id: 'shadow-p-8', name: "Noah Berg", region: "🇳🇴", rating: 88.85, runs: 7, wins: 1, sets: 4, currentRank: 9 },
+    { id: 'shadow-p-9', name: "Sofia Costa", region: "🇧🇷", rating: 87.65, runs: 5, wins: 0, sets: 5, currentRank: 10 },
+    { id: 'shadow-p-10', name: "Erik Vogt", region: "🇩🇪", rating: 86.45, runs: 6, wins: 0, sets: 4, currentRank: 11 },
+    { id: 'shadow-p-11', name: "Aria Moon", region: "🇦🇺", rating: 85.25, runs: 7, wins: 0, sets: 5, currentRank: 12 }
+];
+
+const SHADOW_COURSES = [
+    { name: "ASR ORIGINS", flag: "🇺🇸", totalAthletes: 12, mRecord: 6.45, fRecord: 8.22, currentRank: 1 },
+    { name: "NEON DISTRICT", flag: "🇯🇵", totalAthletes: 14, mRecord: 6.55, fRecord: 8.34, currentRank: 2 },
+    { name: "QUARTZ QUARRY", flag: "🇩🇪", totalAthletes: 16, mRecord: 6.65, fRecord: 8.46, currentRank: 3 },
+    { name: "MISTY PEAK", flag: "🇨🇦", totalAthletes: 18, mRecord: 6.75, fRecord: 8.58, currentRank: 4 },
+    { name: "RUST HARBOR", flag: "🇬🇧", totalAthletes: 20, mRecord: 6.85, fRecord: 8.70, currentRank: 5 },
+    { name: "COBALT CANYON", flag: "🇦🇺", totalAthletes: 22, mRecord: 6.95, fRecord: 8.82, currentRank: 6 },
+    { name: "IVORY TOWER", flag: "🇫🇷", totalAthletes: 24, mRecord: 7.05, fRecord: 8.94, currentRank: 7 },
+    { name: "EMERALD ISLE", flag: "🇮🇪", totalAthletes: 26, mRecord: 7.15, fRecord: 9.06, currentRank: 8 }
+];
+
+const SHADOW_CITIES = [
+    { name: "NEW YORK", flag: "🇺🇸", players: 45, runs: 120, courses: 3, currentRank: 1 },
+    { name: "TOKYO", flag: "🇯🇵", players: 44, runs: 135, courses: 4, currentRank: 2 },
+    { name: "BERLIN", flag: "🇩🇪", players: 43, runs: 150, courses: 3, currentRank: 3 },
+    { name: "VANCOUVER", flag: "🇨🇦", players: 42, runs: 165, courses: 4, currentRank: 4 },
+    { name: "LONDON", flag: "🇬🇧", players: 41, runs: 180, courses: 3, currentRank: 5 },
+    { name: "SYDNEY", flag: "🇦🇺", players: 40, runs: 195, courses: 4, currentRank: 6 },
+    { name: "PARIS", flag: "🇫🇷", players: 39, runs: 210, courses: 3, currentRank: 7 },
+    { name: "DUBLIN", flag: "🇮🇪", players: 38, runs: 225, courses: 4, currentRank: 8 }
+];
+
+const SHADOW_COUNTRIES = [
+    { name: "USA", flag: "🇺🇸", cities: 4, players: 80, runs: 350, courses: 12, currentRank: 1 },
+    { name: "JAPAN", flag: "🇯🇵", cities: 5, players: 75, runs: 370, courses: 13, currentRank: 2 },
+    { name: "GERMANY", flag: "🇩🇪", cities: 6, players: 70, runs: 390, courses: 14, currentRank: 3 },
+    { name: "CANADA", flag: "🇨🇦", cities: 4, players: 65, runs: 410, courses: 15, currentRank: 4 },
+    { name: "UK", flag: "🇬🇧", cities: 5, players: 60, runs: 430, courses: 12, currentRank: 5 },
+    { name: "AUSTRALIA", flag: "🇦🇺", cities: 6, players: 55, runs: 450, courses: 13, currentRank: 6 },
+    { name: "FRANCE", flag: "🇫🇷", cities: 4, players: 50, runs: 470, courses: 14, currentRank: 7 },
+    { name: "IRELAND", flag: "🇮🇪", cities: 5, players: 45, runs: 490, courses: 15, currentRank: 8 }
+];
+
+const PLAYER_COLS = [
+    { isRank: true },
+    { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-auto px-2 py-4 sm:py-5 min-w-[90px] sm:min-w-[120px]' },
+    { label: 'RATING', type: 'highlight', key: 'rating', decimals: 2, align: 'right', width: 'w-12 sm:w-32' },
+    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-8 sm:w-24' },
+    { label: 'WINS', type: 'number', key: 'wins', align: 'right', width: 'w-8 sm:w-24' },
+    { label: 'SETS', type: 'number', key: 'sets', align: 'right', width: 'w-8 sm:w-24 pr-3 sm:pr-10' }
+];
+
+const COURSE_COLS = [
+    { isRank: true },
+    { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[100px] sm:min-w-[120px]' },
+    { label: 'PLAYERS', type: 'highlight', key: 'totalAthletes', align: 'right', width: 'w-8 sm:w-24' },
+    { label: 'CR (MEN)', type: 'number', key: 'mRecord', decimals: 2, align: 'right', width: 'w-12 sm:w-32' },
+    { label: 'CR (WOMEN)', type: 'number', key: 'fRecord', decimals: 2, opacity: false, align: 'right', width: 'w-12 sm:w-32 pr-3 sm:pr-10' }
+];
+
+const CITY_COLS = [
+    { isRank: true },
+    { label: 'CITY', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[100px] sm:min-w-[140px]' },
+    { label: 'PLAYERS', type: 'highlight', key: 'players', align: 'right', width: 'w-8 sm:w-24' },
+    { label: 'RUNS', type: 'number', key: 'runs', opacity: true, align: 'right', width: 'w-8 sm:w-24' },
+    { label: 'COURSES', type: 'number', key: 'courses', align: 'right', width: 'w-12 sm:w-32 pr-3 sm:pr-10' }
+];
+
+const COUNTRY_COLS = [
+    { isRank: true },
+    { label: 'COUNTRY', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[90px] sm:min-w-[140px]' },
+    { label: 'PLAYERS', type: 'highlight', key: 'players', align: 'right', width: 'w-6 sm:w-24' },
+    { label: 'RUNS', type: 'number', key: 'runs', opacity: true, align: 'right', width: 'w-6 sm:w-24' },
+    { label: 'COURSES', type: 'number', key: 'courses', opacity: true, align: 'right', width: 'w-6 sm:w-24' },
+    { label: 'CITIES', type: 'number', key: 'cities', opacity: true, align: 'right', width: 'w-10 sm:w-32 pr-3 sm:pr-10' }
+];
+
+// --- CUSTOM HOOKS ---
+const useASRData = () => {
+  const [state, setState] = useState({
+    data: [], openData: [], atPerfs: {}, opPerfs: {},
+    lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}
+  });
+
+  const fetchData = useCallback(async () => {
+    const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&t=${Date.now()}`;
+    try {
+      const [rM, rF, rLive, rSet] = await Promise.all([
+        fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()),
+        fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()),
+        fetch(getCsv('gid=623600169')).then(r => r.text()),
+        fetch(getCsv('gid=1961325686')).then(r => r.text())
+      ]);
+      const pM = processRankingData(rM, 'M'); 
+      const pF = processRankingData(rF, 'F');
+      const initialMetadata = {};
+      pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
+      pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
+      const processed = processLiveFeedData(rLive, initialMetadata, processSetListData(rSet));
+      
+      setState({
+        data: [...pM, ...pF],
+        openData: processed.openRankings,
+        atPerfs: processed.allTimePerformances,
+        opPerfs: processed.openPerformances,
+        lbAT: processed.allTimeLeaderboards,
+        lbOpen: processed.openLeaderboards,
+        atMet: processed.athleteMetadata,
+        dnMap: processed.athleteDisplayNameMap,
+        cMet: processed.courseMetadata
+      });
+    } catch(e) { console.error("Data fetch failed:", e); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  return state;
+};
+
+function App() {
+  const [theme, setTheme] = useState('dark');
+  const [gen, setGen] = useState('M');
+  const [eventType, setEventType] = useState('all-time');
+  const [view, setView] = useState('players'); 
+  const [search, setSearch] = useState('');
+  const [sel, setSel] = useState(null);
+  const [selCourse, setSelCourse] = useState(null);
+  const [selCity, setSelCity] = useState(null);
+  const [selCountry, setSelCountry] = useState(null);
+  
+  // Unified Sort State
+  const [viewSorts, setViewSorts] = useState({
+    players: { key: 'rating', direction: 'descending' },
+    courses: { key: 'totalAthletes', direction: 'descending' },
+    cities: { key: 'players', direction: 'descending' },
+    countries: { key: 'players', direction: 'descending' },
+    hof: { key: 'gold', direction: 'descending' }
+  });
+
+  const handleSort = (newSort) => {
+    const updated = typeof newSort === 'function' ? newSort(viewSorts[view]) : newSort;
+    setViewSorts(prev => ({ ...prev, [view]: updated }));
+  };
+
+  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet } = useASRData();
+
+  const list = useMemo(() => {
+    const src = eventType === 'all-time' ? data : openData;
+    const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.countryName || "").toLowerCase().includes(search.toLowerCase())));
+    const isQual = (p) => p.gender === 'M' ? p.runs >= 4 : (p.gender === 'F' ? p.runs >= 2 : false);
+    let qual = filtered.filter(isQual), unranked = filtered.filter(p => !isQual(p));
+    const sort = viewSorts.players;
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    
+    qual.sort((a, b) => { 
+        if (sort.key === 'name') {
+            const lnA = String(a.name).trim().split(/\s+/).pop().toLowerCase();
+            const lnB = String(b.name).trim().split(/\s+/).pop().toLowerCase();
+            return lnA.localeCompare(lnB) * dir;
+        }
+        return robustSort(a, b, sort.key, dir) || (b.rating - a.rating);
+    });
+    
+    unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
+    return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
+  }, [search, viewSorts.players, gen, eventType, data, openData]);
+
+  const rawCourseList = useMemo(() => {
+    const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
+    const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
+    const courseNames = Array.from(new Set([...Object.keys(contextM || {}), ...Object.keys(contextF || {})])).filter(Boolean);
+    return courseNames.map(name => {
+      const athletesMAll = Object.entries((lbAT?.M || {})[name] || {}).sort((a, b) => a[1] - b[1]);
+      const athletesFAll = Object.entries((lbAT?.F || {})[name] || {}).sort((a, b) => a[1] - b[1]);
+      const ctxM = Object.entries((contextM || {})[name] || {});
+      const ctxF = Object.entries((contextF || {})[name] || {});
+      const meta = cMet[name] || {};
+      return {
+        name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️',
+        mRecord: athletesMAll[0]?.[1] || null, fRecord: athletesFAll[0]?.[1] || null,
+        totalAthletes: new Set([...ctxM.map(a => a[0]), ...ctxF.map(a => a[0])]).size,
+        totalRuns: ctxM.length + ctxF.length,
+        athletesM: athletesMAll, athletesF: athletesFAll,
+        ...meta
+      };
+    });
+  }, [lbAT, lbOpen, eventType, cMet]);
+
+  const courseList = useMemo(() => {
+    const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase()) || c.country.toLowerCase().includes(search.toLowerCase()));
+    const sort = viewSorts.courses;
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    const sorted = filtered.sort((a, b) => { 
+        if (['mRecord', 'fRecord'].includes(sort.key)) {
+            const aVal = a[sort.key]; const bVal = b[sort.key];
+            return ((aVal === null ? (dir === 1 ? 999999 : -1) : aVal) - (bVal === null ? (dir === 1 ? 999999 : -1) : bVal)) * dir;
+        }
+        return robustSort(a, b, sort.key, dir);
+    });
+    return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
+  }, [rawCourseList, search, viewSorts.courses]);
+
+  const cityList = useMemo(() => {
+    const base = calculateCityStats(rawCourseList);
+    const sort = viewSorts.cities;
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.countryName.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => robustSort(a, b, sort.key, dir));
+    return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
+  }, [rawCourseList, viewSorts.cities, search]);
+
+  const countryList = useMemo(() => {
+    const base = calculateCountryStats(rawCourseList);
+    const sort = viewSorts.countries;
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => robustSort(a, b, sort.key, dir));
+    return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
+  }, [rawCourseList, viewSorts.countries, search]);
+
+  const hofStats = useMemo(() => {
+    return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof);
+  }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof]);
+
+  const currentView = useMemo(() => {
+    if (view === 'hof') return null;
+    const isOpen = eventType === 'open';
+    const config = {
+      players: { columns: PLAYER_COLS, data: isOpen ? SHADOW_ATHLETES : list, onClick: (p) => !isOpen && setSel(p) },
+      courses: { columns: COURSE_COLS, data: isOpen ? SHADOW_COURSES : courseList, onClick: (c) => !isOpen && setSelCourse(c) },
+      cities: { columns: CITY_COLS, data: isOpen ? SHADOW_CITIES : cityList, onClick: (c) => !isOpen && setSelCity(c) },
+      countries: { columns: COUNTRY_COLS, data: isOpen ? SHADOW_COUNTRIES : countryList, onClick: (c) => !isOpen && setSelCountry(c) }
+    }[view];
+    return config ? { ...config, sort: viewSorts[view] } : null;
+  }, [view, eventType, viewSorts, list, courseList, cityList, countryList]);
+
+  return (
+    <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
+      <CustomStyles />
+      <NavBar theme={theme} setTheme={setTheme} view={view} setView={setView} />
+      
+      <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(rawCourseList.find(c => c.name === name)); }} />
+      <CourseModal isOpen={!!selCourse} onClose={() => setSelCourse(null)} course={selCourse} theme={theme} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => { setSelCourse(null); setSel(p); }} />
+      <LocationModal isOpen={!!selCity} onClose={() => setSelCity(null)} data={selCity} type='city' theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCity(null); setSelCourse(c); }} />
+      <LocationModal isOpen={!!selCountry} onClose={() => setSelCountry(null)} data={selCountry} type='country' theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCountry(null); setSelCourse(c); }} />
+      
+      <ControlBar view={view} eventType={eventType} setEventType={setEventType} gen={gen} setGen={setGen} search={search} setSearch={setSearch} theme={theme} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
-        {view === 'hof' ? (<HallOfFame stats={hofStats} theme={theme} onPlayerClick={setSel} medalSort={medalSort} setMedalSort={setMedalSort} />) : (
+        {view === 'hof' ? (<HallOfFame stats={hofStats} theme={theme} onPlayerClick={setSel} medalSort={viewSorts.hof} setMedalSort={handleSort} />) : (
           <div className={`border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
             <div className="overflow-x-auto scrollbar-hide relative">
-              
-              {/* Overlay for Open View */}
               {eventType === 'open' && (
                 <div className={`absolute inset-0 z-10 flex flex-col items-center pt-16 sm:pt-32 p-4 sm:p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-300/40 via-transparent to-transparent'}`}>
-                    <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
-                    <h4 className={`mt-4 sm:mt-8 text-[8px] sm:text-lg font-black uppercase tracking-[0.1em] sm:tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                        Coming Soon to a Spot Near You
+                    <h4 className={`mb-4 sm:mb-8 text-[8px] sm:text-lg font-black uppercase tracking-[0.1em] sm:tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                        THE 2026 ASR OPEN STARTS IN...
                     </h4>
+                    <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
                 </div>
               )}
-
-              {view === 'players' ? (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}>
-                    <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                    <th className="pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
-                    <HeaderComp l="PLAYER" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="OVR" k="rating" a="right" w="w-12 sm:w-32" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="RUN" k="runs" a="right" w="w-8 sm:w-24" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="WIN" k="wins" a="right" w="w-8 sm:w-24" activeSort={sort} handler={setSort} />
-                    <HeaderComp l="SET" k="sets" a="right" w="w-8 sm:w-24 pr-3 sm:pr-10" activeSort={sort} handler={setSort} /></tr></thead>
-                    <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                        {(eventType === 'open' ? shadowAthletes : list).map((p, idx) => (
-                        <tr key={`p-${p.id}`} onClick={() => eventType !== 'open' && setSel(p)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${eventType !== 'open' && !p.isQualified ? 'opacity-40' : ''}`}>
-                            <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={p.currentRank} theme={theme} /></td>
-                            <td className="px-2 py-3 sm:py-8 text-left min-w-[90px] sm:min-w-[120px]">
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{p.name}</span>
-                                    <span className="text-sm sm:text-xl mt-0.5 sm:mt-1 leading-none">{p.region || '🏳️'}</span>
-                                </div>
-                            </td>
-                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums text-blue-500 num-col">{(p.rating || 0).toFixed(2)}</td>
-                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.runs}</td>
-                            <td className="px-2 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.wins}</td>
-                            <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-bold text-[8px] sm:text-[14px] tabular-nums num-col">{p.sets}</td>
-                        </tr>
-                        ))}
-                    </tbody>
-                </table>
-              ) : view === 'courses' ? (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="COURSE" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="PLR" k="totalAthletes" a="right" w="w-8 sm:w-24" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR(M)" k="mRecord" a="right" w="w-12 sm:w-32" activeSort={courseSort} handler={setCourseSort} />
-                  <HeaderComp l="CR(W)" k="fRecord" a="right" w="w-12 sm:w-32 pr-3 sm:pr-10" activeSort={courseSort} handler={setCourseSort} />
-                </tr></thead>
-                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {(eventType === 'open' ? shadowCourses : courseList).map((c) => (<tr key={`course-${c.name}`} onClick={() => eventType !== 'open' && setSelCourse(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                        <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                        <td className="px-2 py-3 sm:py-8 min-w-[100px] sm:min-w-[120px]">
-                            <div className="flex flex-col">
-                                <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
-                                <span className="text-sm sm:text-xl mt-0.5 sm:mt-1 leading-none">{c.flag}</span>
-                            </div>
-                        </td>
-                        <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.totalAthletes}</td>
-                        <td className="px-2 py-3 sm:py-8 text-right font-mono font-black text-[7px] sm:text-[14px] text-blue-500 num-col">{c.mRecord ? c.mRecord.toFixed(2) : '-'}</td>
-                        <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-[7px] sm:text-[14px] text-blue-500 num-col">{c.fRecord ? c.fRecord.toFixed(2) : '-'}</td>
-                    </tr>))}
-                  </tbody>
-                </table>
-              ) : view === 'cities' ? (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="CITY" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="PLR" k="players" a="right" w="w-8 sm:w-24" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="RUN" k="runs" a="right" w="w-8 sm:w-24" activeSort={citySort} handler={setCitySort} />
-                  <HeaderComp l="CRS" k="courses" a="right" w="w-12 sm:w-32 pr-3 sm:pr-10" activeSort={citySort} handler={setCitySort} /></tr></thead>
-                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {(eventType === 'open' ? shadowCities : cityList).map((c) => (<tr key={`city-${c.name}`} onClick={() => eventType !== 'open' && setSelCity(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                      <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                      <td className="px-2 py-3 sm:py-8 min-w-[100px] sm:min-w-[140px]">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
-                          <span className="text-sm sm:text-xl mt-0.5 leading-none">{c.flag}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
-                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
-                      <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-blue-500 text-[8px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
-                  </tbody>
-                </table>
-              ) : (
-                <table className={`data-table min-w-full ${eventType === 'open' ? 'blur-locked' : ''}`}><thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                  <th className="pl-3 sm:pl-10 py-4 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th>
-                  <HeaderComp l="COUNTRY" k="name" w="w-auto px-2 py-4 sm:py-5" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="CTY" k="cities" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="PLR" k="players" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="RUN" k="runs" a="right" w="w-6 sm:w-24" activeSort={countrySort} handler={setCountrySort} />
-                  <HeaderComp l="CRS" k="courses" a="right" w="w-10 sm:w-32 pr-3 sm:pr-10" activeSort={countrySort} handler={setCountrySort} /></tr></thead>
-                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                    {(eventType === 'open' ? shadowCountries : countryList).map((c) => (<tr key={`country-${c.name}`} onClick={() => eventType !== 'open' && setSelCountry(c)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'}`}>
-                      <td className="pl-3 sm:pl-10 py-3 sm:py-8"><RankBadge rank={c.currentRank} theme={theme} /></td>
-                      <td className="px-2 py-3 sm:py-8 min-w-[90px] sm:min-w-[140px]">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] sm:text-[14px] font-black uppercase tracking-tight block">{c.name}</span>
-                          <span className="text-sm sm:text-xl mt-0.5 leading-none">{c.flag}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] uppercase opacity-60 tabular-nums">{c.cities}</td>
-                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.players}</td>
-                      <td className="px-2 py-3 sm:py-8 text-right font-mono font-bold text-[7px] sm:text-[14px] opacity-60 tabular-nums">{c.runs}</td>
-                      <td className="px-2 pr-3 sm:pr-10 py-3 sm:py-8 text-right font-mono font-black text-blue-500 text-[8px] sm:text-[18px] tabular-nums">{c.courses}</td></tr>))}
-                  </tbody>
-                </table>
+              {currentView && (
+                <DataTable 
+                    isLocked={eventType === 'open'}
+                    theme={theme}
+                    columns={currentView.columns}
+                    sort={currentView.sort}
+                    onSort={handleSort}
+                    data={currentView.data}
+                    onRowClick={currentView.onClick}
+                />
               )}
             </div>
           </div>
         )}
       </main>
-      <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
+      <Footer />
     </div>
   );
 }
