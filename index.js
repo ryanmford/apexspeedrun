@@ -26,31 +26,14 @@ const CustomStyles = () => (
       box-sizing: border-box;
     }
     
-    html {
-      /* Allowing natural height fixes 'Pull to Refresh' and Brave scroll-lock */
-      overflow-x: hidden;
-      overflow-y: auto;
-      -webkit-text-size-adjust: 100%;
-      /* Ensures pull-to-refresh gesture is allowed */
-      overscroll-behavior-y: auto;
-    }
-
-    body { 
+    html, body { 
       text-rendering: optimizeLegibility; 
+      width: 100%; 
       margin: 0; 
       padding: 0; 
       overflow-x: hidden;
-      min-height: 100vh;
-      position: relative;
-    }
-
-    /* Apply scrollbar hiding to the root if needed */
-    html.scrollbar-hide, body.scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    html.scrollbar-hide::-webkit-scrollbar, body.scrollbar-hide::-webkit-scrollbar {
-      display: none;
+      overflow-y: auto; /* Explicitly allow vertical scrolling on root */
+      min-height: 100%;
     }
 
     .data-table, .hof-table { 
@@ -143,7 +126,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
     }, [targetDate]);
 
     const textColor = theme === 'dark' ? 'text-white' : 'text-slate-800';
-    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]';
+    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4_rgba(0,0,0,0.1)]';
 
     return (
         <div className="flex gap-2 sm:gap-10 font-mono text-center">
@@ -268,6 +251,11 @@ const processSetListData = (csv) => {
     const flagIdx = findIdx(['flag', 'emoji']);
     const dateIdx = findIdx(['date', 'year']);
     const dateSetIdx = findIdx(['set on', 'updated', 'date set']);
+    
+    // Explicitly check for columns AD (29) and AE (30) for setter/credits info
+    // as per latest user request
+    const useColumnsForCredits = true; 
+
     const map = {};
     lines.slice(1).forEach(l => {
         const vals = parseLine(l);
@@ -276,6 +264,14 @@ const processSetListData = (csv) => {
             const rawCountry = (vals[countryIdx] || "").trim();
             const rawFlag = (vals[flagIdx] || "").trim();
             const fixed = fixCountryEntity(rawCountry, rawFlag);
+            
+            // combine columns AD (29) and AE (30)
+            const leadSetters = vals[29] ? vals[29].trim() : "";
+            const assistantSetters = vals[30] ? vals[30].trim() : "";
+            
+            let combinedSetter = leadSetters;
+            if(assistantSetters) combinedSetter = combinedSetter ? `${combinedSetter}, ${assistantSetters}` : assistantSetters;
+
             map[course] = { 
                 is2026: (vals[dateIdx] || "").includes('2026'), 
                 flag: fixed.flag || '🏳️',
@@ -285,11 +281,50 @@ const processSetListData = (csv) => {
                 length: (vals[lengthIdx] || "").trim(),
                 elevation: (vals[elevIdx] || "").trim(),
                 type: (vals[typeIdx] || "").trim(),
-                dateSet: (vals[dateSetIdx] || "").trim()
+                dateSet: (vals[dateSetIdx] || "").trim(),
+                setter: combinedSetter,
+                leadSetters,
+                assistantSetters
             };
         }
     });
     return map;
+};
+
+const processSettersData = (csv) => {
+    const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 1) return [];
+    const headers = parseLine(lines[0]);
+    const findIdx = (keys) => headers.findIndex(h => keys.some(k => h.toLowerCase().trim() === k || h.toLowerCase().includes(k)));
+    
+    const nameIdx = findIdx(['setter', 'name']);
+    
+    // UPDATED MAPPING PER REQUEST: K=10 (Leads), L=11 (Assists), M=12 (Sets)
+    let leadsIdx = 10;
+    let assistsIdx = 11;
+    let setsIdx = 12;
+
+    const countryIdx = findIdx(['country', 'nation']);
+    const flagIdx = findIdx(['flag', 'emoji', 'region']);
+
+    return lines.slice(1).map((line, i) => {
+        const vals = parseLine(line);
+        const name = vals[nameIdx];
+        if (!name) return null;
+
+        const rawCountry = countryIdx !== -1 ? vals[countryIdx] : "";
+        const rawFlag = flagIdx !== -1 ? vals[flagIdx] : "";
+        const fixed = fixCountryEntity(rawCountry, rawFlag);
+
+        return {
+            id: `setter-${normalizeName(name)}-${i}`,
+            name: name.trim(),
+            region: fixed.flag || '🏳️',
+            sets: cleanNumeric(vals[setsIdx]) || 0,
+            leads: cleanNumeric(vals[leadsIdx]) || 0,
+            assists: cleanNumeric(vals[assistsIdx]) || 0
+        };
+    }).filter(p => p !== null);
 };
 
 const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
@@ -472,25 +507,25 @@ const PerformanceBadge = ({ type, count = 1 }) => {
     </span>;
 };
 
-const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue }) => {
+const ProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filterValue, preFiltered }) => {
+    const list = preFiltered ? courses : courses.filter(c => c[filterKey] === filterValue);
+    const sorted = [...list].sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0));
+
     return (
         <div className="grid grid-cols-1 gap-2">
-            {courses
-                .filter(c => c[filterKey] === filterValue)
-                .sort((a, b) => (b.totalAthletes || 0) - (a.totalAthletes || 0))
-                .map(c => (
+            {sorted.map(c => (
                 <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                     <div className="flex items-center gap-3 pr-4 min-w-0">
                         <IconCourse />
                         <div className="flex flex-col min-w-0">
                             <span className="text-[10px] sm:text-sm font-black uppercase">{c.name}</span>
-                            {filterKey === 'country' && <span className="text-[7px] sm:text-[8px] font-black opacity-40 uppercase">{c.city}</span>}
+                            <span className="text-[7px] sm:text-[8px] font-black opacity-40 uppercase">{c.city}</span>
                         </div>
                     </div>
                     <div className="flex gap-2 sm:gap-6 shrink-0">
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (M)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.mRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (W)</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.fRecord?.toFixed(2) || '-'}</span></div>
-                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">PLAYERS</span><span className="text-[9px] sm:text-xs font-mono font-bold">{c.totalAthletes}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40 text-blue-500">PLAYERS</span><span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.totalAthletes}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (M)</span><span className={`text-[9px] sm:text-xs font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.mRecord?.toFixed(2) || '-'}</span></div>
+                        <div className="flex flex-col items-end"><span className="text-[6px] sm:text-[8px] font-black opacity-40">CR (W)</span><span className={`text-[9px] sm:text-xs font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.fRecord?.toFixed(2) || '-'}</span></div>
                     </div>
                 </div>
             ))}
@@ -580,6 +615,62 @@ const LocationModal = ({ isOpen, onClose, data, type, theme, courses, onCourseCl
     );
 };
 
+const SetterModal = ({ isOpen, onClose, setter, theme, courses, onCourseClick }) => {
+    if (!isOpen || !setter) return null;
+
+    // Filter courses for this setter
+    const setterCourses = courses.filter(c => 
+        (c.setter || "").toLowerCase().includes(setter.name.toLowerCase())
+    );
+
+    const stats = [
+        { l: 'SETS', v: setter.sets, c: 'text-blue-500' },
+        { l: 'LEADS', v: setter.leads },
+        { l: 'ASSISTS', v: setter.assists }
+    ];
+
+    const Header = (
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full pr-8">
+            <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl border flex items-center justify-center text-blue-500 shrink-0 ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}>
+                {getInitials(setter.name)}
+            </div>
+            <div className="flex flex-col min-w-0">
+                <h2 className="text-lg sm:text-3xl font-black tracking-tight uppercase truncate">{setter.name}</h2>
+                <div className="text-sm sm:text-xl leading-none mt-1">{setter.region}</div>
+            </div>
+        </div>
+    );
+
+    return (
+        <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+                {stats.map((s, i) => (
+                    <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                        <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="space-y-2 sm:space-y-3 mt-6">
+                <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                    COURSE PORTFOLIO ({setterCourses.length})
+                </h3>
+                {setterCourses.length > 0 ? (
+                    <ProfileCourseList 
+                        courses={setterCourses} 
+                        theme={theme} 
+                        onCourseClick={onCourseClick} 
+                        preFiltered={true}
+                    />
+                ) : (
+                    <div className="p-4 opacity-50 text-xs italic">No linked courses found in database.</div>
+                )}
+            </div>
+        </BaseModal>
+    );
+};
+
 const DataTable = ({ columns, data, sort, onSort, theme, onRowClick, isLocked }) => {
     const renderCell = (col, item) => {
         const val = item[col.key];
@@ -661,7 +752,6 @@ const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
 const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
-  const isRanked = p.gender === 'M' ? (p.runs >= 4) : (p.runs >= 2);
   const courseData = useMemo(() => {
     const base = (performanceData?.[pKey] || []);
     return [...base].sort((a, b) => {
@@ -695,20 +785,13 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseCli
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {stats.map((s, i) => (
             <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
             <span className={`text-[6px] sm:text-[8px] font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
             <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
             </div>
         ))}
-        </div>
-
-        <div className={`p-4 rounded-xl border flex items-start gap-3 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20' : 'bg-blue-50 border-blue-200'}`}>
-            <div className="text-blue-500 shrink-0 mt-0.5"><IconInfo /></div>
-            <p className="text-[9px] sm:text-[11px] font-bold opacity-80 leading-relaxed uppercase tracking-wider">
-                {isRanked ? "This athlete is officially ranked." : "This athlete is currently unranked."} Players must submit at least 4 runs (Men) or 2 runs (Women) to receive a World Ranking.
-            </p>
         </div>
 
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
@@ -781,8 +864,34 @@ const CourseModal = ({ isOpen, onClose, course, theme, athleteMetadata, athleteD
 
     return (
         <BaseModal isOpen={isOpen} onClose={onClose} theme={theme} header={Header}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">{stats.map((s, i) => (<div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}><span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span><span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span></div>))}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8"><RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} /><RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} /></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6">
+                <RankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} />
+                <RankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                {stats.map((s, i) => (
+                    <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                        <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="space-y-2 mt-2">
+                 {course.leadSetters && (
+                    <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider opacity-50 mb-1">LEAD SETTERS</span>
+                        <span className={`text-[10px] sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
+                    </div>
+                )}
+                 {course.assistantSetters && (
+                    <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider opacity-50 mb-1">ASSISTANT SETTERS</span>
+                        <span className={`text-[10px] sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
+                    </div>
+                )}
+            </div>
         </BaseModal>
     );
 };
@@ -799,13 +908,11 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
           { l: 'MOST COURSE RECORDS', k: 'wins' },
           { l: 'MOST RUNS', k: 'runs' },
           { l: 'MOST SETS', k: 'sets' },
-          { l: 'MOST COINS', k: 'contributionScore' },
-          { l: 'MOST FIRE', k: 'totalFireCount' },
-          { l: 'MOST CITIES', k: 'cityStats' },
-          { l: 'MOST COUNTRIES', k: 'countryStats' }
+          { l: 'MOST 🪙', k: 'contributionScore' },
+          { l: 'MOST 🔥', k: 'totalFireCount' }
         ].map((sec) => (
           <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === 'FIRE' || word === 'COINS' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
               {stats.topStats[sec.k].map((p, i) => {
                 const displayVal = sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (p[sec.k] !== undefined ? String(p[sec.k]) : String(p.value || 0));
@@ -833,9 +940,9 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
             <thead><tr className={`border-b text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
               <HeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28" activeSort={medalSort} handler={setMedalSort} />
               <HeaderComp l="COUNTRY" k="name" a="left" w="w-auto px-2" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="GOLD" k="gold" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="SILVER" k="silver" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
-              <HeaderComp l="BRONZE" k="bronze" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥇" k="gold" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥈" k="silver" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
+              <HeaderComp l="🥉" k="bronze" a="center" w="w-8 sm:w-24" activeSort={medalSort} handler={setMedalSort} />
               <HeaderComp l="TOTAL" k="total" a="right" w="w-12 sm:w-32 pr-4 sm:pr-10" activeSort={medalSort} handler={setMedalSort} />
             </tr></thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
@@ -863,7 +970,7 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
 };
 
 const NavBar = ({ theme, setTheme, view, setView }) => (
-    <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-16 flex items-center justify-between px-2 sm:px-8 gap-1 sm:gap-6 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
+    <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-20 flex items-center justify-between px-2 sm:px-8 gap-2 sm:gap-6 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
         <div className="flex items-center gap-1.5 shrink-0">
             <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
                 <IconSpeed />
@@ -873,90 +980,135 @@ const NavBar = ({ theme, setTheme, view, setView }) => (
             </span>
         </div>
         
-        <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-2xl border shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-            <div className="flex items-center">
-                {[{id:'players',l:'PLAYERS'},{id:'courses',l:'COURSES'},{id:'cities',l:'CITIES'},{id:'countries',l:'COUNTRIES'},{id:'hof',l:'HOF'}].map(v => (
-                    <button key={v.id} onClick={() => setView(v.id)} className={`px-0.5 xs:px-1 sm:px-4 py-1.5 rounded-md sm:rounded-xl text-[5px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>
+        <div className="flex-1 flex justify-center min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide py-1 px-1 w-full sm:w-auto justify-start sm:justify-center">
+                {[
+                    {id:'players',l:'PLAYERS'},
+                    {id:'setters',l:'SETTERS'},
+                    {id:'courses',l:'COURSES'},
+                    {id:'cities',l:'CITIES'},
+                    {id:'countries',l:'COUNTRIES'}
+                ].map(v => (
+                    <button 
+                        key={v.id} 
+                        onClick={() => setView(v.id)} 
+                        className={`
+                            shrink-0 border px-3 sm:px-5 py-1.5 sm:py-2 rounded-full 
+                            text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300
+                            whitespace-nowrap select-none
+                            ${view === v.id 
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' 
+                                : (theme === 'dark' ? 'border-white/10 text-slate-400 hover:border-white/30 hover:text-white' : 'border-slate-400/30 text-slate-500 hover:border-slate-400 hover:text-slate-700 bg-white/20')
+                            }
+                        `}
+                    >
                         {v.l}
                     </button>
                 ))}
             </div>
         </div>
         
-        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center border rounded-lg sm:rounded-2xl transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400' : 'bg-slate-300/50 border-slate-400/20 text-slate-600'}`}>
+        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
             {theme === 'dark' ? <IconSun /> : <IconMoon />}
         </button>
     </nav>
 );
 
-const ControlBar = ({ view, eventType, setEventType, gen, setGen, search, setSearch, theme }) => (
-    <header className={`pt-20 sm:pt-24 pb-6 sm:pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            {view !== 'hof' ? (
+const ControlBar = ({ view, setView, eventType, setEventType, gen, setGen, search, setSearch, theme }) => {
+    const titles = {
+        players: 'PLAYERS',
+        setters: 'SETTERS',
+        courses: 'COURSES',
+        cities: 'CITIES',
+        countries: 'COUNTRIES',
+        hof: 'HALL OF FAME'
+    };
+
+    return (
+        <header className={`pt-20 sm:pt-24 pb-6 sm:pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4 sm:gap-10 bg-gradient-to-b ${theme === 'dark' ? 'from-blue-600/10' : 'from-blue-500/5'} to-transparent`}>
+            <h1 className={`text-4xl sm:text-6xl font-black uppercase tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                {titles[view]}
+            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                     <div className="flex flex-wrap gap-0.5">
-                        {[{id:'all-time',l:'ASR ALL-TIME'},{id:'open',l:'2026 ASR OPEN'}].map(ev => (
-                            <button key={ev.id} onClick={() => setEventType(ev.id)} className={`px-2 sm:px-4 py-1.5 rounded-lg text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${eventType === ev.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{ev.l}</button>
-                        ))}
+                        <button 
+                            onClick={() => { setEventType('all-time'); if(view === 'hof') setView('players'); }} 
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                        >
+                            ALL-TIME
+                        </button>
+                        <button 
+                            onClick={() => { setEventType('open'); if(view === 'hof') setView('players'); }} 
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                        >
+                            2026 OPEN
+                        </button>
+                        <button 
+                            onClick={() => setView('hof')} 
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view === 'hof' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                        >
+                            HOF
+                        </button>
                     </div>
                 </div>
-            ) : <div />}
 
-            <div className="flex items-center flex-wrap gap-2 sm:gap-3">
-                {['courses', 'cities', 'countries'].includes(view) && (
-                    <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-                        <a 
-                            href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="px-2 sm:px-4 py-1 rounded-md sm:rounded-xl text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
-                        >
-                            ASR MAP
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        </a>
-                    </div>
-                )}
+                <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+                    {['courses', 'cities', 'countries'].includes(view) && (
+                        <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+                            <a 
+                                href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-3 sm:px-5 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
+                            >
+                                ASR MAP
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            </a>
+                        </div>
+                    )}
 
-                {view === 'players' && (
-                    <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-                        <div className="flex">
-                            {[{id:'M',l:'MEN'},{id:'F',l:'WOMEN'}].map(g => (
-                                <button key={g.id} onClick={() => setGen(g.id)} className={`px-2.5 sm:px-4 py-1 rounded-md sm:rounded-xl text-[6px] xs:text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>{g.l}</button>
-                            ))}
+                    {view === 'players' && (
+                        <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
+                            <div className="flex">
+                                {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
+                                    <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}>{g.l}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {eventType === 'open' && view !== 'hof' && (
+                <div className={`p-3 sm:p-8 rounded-xl sm:rounded-[2rem] border animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
+                    <div className="flex items-start gap-2.5 sm:gap-4">
+                        <div className="p-1 sm:p-2 rounded-lg bg-blue-600 text-white shrink-0"><IconInfo /></div>
+                        <div className="space-y-2 sm:space-y-3">
+                            <p className="text-[7px] sm:text-xs font-bold opacity-80 leading-relaxed max-w-4xl tracking-wide">
+                                The 2026 ASR Open runs March 1 thru May 31. Players must submit at least 3 new runs on qualifying courses to get ranked. Top 6 men and women qualify for the Parkour Earth World Championships in Brno, Czechia.
+                            </p>
                         </div>
                     </div>
-                )}
-            </div>
-        </div>
-
-        {eventType === 'open' && view !== 'hof' && (
-            <div className={`p-3 sm:p-8 rounded-xl sm:rounded-[2rem] border animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900'}`}>
-                <div className="flex items-start gap-2.5 sm:gap-4">
-                    <div className="p-1 sm:p-2 rounded-lg bg-blue-600 text-white shrink-0"><IconInfo /></div>
-                    <div className="space-y-2 sm:space-y-3">
-                        <p className="text-[7px] sm:text-xs font-bold opacity-80 leading-relaxed max-w-4xl tracking-wide">
-                            The 2026 ASR Open runs March 1 thru May 31. Players must submit at least 3 new runs on qualifying courses to get ranked. Top 6 men and women qualify for the World Championships in Brno, Czechia.
-                        </p>
+                </div>
+            )}
+            
+            {view !== 'hof' && eventType !== 'open' && (
+                <div className="w-full relative group">
+                    <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
+                        <IconSearch size={12} />
                     </div>
+                    <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-[11px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
+                    {search && (
+                        <button onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <IconX size={14} />
+                        </button>
+                    )}
                 </div>
-            </div>
-        )}
-        
-        {view !== 'hof' && eventType !== 'open' && (
-            <div className="w-full relative group">
-                <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
-                    <IconSearch size={12} />
-                </div>
-                <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-[11px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
-                {search && (
-                    <button onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <IconX size={14} />
-                    </button>
-                )}
-            </div>
-        )}
-    </header>
-);
+            )}
+        </header>
+    );
+};
 
 const Footer = () => (
     <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
@@ -1020,6 +1172,14 @@ const PLAYER_COLS = [
     { label: 'SETS', type: 'number', key: 'sets', align: 'right', width: 'w-8 sm:w-24 pr-3 sm:pr-10' }
 ];
 
+const SETTERS_COLS = [
+    { isRank: true },
+    { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-auto px-2 py-4 sm:py-5 min-w-[90px] sm:min-w-[120px]' },
+    { label: 'SETS', type: 'highlight', key: 'sets', align: 'right', width: 'w-12 sm:w-32' },
+    { label: 'LEADS', type: 'number', key: 'leads', align: 'right', width: 'w-12 sm:w-32' },
+    { label: 'ASSISTS', type: 'number', key: 'assists', align: 'right', width: 'w-12 sm:w-32 pr-3 sm:pr-10' }
+];
+
 const COURSE_COLS = [
     { isRank: true },
     { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[100px] sm:min-w-[120px]' },
@@ -1049,17 +1209,19 @@ const COUNTRY_COLS = [
 const useASRData = () => {
   const [state, setState] = useState({
     data: [], openData: [], atPerfs: {}, opPerfs: {},
-    lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}
+    lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: []
   });
 
   const fetchData = useCallback(async () => {
     const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&t=${Date.now()}`;
     try {
-      const [rM, rF, rLive, rSet] = await Promise.all([
+      const [rM, rF, rLive, rSet, rSettersM, rSettersF] = await Promise.all([
         fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()),
         fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()),
         fetch(getCsv('gid=623600169')).then(r => r.text()),
-        fetch(getCsv('gid=1961325686')).then(r => r.text())
+        fetch(getCsv('gid=1961325686')).then(r => r.text()),
+        fetch(getCsv('gid=595214914')).then(r => r.text()),
+        fetch(getCsv('gid=566627843')).then(r => r.text())
       ]);
       const pM = processRankingData(rM, 'M'); 
       const pF = processRankingData(rF, 'F');
@@ -1067,6 +1229,10 @@ const useASRData = () => {
       pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive, initialMetadata, processSetListData(rSet));
+      
+      const settersM = processSettersData(rSettersM);
+      const settersF = processSettersData(rSettersF);
+      const allSetters = [...settersM, ...settersF];
       
       setState({
         data: [...pM, ...pF],
@@ -1077,7 +1243,8 @@ const useASRData = () => {
         lbOpen: processed.openLeaderboards,
         atMet: processed.athleteMetadata,
         dnMap: processed.athleteDisplayNameMap,
-        cMet: processed.courseMetadata
+        cMet: processed.courseMetadata,
+        settersData: allSetters
       });
     } catch(e) { console.error("Data fetch failed:", e); }
   }, []);
@@ -1093,6 +1260,7 @@ function App() {
   const [view, setView] = useState('players'); 
   const [search, setSearch] = useState('');
   const [sel, setSel] = useState(null);
+  const [selSetter, setSelSetter] = useState(null);
   const [selCourse, setSelCourse] = useState(null);
   const [selCity, setSelCity] = useState(null);
   const [selCountry, setSelCountry] = useState(null);
@@ -1100,6 +1268,7 @@ function App() {
   // Unified Sort State
   const [viewSorts, setViewSorts] = useState({
     players: { key: 'rating', direction: 'descending' },
+    setters: { key: 'sets', direction: 'descending' },
     courses: { key: 'totalAthletes', direction: 'descending' },
     cities: { key: 'players', direction: 'descending' },
     countries: { key: 'players', direction: 'descending' },
@@ -1111,7 +1280,7 @@ function App() {
     setViewSorts(prev => ({ ...prev, [view]: updated }));
   };
 
-  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet } = useASRData();
+  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData } = useASRData();
 
   const list = useMemo(() => {
     const src = eventType === 'all-time' ? data : openData;
@@ -1178,6 +1347,33 @@ function App() {
     return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
   }, [rawCourseList, search, viewSorts.courses]);
 
+  const settersList = useMemo(() => {
+    const filtered = settersData.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    const threshold = 4;
+    const qualified = filtered.filter(s => s.sets >= threshold);
+    const unranked = filtered.filter(s => s.sets < threshold);
+
+    const sort = viewSorts.setters;
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    
+    // Helper to sort
+    const sortFn = (a, b) => robustSort(a, b, sort.key, dir);
+
+    qualified.sort(sortFn);
+    unranked.sort((a, b) => (b.sets - a.sets) || (b.leads - a.leads));
+
+    // Add Rank
+    const finalQual = qualified.map((s, i) => ({ ...s, currentRank: i + 1, isQualified: true }));
+    const finalUnranked = unranked.map(s => ({ ...s, currentRank: "UR", isQualified: false }));
+
+    // Merge
+    if (finalQual.length > 0 && finalUnranked.length > 0) {
+        return [...finalQual, { isDivider: true, label: "SET 4+ COURSES TO GET RANKED" }, ...finalUnranked];
+    }
+    
+    return [...finalQual, ...finalUnranked];
+  }, [settersData, search, viewSorts.setters]);
+
   const cityList = useMemo(() => {
     const base = calculateCityStats(rawCourseList);
     const sort = viewSorts.cities;
@@ -1205,12 +1401,13 @@ function App() {
     const isOpen = eventType === 'open';
     const config = {
       players: { columns: PLAYER_COLS, data: isOpen ? SHADOW_ATHLETES : list, onClick: (p) => !isOpen && setSel(p) },
+      setters: { columns: SETTERS_COLS, data: settersList, onClick: (s) => !isOpen && setSelSetter(s) },
       courses: { columns: COURSE_COLS, data: isOpen ? SHADOW_COURSES : courseList, onClick: (c) => !isOpen && setSelCourse(c) },
       cities: { columns: CITY_COLS, data: isOpen ? SHADOW_CITIES : cityList, onClick: (c) => !isOpen && setSelCity(c) },
       countries: { columns: COUNTRY_COLS, data: isOpen ? SHADOW_COUNTRIES : countryList, onClick: (c) => !isOpen && setSelCountry(c) }
     }[view];
     return config ? { ...config, sort: viewSorts[view] } : null;
-  }, [view, eventType, viewSorts, list, courseList, cityList, countryList]);
+  }, [view, eventType, viewSorts, list, settersList, courseList, cityList, countryList]);
 
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
@@ -1218,11 +1415,12 @@ function App() {
       <NavBar theme={theme} setTheme={setTheme} view={view} setView={setView} />
       
       <Modal isOpen={!!sel} onClose={() => setSel(null)} player={sel} theme={theme} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { setSel(null); setSelCourse(rawCourseList.find(c => c.name === name)); }} />
+      <SetterModal isOpen={!!selSetter} onClose={() => setSelSetter(null)} setter={selSetter} theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelSetter(null); setSelCourse(c); }} />
       <CourseModal isOpen={!!selCourse} onClose={() => setSelCourse(null)} course={selCourse} theme={theme} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => { setSelCourse(null); setSel(p); }} />
       <LocationModal isOpen={!!selCity} onClose={() => setSelCity(null)} data={selCity} type='city' theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCity(null); setSelCourse(c); }} />
       <LocationModal isOpen={!!selCountry} onClose={() => setSelCountry(null)} data={selCountry} type='country' theme={theme} courses={rawCourseList} onCourseClick={(c) => { setSelCountry(null); setSelCourse(c); }} />
       
-      <ControlBar view={view} eventType={eventType} setEventType={setEventType} gen={gen} setGen={setGen} search={search} setSearch={setSearch} theme={theme} />
+      <ControlBar view={view} setView={setView} eventType={eventType} setEventType={setEventType} gen={gen} setGen={setGen} search={search} setSearch={setSearch} theme={theme} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
         {view === 'hof' ? (<HallOfFame stats={hofStats} theme={theme} onPlayerClick={setSel} medalSort={viewSorts.hof} setMedalSort={handleSort} />) : (
@@ -1231,7 +1429,7 @@ function App() {
               {eventType === 'open' && (
                 <div className={`absolute inset-0 z-10 flex flex-col items-center pt-16 sm:pt-32 p-4 sm:p-8 text-center bg-gradient-to-t pointer-events-none ${theme === 'dark' ? 'from-black/40 via-transparent to-transparent' : 'from-slate-300/40 via-transparent to-transparent'}`}>
                     <h4 className={`mb-4 sm:mb-8 text-[8px] sm:text-lg font-black uppercase tracking-[0.1em] sm:tracking-[0.3em] animate-subtle-pulse drop-shadow-2xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                        THE 2026 ASR OPEN STARTS IN...
+                        THE OPEN STARTS IN:
                     </h4>
                     <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
                 </div>
@@ -1256,8 +1454,7 @@ function App() {
   );
 }
 
-const rootElement = document.getElementById('root');
-const root = createRoot(rootElement);
+// --- BOILERPLATE FOR ROOT RENDERING ---
+const container = document.getElementById('root');
+const root = createRoot(container);
 root.render(<App />);
-
-export default App;
