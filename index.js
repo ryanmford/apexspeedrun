@@ -11,12 +11,19 @@ const CustomStyles = () => (
     .glow-bronze { filter: drop-shadow(0 0 8px rgba(206, 137, 70, 0.6)); }
     .glow-fire { filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7)); }
     
-    ::-webkit-scrollbar { display: none; }
+    /* Utility to hide scrollbars without breaking scroll functionality */
+    .scrollbar-hide {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none; /* Chrome, Safari and Opera */
+    }
+
     * { 
-      -ms-overflow-style: none; 
-      scrollbar-width: none; 
       -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased;
+      box-sizing: border-box;
     }
     
     html, body { 
@@ -25,6 +32,8 @@ const CustomStyles = () => (
       margin: 0; 
       padding: 0; 
       overflow-x: hidden;
+      overflow-y: auto; /* Explicitly allow vertical scrolling on root */
+      min-height: 100%;
     }
 
     .data-table, .hof-table { 
