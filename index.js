@@ -350,7 +350,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     allTimePerformances: buildPerfs(allTimeAthleteBestTimes), 
     openPerformances: buildPerfs(openAthleteBestTimes), 
     openRankings: openRankingArray,
-    allTimeLeaderboards: allTimeCourseLeaderboards,
+    allTimeLeaderboards: allTimeCourseLeaderboards, 
     openLeaderboards: openCourseLeaderboards,
     athleteMetadata: athleteMetadata, athleteDisplayNameMap: athleteDisplayNameMap,
     courseMetadata: courseSetMap
@@ -798,10 +798,10 @@ const HallOfFame = ({ stats, theme, onPlayerClick, medalSort, setMedalSort }) =>
                       <span className="text-sm sm:text-xl mt-0.5 leading-none drop-shadow-sm shrink-0">{c.flag}</span>
                     </div>
                   </td>
-                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-gold tabular-nums num-col ${tColor}`}>{c.gold}</td>
+                  <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-gold tabular-nums num-col text-blue-500`}>{c.gold}</td>
                   <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
                   <td className={`text-center font-mono font-black text-[8px] sm:text-[14px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
-                  <td className="pr-4 sm:pr-10 text-right font-mono font-black text-blue-500 text-[10px] sm:text-[20px] tabular-nums num-col">{c.total}</td>
+                  <td className={`pr-4 sm:pr-10 text-right font-mono font-black ${tColor} text-[8px] sm:text-[14px] tabular-nums num-col`}>{c.total}</td>
                 </tr>
               ))}
             </tbody>
