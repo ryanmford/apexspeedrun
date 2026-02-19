@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Apex Speed Run</title>
     
     <meta name="theme-color" content="#0f172a">
 
+    <!-- Mobile App Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ASR">
@@ -14,6 +15,7 @@
     <link rel="icon" type="image/jpeg" href="asr.jpg">
     <link rel="apple-touch-icon" href="asr.jpg">
 
+    <!-- Social Metadata -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Apex Speed Run">
     <meta property="og:description" content="Official global rankings, course records, and stats for the 2026 Season.">
@@ -25,18 +27,43 @@
     <meta name="twitter:description" content="Official global rankings, course records, and stats for the 2026 Season.">
     <meta name="twitter:image" content="asr.jpg">
 
+    <!-- Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <style>
+        /* Base Typography */
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        /* Prevents elastic scrolling on Mac/iOS for a solid app feel */
-        html, body { overscroll-behavior-y: none; }
+
+        /* BRAVE & MOBILE REFRESH FIX */
+        html {
+            /* Remove overflow-x: hidden here to allow the browser to detect the pull-to-refresh gesture */
+            height: auto;
+            min-height: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            /* Allow natural overscroll gestures for Pull-to-Refresh */
+            overscroll-behavior-y: auto; 
+            overflow-x: hidden;
+        }
+
+        /* Optimize for touch */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
+    <!-- React Entry Point -->
     <div id="root"></div>
     
+    <!-- JavaScript Entry Point -->
     <script type="module" src="./index.js"></script>
 </body>
 </html>
