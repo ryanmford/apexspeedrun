@@ -26,14 +26,31 @@ const CustomStyles = () => (
       box-sizing: border-box;
     }
     
-    html, body { 
+    html {
+      /* Allowing natural height fixes 'Pull to Refresh' and Brave scroll-lock */
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-text-size-adjust: 100%;
+      /* Ensures pull-to-refresh gesture is allowed */
+      overscroll-behavior-y: auto;
+    }
+
+    body { 
       text-rendering: optimizeLegibility; 
-      width: 100%; 
       margin: 0; 
       padding: 0; 
       overflow-x: hidden;
-      overflow-y: auto; /* Explicitly allow vertical scrolling on root */
-      min-height: 100%;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Apply scrollbar hiding to the root if needed */
+    html.scrollbar-hide, body.scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    html.scrollbar-hide::-webkit-scrollbar, body.scrollbar-hide::-webkit-scrollbar {
+      display: none;
     }
 
     .data-table, .hof-table { 
@@ -126,7 +143,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
     }, [targetDate]);
 
     const textColor = theme === 'dark' ? 'text-white' : 'text-slate-800';
-    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4_rgba(0,0,0,0.1)]';
+    const shadowColor = theme === 'dark' ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]';
 
     return (
         <div className="flex gap-2 sm:gap-10 font-mono text-center">
@@ -599,15 +616,30 @@ const DataTable = ({ columns, data, sort, onSort, theme, onRowClick, isLocked })
                 </tr>
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                {data.map((item) => (
-                    <tr key={item.id || item.name} onClick={() => onRowClick && onRowClick(item)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!onRowClick ? '' : ''} ${item.isQualified === false ? 'opacity-40' : ''}`}>
-                        {columns.map((col, i) => (
-                            <td key={i} className={`${col.isRank ? 'pl-3 sm:pl-10 py-3 sm:py-8' : (col.cellClass || `px-2 py-3 sm:py-8 ${col.align === 'right' ? 'text-right' : 'text-left'}`)}`}>
-                                {renderCell(col, item)}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
+                {data.map((item) => {
+                    if (item.isDivider) {
+                        return (
+                            <tr key="divider" className="bg-transparent pointer-events-none">
+                                <td colSpan={columns.length} className="py-4 sm:py-6 text-center">
+                                    <div className={`flex items-center gap-4 opacity-40 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                        <div className="h-px bg-current flex-1" />
+                                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{item.label}</span>
+                                        <div className="h-px bg-current flex-1" />
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    }
+                    return (
+                        <tr key={item.id || item.name} onClick={() => onRowClick && onRowClick(item)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${!onRowClick ? '' : ''} ${item.isQualified === false ? 'opacity-40' : ''}`}>
+                            {columns.map((col, i) => (
+                                <td key={i} className={`${col.isRank ? 'pl-3 sm:pl-10 py-3 sm:py-8' : (col.cellClass || `px-2 py-3 sm:py-8 ${col.align === 'right' ? 'text-right' : 'text-left'}`)}`}>
+                                    {renderCell(col, item)}
+                                </td>
+                            ))}
+                        </tr>
+                    );
+                })}
             </tbody>
         </table>
     );
@@ -629,6 +661,7 @@ const HeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
 const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseClick }) => {
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
+  const isRanked = p.gender === 'M' ? (p.runs >= 4) : (p.runs >= 2);
   const courseData = useMemo(() => {
     const base = (performanceData?.[pKey] || []);
     return [...base].sort((a, b) => {
@@ -670,6 +703,14 @@ const Modal = ({ isOpen, onClose, player: p, theme, performanceData, onCourseCli
             </div>
         ))}
         </div>
+
+        <div className={`p-4 rounded-xl border flex items-start gap-3 ${theme === 'dark' ? 'bg-blue-600/5 border-blue-500/20' : 'bg-blue-50 border-blue-200'}`}>
+            <div className="text-blue-500 shrink-0 mt-0.5"><IconInfo /></div>
+            <p className="text-[9px] sm:text-[11px] font-bold opacity-80 leading-relaxed uppercase tracking-wider">
+                {isRanked ? "This athlete is officially ranked." : "This athlete is currently unranked."} Players must submit at least 4 runs (Men) or 2 runs (Women) to receive a World Ranking.
+            </p>
+        </div>
+
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
         {courseData.map((c, i) => (
             <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
@@ -1090,7 +1131,16 @@ function App() {
     });
     
     unranked.sort((a, b) => b.runs - a.runs || b.rating - a.rating);
-    return [...qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true })), ...unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }))];
+
+    const finalQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true }));
+    const finalUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }));
+
+    if (finalQual.length > 0 && finalUnranked.length > 0) {
+        const thresholdText = gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED";
+        return [...finalQual, { isDivider: true, label: thresholdText }, ...finalUnranked];
+    }
+
+    return [...finalQual, ...finalUnranked];
   }, [search, viewSorts.players, gen, eventType, data, openData]);
 
   const rawCourseList = useMemo(() => {
