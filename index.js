@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-
+import { createRoot } from 'react-dom/client';
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
   <style>{`
@@ -1614,4 +1614,8 @@ export default function App() {
 // --- BOILERPLATE FOR ROOT RENDERING ---
 const container = document.getElementById('root');
 const root = createRoot(container);
-root.render(<App />);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
