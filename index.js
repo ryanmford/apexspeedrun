@@ -1,4 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom/client';
+
+/**
+ * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
+ * Core Model: Gemini 3 Flash
+ * Generation Date: 2026-02-20
+ */
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
@@ -10,13 +17,12 @@ const CustomStyles = () => (
     .glow-bronze { filter: drop-shadow(0 0 8px rgba(206, 137, 70, 0.6)); }
     .glow-fire { filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7)); }
     
-    /* Utility to hide scrollbars without breaking scroll functionality */
     .scrollbar-hide {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
     .scrollbar-hide::-webkit-scrollbar {
-      display: none; /* Chrome, Safari and Opera */
+      display: none;
     }
 
     * { 
@@ -31,7 +37,7 @@ const CustomStyles = () => (
       margin: 0; 
       padding: 0; 
       overflow-x: hidden;
-      overflow-y: auto; /* Explicitly allow vertical scrolling on root */
+      overflow-y: auto;
       min-height: 100%;
     }
 
@@ -105,6 +111,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
     useEffect(() => {
+        let timer;
         const calculate = () => {
             const now = new Date();
             const difference = targetDate - now;
@@ -116,10 +123,13 @@ const CountdownTimer = ({ targetDate, theme }) => {
                     minutes: Math.floor((difference / 1000 / 60) % 60),
                     seconds: Math.floor((difference / 1000) % 60)
                 });
+            } else {
+                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+                clearInterval(timer);
             }
         };
 
-        const timer = setInterval(calculate, 1000);
+        timer = setInterval(calculate, 1000);
         calculate();
         return () => clearInterval(timer);
     }, [targetDate]);
@@ -139,7 +149,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
                     <span className={`text-2xl xs:text-3xl sm:text-7xl font-black tracking-tighter tabular-nums ${textColor} ${shadowColor}`}>
                         {String(unit.value).padStart(2, '0')}
                     </span>
-                    <span className={`text-[5px] sm:text-[10px] uppercase font-black tracking-[0.1em] sm:tracking-[0.2em] mt-0.5 ${textColor}`}>
+                    <span className={`text-[10px] sm:text-xs uppercase font-black tracking-[0.1em] sm:tracking-[0.2em] mt-0.5 ${textColor}`}>
                         {unit.label}
                     </span>
                 </div>
@@ -210,6 +220,7 @@ const formatLocationSubtitle = (namesStr, flagsStr) => {
 
 // --- DATA PROCESSORS ---
 const processRankingData = (csv, gender) => {
+  if (!csv) return [];
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   const hIdx = lines.findIndex(l => l.toLowerCase().includes('name') || l.toLowerCase().includes('athlete')); 
   if (hIdx === -1) return [];
@@ -248,6 +259,7 @@ const processRankingData = (csv, gender) => {
 };
 
 const processSetListData = (csv) => {
+    if (!csv) return {};
     const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 1) return {};
     const headers = parseLine(lines[0]);
@@ -262,7 +274,7 @@ const processSetListData = (csv) => {
     const flagIdx = findIdx(['flag', 'emoji']);
     const dateIdx = findIdx(['date', 'year']);
     const dateSetIdx = findIdx(['set on', 'updated', 'date set']);
-    const stateIdx = 11; // Column L
+    const stateIdx = 11; 
     
     const map = {};
     lines.slice(1).forEach(l => {
@@ -273,7 +285,6 @@ const processSetListData = (csv) => {
             const rawFlag = (vals[flagIdx] || "").trim();
             const fixed = fixCountryEntity(rawCountry, rawFlag);
             
-            // combine columns AD (29) and AE (30)
             const leadSetters = vals[29] ? vals[29].trim() : "";
             const assistantSetters = vals[30] ? vals[30].trim() : "";
             
@@ -301,14 +312,13 @@ const processSetListData = (csv) => {
 };
 
 const processSettersData = (csv) => {
+    if (!csv) return [];
     const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 1) return [];
     const headers = parseLine(lines[0]);
     const findIdx = (keys) => headers.findIndex(h => keys.some(k => h.toLowerCase().trim() === k || h.toLowerCase().includes(k)));
     
     const nameIdx = findIdx(['setter', 'name']);
-    
-    // UPDATED MAPPING PER REQUEST: K=10 (Leads), L=11 (Assists), M=12 (Sets)
     let leadsIdx = 10;
     let assistsIdx = 11;
     let setsIdx = 12;
@@ -338,8 +348,9 @@ const processSettersData = (csv) => {
 };
 
 const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
+  if (!csv) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap };
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 1) return { allTimePerformances: {}, openPerformances: {}, openRankings: [] };
+  if (lines.length < 1) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap };
   const OPEN_THRESHOLD = new Date('2026-01-01');
   let headers = []; let hIdx = -1;
   for(let i=0; i<Math.min(10, lines.length); i++) {
@@ -491,7 +502,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
             const fixed = fixCountryEntity(name, (flags[i] || flags[0] || '🏳️').trim());
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-            medalsBase[fixed.name].total++;
+            numPoints: medalsBase[fixed.name].total++;
           });
         });
       });
@@ -518,7 +529,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
 const ASRPerformanceBadge = ({ type, count = 1 }) => {
     const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
     const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-fire" };
-    return <span className={`inline-flex items-center gap-1 text-[11px] select-none shrink-0 ${glows[type]}`}>
+    return <span className={`inline-flex items-center gap-1 text-xs select-none shrink-0 ${glows[type]}`}>
         {Array.from({ length: count }).map((_, i) => <span key={i}>{badges[type]}</span>)}
     </span>;
 };
@@ -546,29 +557,29 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
-                                <span className="text-[10px] sm:text-sm font-black uppercase truncate">{c.name}</span>
-                                <div className="text-[7px] sm:text-[8px] font-black uppercase flex items-center gap-1 mt-0.5">
+                                <span className="text-xs sm:text-base font-black uppercase truncate">{c.name}</span>
+                                <div className="text-[10px] sm:text-xs font-black uppercase flex items-center gap-1 mt-0.5">
                                     <span className="opacity-40 truncate">{locText}</span>
-                                    <span className="opacity-100 shrink-0 text-[9px] sm:text-[10px]">{c.flag}</span>
+                                    <span className="opacity-100 shrink-0 text-[10px] sm:text-xs">{c.flag}</span>
                                 </div>
                             </div>
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[6px] sm:text-[8px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
-                                <span className="text-[9px] sm:text-xs font-mono font-bold text-blue-500">{c.totalAthletes}</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
+                                <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[6px] sm:text-[8px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                                     <span className="opacity-40">M</span> <span className="opacity-100">🥇</span>
                                 </span>
-                                <span className={`text-[9px] sm:text-xs font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.mRecord?.toFixed(2) || '-'}</span>
+                                <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.mRecord?.toFixed(2) || '-'}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[6px] sm:text-[8px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                                     <span className="opacity-40">W</span> <span className="opacity-100">🥇</span>
                                 </span>
-                                <span className={`text-[9px] sm:text-xs font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.fRecord?.toFixed(2) || '-'}</span>
+                                <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.fRecord?.toFixed(2) || '-'}</span>
                             </div>
                         </div>
                     </div>
@@ -578,13 +589,11 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
     );
 };
 
-// --- COMPONENTS ---
-
 const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
   const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
   const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-7 h-7 sm:w-10 sm:h-10';
-  const textClass = size === 'lg' ? 'text-[11px] sm:text-[13px]' : 'text-[9px] sm:text-[12px]';
+  const textClass = size === 'lg' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm';
   const isPodium = rank === 1 || rank === 2 || rank === 3;
   const styles = {
     1: { border: theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600', text: theme === 'dark' ? 'text-yellow-500' : 'text-yellow-700', glow: 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' },
@@ -608,17 +617,17 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
       <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
         <div className={`shrink-0 relative h-fit min-h-[120px] sm:min-h-[160px] p-5 sm:p-10 flex flex-col justify-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-400/40'} to-transparent`}>
           <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
-              <button onClick={onBack} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Back">
+              <button aria-label="Go Back" onClick={onBack} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Back">
                   <IconCornerUpLeft size={16} />
               </button>
               {canGoForward && (
-                  <button onClick={onForward} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Forward">
+                  <button aria-label="Go Forward" onClick={onForward} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Forward">
                       <IconCornerUpRight size={16} />
                   </button>
               )}
           </div>
           <div className="absolute top-4 right-4 z-10">
-              <button onClick={onClose} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Close">
+              <button aria-label="Close Modal" onClick={onClose} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Close">
                   <IconX size={16} />
               </button>
           </div>
@@ -656,7 +665,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
             </div>
             <div className="flex flex-col min-w-0 justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight uppercase truncate leading-none">{data.name}</h2>
-                <div className="text-[9px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
                     {type === 'country' ? (
                         <span className="text-base sm:text-xl leading-none">{data.flag}</span>
                     ) : (
@@ -672,8 +681,8 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {stats.map((s, i) => (
                     <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                        <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                        <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                     </div>
                 ))}
             </div>
@@ -701,7 +710,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
             <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(setter.name)}</div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{setter.name}</h2>
-                <div className="text-[9px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
                     {formatLocationSubtitle(setter.countryName, setter.region)}
                 </div>
             </div>
@@ -713,14 +722,14 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {stats.map((s, i) => (
                     <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                        <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                        <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                        <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                     </div>
                 ))}
             </div>
             
             <div className="space-y-2 sm:space-y-3 mt-6">
-                <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                     COURSES SET ({setterCourses.length})
                 </h3>
                 {setterCourses.length > 0 ? (
@@ -765,7 +774,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
         <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
         <div className="min-w-0 flex-1 flex flex-col justify-center">
             <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{p.name}</h2>
-            <div className="text-[9px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+            <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
                 {formatLocationSubtitle(p.countryName, p.region)}
             </div>
         </div>
@@ -777,7 +786,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {stats.map((s, i) => (
             <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-            <span className={`text-[6px] sm:text-[8px] font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
+            <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
             <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
             </div>
         ))}
@@ -787,17 +796,17 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
         {courseData.map((c, i) => (
             <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
             <div className="flex flex-col min-w-0 pr-3">
-                <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
+                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                 {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
-                {c.rank >= 4 && <span className="text-[8px] font-mono font-black italic opacity-40">{c.rank}</span>}
+                {c.rank >= 4 && <span className="text-[10px] font-mono font-black italic opacity-40">{c.rank}</span>}
                 {getFires(c.num, p.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
                 </div>
             </div>
             <div className="flex flex-col items-end shrink-0">
-                <span className="text-[10px] sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
-                <span className="text-[8px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
-            </div>
+                <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
+                <span className="text-[10px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
+                </div>
             </div>
         ))}
         </div>
@@ -807,7 +816,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
 
 const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => (
     <div className="space-y-2 sm:space-y-3">
-        <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
+        <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {athletes.slice(0, 10).map(([pKey, time], i) => {
                 const meta = athleteMetadata[pKey] || {};
@@ -817,11 +826,11 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                             <ASRRankBadge rank={i + 1} theme={theme} />
                             <div className="flex flex-col min-w-0">
-                              <span className={`text-[9px] sm:text-[12px] font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
-                              <span className="text-[7px] sm:text-[10px] uppercase font-black">{meta.region || '🏳️'}</span>
+                              <span className={`text-xs sm:text-sm font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
+                              <span className="text-[10px] sm:text-xs uppercase font-black">{meta.region || '🏳️'}</span>
                             </div>
                         </div>
-                        <div className="flex flex-col items-end shrink-0"><span className="text-[10px] sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[8px] sm:text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
+                        <div className="flex flex-col items-end shrink-0"><span className="text-xs sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[10px] sm:text-xs font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
                     </div>
                 );
             })}
@@ -859,7 +868,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-blue-500 shrink-0 shadow-xl ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse size={32} /></div>
             <div className="flex flex-col min-w-0 justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight uppercase truncate leading-none">{course.name}</h2>
-                <div className="text-[9px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
                     {locStr}{formatLocationSubtitle(course.country, course.flag)}
                 </div>
             </div>
@@ -874,12 +883,12 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             </div>
 
             <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
-                <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE STATS</h3>
+                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE STATS</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
                         <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                            <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                            <span className={`text-[10px] sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                         </div>
                     ))}
                 </div>
@@ -887,18 +896,18 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             
             {(course.leadSetters || course.assistantSetters) && (
                 <div className="space-y-2 sm:space-y-3 mt-6 sm:mt-8">
-                    <h3 className={`text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE SETTERS</h3>
+                    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE SETTERS</h3>
                     <div className="space-y-2">
                          {course.leadSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                                <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.leadSetters) ? 'LEADS' : 'LEAD'}</span>
-                                <span className={`text-[10px] sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
+                                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.leadSetters) ? 'LEADS' : 'LEAD'}</span>
+                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
                             </div>
                         )}
                          {course.assistantSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                                <span className="text-[6px] sm:text-[8px] font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.assistantSetters) ? 'ASSISTANTS' : 'ASSISTANT'}</span>
-                                <span className={`text-[10px] sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
+                                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.assistantSetters) ? 'ASSISTANTS' : 'ASSISTANT'}</span>
+                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
                             </div>
                         )}
                     </div>
@@ -912,7 +921,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
   return (
     <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-tighter text-[7px] xs:text-[8px] sm:text-[11px] font-black leading-none">{l}</span>
+        <span className="uppercase tracking-tighter text-[10px] sm:text-xs font-black leading-none">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
         </div>
@@ -930,7 +939,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
             const sub = col.subKey ? item[col.subKey] : null;
             return (
                 <div className="flex flex-col">
-                    <span className="text-[10px] sm:text-[15px] font-black uppercase tracking-tight block leading-tight">{val}</span>
+                    <span className="text-xs sm:text-[15px] font-black uppercase tracking-tight block leading-tight">{val}</span>
                     {sub && <span className="text-base sm:text-2xl mt-0.5 sm:mt-1 leading-none drop-shadow-sm">{sub || '🏳️'}</span>}
                 </div>
             );
@@ -939,16 +948,16 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
         if (col.type === 'number' || col.type === 'highlight') {
             const display = (val === null || val === undefined) ? '-' : (typeof val === 'number' && col.decimals !== undefined ? val.toFixed(col.decimals) : val);
             const colorClass = col.type === 'highlight' ? 'text-blue-500' : (col.opacity ? 'opacity-60' : '');
-            return <span className={`font-mono font-bold text-[9px] sm:text-[15px] tabular-nums num-col ${colorClass}`}>{display}</span>;
+            return <span className={`font-mono font-bold text-xs sm:text-[15px] tabular-nums num-col ${colorClass}`}>{display}</span>;
         }
         
-        return <span className="text-[10px] sm:text-[15px] font-bold">{val}</span>;
+        return <span className="text-xs sm:text-[15px] font-bold">{val}</span>;
     };
 
     return (
         <table className={`data-table min-w-full`}>
             <thead>
-                <tr className={`border-b text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                <tr className={`border-b text-[10px] sm:text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                     {columns.map((col, i) => (
                         col.isRank ? 
                             <th key={i} className="pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th> :
@@ -957,14 +966,14 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                 </tr>
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                {data.map((item) => {
+                {data.map((item, idx) => {
                     if (item.isDivider) {
                         return (
-                            <tr key="divider" className="bg-transparent pointer-events-none">
+                            <tr key={`divider-${idx}`} className="bg-transparent pointer-events-none">
                                 <td colSpan={columns.length} className="py-4 sm:py-6 text-center">
                                     <div className={`flex items-center gap-4 opacity-40 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                                         <div className="h-px bg-current flex-1" />
-                                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{item.label}</span>
+                                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] whitespace-nowrap">{item.label}</span>
                                         <div className="h-px bg-current flex-1" />
                                     </div>
                                 </td>
@@ -1004,7 +1013,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec) => (
           <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
               {stats.topStats[sec.k].map((p, i) => {
                 let displayVal;
@@ -1019,11 +1028,11 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                     <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col ml-0.5">
-                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className={`text-xs sm:text-sm font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
                         <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
                       </div>
                     </div>
-                    <span className={`font-mono font-black text-blue-500 text-[8px] sm:text-[14px] shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{displayVal}</span>
+                    <span className={`font-mono font-black text-blue-500 text-xs sm:text-sm shrink-0 tabular-nums num-col ${sec.k === 'totalFireCount' ? 'glow-fire' : ''} ${sec.k === 'contributionScore' ? 'glow-gold' : ''}`}>{displayVal}</span>
                   </div>
                 );
               })}
@@ -1031,11 +1040,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           </div>
         ))}
       </div>
-      <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
+      <div className={`relative rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
+        
+        <div className={`absolute top-[52px] sm:top-[68px] right-0 bottom-0 w-12 sm:hidden pointer-events-none z-10 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#151517]' : 'from-white'}`} />
+
         <div className="overflow-x-auto scrollbar-hide">
           <table className="hof-table min-w-full">
-            <thead><tr className={`border-b text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+            <thead><tr className={`border-b text-[10px] sm:text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
               <ASRHeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28 lg:w-36 pl-2 sm:pl-10" activeSort={medalSort} handler={setMedalSort} />
               <ASRHeaderComp l="COUNTRY" k="name" a="left" w="w-full px-2" activeSort={medalSort} handler={setMedalSort} />
               <ASRHeaderComp l="🥇" k="gold" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} />
@@ -1049,14 +1061,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                   <td className="pl-2 sm:pl-10 py-3 sm:py-8 text-center sm:text-left"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="px-2 py-3 sm:py-8 w-full min-w-[100px]">
                     <div className="flex flex-col">
-                      <span className={`text-[10px] sm:text-[15px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
+                      <span className={`text-xs sm:text-[15px] font-black uppercase tracking-tight leading-tight block ${tColor}`}>{c.name}</span>
                       <span className="text-base sm:text-2xl mt-0.5 leading-none drop-shadow-sm shrink-0">{c.flag}</span>
                     </div>
                   </td>
-                  <td className={`text-right font-mono font-black text-[9px] sm:text-[15px] glow-gold tabular-nums num-col text-blue-500`}>{c.gold}</td>
-                  <td className={`text-right font-mono font-black text-[9px] sm:text-[15px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
-                  <td className={`text-right font-mono font-black text-[9px] sm:text-[15px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
-                  <td className={`pr-4 sm:pr-10 lg:pr-16 text-right font-mono font-black ${tColor} text-[9px] sm:text-[15px] tabular-nums num-col`}>{c.total}</td>
+                  <td className={`text-right font-mono font-black text-xs sm:text-[15px] glow-gold tabular-nums num-col text-blue-500`}>{c.gold}</td>
+                  <td className={`text-right font-mono font-black text-xs sm:text-[15px] glow-silver tabular-nums num-col ${tColor}`}>{c.silver}</td>
+                  <td className={`text-right font-mono font-black text-xs sm:text-[15px] glow-bronze tabular-nums num-col ${tColor}`}>{c.bronze}</td>
+                  <td className={`pr-4 sm:pr-10 lg:pr-16 text-right font-mono font-black ${tColor} text-xs sm:text-[15px] tabular-nums num-col`}>{c.total}</td>
                 </tr>
               ))}
             </tbody>
@@ -1073,7 +1085,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView }) => (
             <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
                 <IconSpeed />
             </div>
-            <span className="font-black tracking-tighter text-[9px] xs:text-[11px] sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
+            <span className="font-black tracking-tighter text-xs sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
                 ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
             </span>
         </div>
@@ -1092,7 +1104,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView }) => (
                         onClick={() => setView(v.id)} 
                         className={`
                             shrink-0 border px-3 sm:px-5 py-1.5 sm:py-2 rounded-full 
-                            text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300
+                            text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300
                             whitespace-nowrap select-none
                             ${view === v.id 
                                 ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' 
@@ -1106,7 +1118,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView }) => (
             </div>
         </div>
         
-        <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
+        <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
             {theme === 'dark' ? <IconSun /> : <IconMoon />}
         </button>
     </nav>
@@ -1132,19 +1144,19 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                     <div className="flex flex-wrap gap-0.5">
                         <button 
                             onClick={() => { setEventType('open'); if(view === 'hof') setView('players'); }} 
-                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
                         >
                             2026 OPEN
                         </button>
                         <button 
                             onClick={() => { setEventType('all-time'); if(view === 'hof') setView('players'); }} 
-                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
                         >
                             ALL-TIME
                         </button>
                         <button 
                             onClick={() => setView('hof')} 
-                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${view === 'hof' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
+                            className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view === 'hof' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
                         >
                             HOF
                         </button>
@@ -1158,7 +1170,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                                 href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="px-3 sm:px-5 py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
+                                className="px-3 sm:px-5 py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
                             >
                                 ASR MAP
                                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1170,7 +1182,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                         <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                             <div className="flex">
                                 {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                                    <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}>{g.l}</button>
+                                    <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${gen === g.id ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}>{g.l}</button>
                                 ))}
                             </div>
                         </div>
@@ -1182,11 +1194,11 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                 <div className={`flex flex-col gap-4 sm:gap-6 w-full animate-in fade-in slide-in-from-top-4 duration-700 mb-2 sm:mb-4`}>
                     <div className={`flex flex-col items-center justify-center py-10 sm:py-16 px-4 rounded-2xl sm:rounded-[2rem] border relative overflow-hidden ${theme === 'dark' ? 'bg-blue-600/10 border-blue-500/20 shadow-[0_0_40px_rgba(37,99,235,0.15)]' : 'bg-blue-50 border-blue-200 shadow-xl'}`}>
                         <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
-                        <h4 className={`mb-6 sm:mb-8 text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] animate-subtle-pulse drop-shadow-lg ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                        <h4 className={`mb-6 sm:mb-8 text-xs sm:text-sm font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] animate-subtle-pulse drop-shadow-lg ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
                             THE 2026 ASR OPEN STARTS IN
                         </h4>
                         <div className="scale-90 sm:scale-100 drop-shadow-xl">
-                            <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
+                           <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
                         </div>
                     </div>
 
@@ -1195,7 +1207,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                             <h3 className={`text-sm sm:text-lg font-black uppercase tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                                 GET ON BOARD
                             </h3>
-                            <p className={`text-[10px] sm:text-[13px] font-bold leading-relaxed opacity-80 max-w-2xl ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <p className={`text-xs sm:text-sm font-bold leading-relaxed opacity-80 max-w-2xl ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                                 Join the free community to get official course drops, submit your runs, and claim your rank. Zero entry fees. Just proof of work.
                             </p>
                         </div>
@@ -1203,7 +1215,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                             href="https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93" 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="shrink-0 flex items-center justify-center gap-2.5 px-6 py-3.5 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] hover:-translate-y-1 active:translate-y-0 w-full md:w-auto"
+                            className="shrink-0 flex items-center justify-center gap-2.5 px-6 py-3.5 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] hover:-translate-y-1 active:translate-y-0 w-full md:w-auto"
                         >
                             JOIN THE OPEN
                             <IconCornerUpRight size={16} />
@@ -1217,9 +1229,9 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                     <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
                         <IconSearch size={12} />
                     </div>
-                    <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-[11px] sm:text-[14px] font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
+                    <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-xs sm:text-sm font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
                     {search && (
-                        <button onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <button aria-label="Clear Search" onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
                             <IconX size={14} />
                         </button>
                     )}
@@ -1230,7 +1242,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
 };
 
 const ASRFooter = () => (
-    <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[8px] sm:text-[10px] whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
+    <footer className="mt-16 sm:mt-24 text-center pb-12 sm:pb-24 opacity-20 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] text-[10px] sm:text-xs whitespace-nowrap shrink-0">© 2026 APEX SPEED RUN</footer>
 );
 
 // --- STATIC DATA & CONFIGURATION ---
@@ -1282,20 +1294,37 @@ const useASRData = () => {
   const [state, setState] = useState({
     data: [], openData: [], atPerfs: {}, opPerfs: {},
     lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: [],
-    isLoading: true
+    isLoading: true, hasError: false, hasPartialError: false
   });
 
   const fetchData = useCallback(async () => {
-    const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&t=${Date.now()}`;
+    const cacheBucket = Math.floor(Date.now() / 300000); 
+    const getCsv = (q) => `https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`;
+
+    const safeFetch = async (url) => {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.text();
+        } catch (e) {
+            console.error(`Fetch failed for ${url}:`, e);
+            return ""; 
+        }
+    };
+
     try {
       const [rM, rF, rLive, rSet, rSettersM, rSettersF] = await Promise.all([
-        fetch(getCsv('sheet=RANKINGS (M)')).then(r => r.text()),
-        fetch(getCsv('sheet=RANKINGS (F)')).then(r => r.text()),
-        fetch(getCsv('gid=623600169')).then(r => r.text()),
-        fetch(getCsv('gid=1961325686')).then(r => r.text()),
-        fetch(getCsv('gid=595214914')).then(r => r.text()),
-        fetch(getCsv('gid=566627843')).then(r => r.text())
+        safeFetch(getCsv('sheet=RANKINGS (M)')),
+        safeFetch(getCsv('sheet=RANKINGS (F)')),
+        safeFetch(getCsv('gid=623600169')),
+        safeFetch(getCsv('gid=1961325686')),
+        safeFetch(getCsv('gid=595214914')),
+        safeFetch(getCsv('gid=566627843'))
       ]);
+      
+      const hasTotalError = !rM && !rF && !rLive;
+      const hasPartialError = !hasTotalError && (!rM || !rF || !rLive || !rSet || !rSettersM || !rSettersF);
+
       const pM = processRankingData(rM, 'M'); 
       const pF = processRankingData(rF, 'F');
       const initialMetadata = {};
@@ -1318,11 +1347,13 @@ const useASRData = () => {
         dnMap: processed.athleteDisplayNameMap,
         cMet: processed.courseMetadata,
         settersData: allSetters,
-        isLoading: false
+        isLoading: false,
+        hasError: hasTotalError,
+        hasPartialError
       });
     } catch(e) { 
-        console.error("Data fetch failed:", e); 
-        setState(prev => ({ ...prev, isLoading: false }));
+        console.error("Critical Processing failed:", e); 
+        setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
     }
   }, []);
 
@@ -1330,16 +1361,28 @@ const useASRData = () => {
   return state;
 };
 
-export default function App() {
+// --- MAIN APPLICATION COMPONENT ---
+function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
   const [view, setView] = useState('players'); 
   const [search, setSearch] = useState('');
   
-  // Navigation State for Modals (Rabbit Hole Fix + Forward History)
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  useEffect(() => {
+    const titleMap = {
+        players: 'Players',
+        setters: 'Setters',
+        courses: 'Courses',
+        cities: 'Cities',
+        countries: 'Countries',
+        hof: 'Hall of Fame'
+    };
+    document.title = `ASR | ${titleMap[view] || 'Apex Speed Run'}`;
+  }, [view]);
   
   const openModal = useCallback((type, data) => {
     setHistoryIndex(currIdx => {
@@ -1371,7 +1414,6 @@ export default function App() {
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
   const canGoForward = historyIndex < modalHistory.length - 1;
   
-  // Unified Sort State
   const [viewSorts, setViewSorts] = useState({
     players: { key: 'rating', direction: 'descending' },
     setters: { key: 'impact', direction: 'descending' },
@@ -1386,7 +1428,7 @@ export default function App() {
     setViewSorts(prev => ({ ...prev, [view]: updated }));
   };
 
-  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData, isLoading } = useASRData();
+  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData, isLoading, hasError, hasPartialError } = useASRData();
 
   const list = useMemo(() => {
     const src = eventType === 'all-time' ? data : openData;
@@ -1474,18 +1516,14 @@ export default function App() {
 
     const sort = viewSorts.setters;
     const dir = sort.direction === 'ascending' ? 1 : -1;
-    
-    // Helper to sort
     const sortFn = (a, b) => robustSort(a, b, sort.key, dir);
 
     qualified.sort(sortFn);
     unranked.sort((a, b) => (b.impact - a.impact) || (b.sets - a.sets));
 
-    // Add Rank
     const finalQual = qualified.map((s, i) => ({ ...s, currentRank: i + 1, isQualified: true }));
     const finalUnranked = unranked.map(s => ({ ...s, currentRank: "UR", isQualified: false }));
 
-    // Merge
     if (finalQual.length > 0 && finalUnranked.length > 0) {
         return [...finalQual, { isDivider: true, label: "SET 3+ COURSES TO GET RANKED" }, ...finalUnranked];
     }
@@ -1566,19 +1604,40 @@ export default function App() {
       <ASRControlBar view={view} setView={setView} eventType={eventType} setEventType={setEventType} gen={gen} setGen={setGen} search={search} setSearch={setSearch} theme={theme} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
+        {hasPartialError && !isLoading && !hasError && (
+            <div className={`mb-6 p-3 rounded-xl flex items-center justify-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest animate-subtle-pulse shadow-sm ${theme === 'dark' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'}`}>
+                ⚠️ Partial Data Load — Live Feed Syncing...
+            </div>
+        )}
+
         {isLoading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-6">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin opacity-80 ${theme === 'dark' ? 'text-blue-500' : 'text-blue-600'}`}>
                     <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                 </svg>
-                <div className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] animate-pulse ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                <div className={`text-xs sm:text-sm font-black uppercase tracking-[0.3em] animate-pulse ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                     CHECKING ASR LIVE FEED...
                 </div>
+            </div>
+        ) : hasError && list.length === 0 && settersList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 sm:py-32 space-y-6">
+                <div className="p-6 rounded-full bg-red-500/10 text-red-500 mb-4">
+                    <IconX size={32} />
+                    </div>
+                <div className={`text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-center px-4 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    CONNECTION TO ASR SERVERS FAILED
+                    <span className={`block mt-3 text-[10px] sm:text-xs normal-case tracking-normal font-bold opacity-60`}>Google Sheets API might be temporarily rate-limited.<br/>Please wait a moment and try again.</span>
+                </div>
+                <button onClick={() => window.location.reload()} className="mt-8 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg">
+                    RETRY CONNECTION
+                </button>
             </div>
         ) : view === 'hof' ? (
             <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p)} onSetterClick={s => openModal('setter', s)} medalSort={viewSorts.hof} setMedalSort={handleSort} />
         ) : (
-          <div className={`border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+          <div className={`relative border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+            <div className={`absolute top-0 right-0 bottom-0 w-12 sm:hidden pointer-events-none z-10 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#09090b]' : 'from-white'}`} />
+            
             <div className="overflow-x-auto scrollbar-hide relative">
               {currentView && currentView.data && currentView.data.length > 0 ? (
                 <ASRDataTable 
@@ -1597,7 +1656,7 @@ export default function App() {
                     <h3 className="text-sm sm:text-xl font-black uppercase tracking-widest mb-1.5 sm:mb-2 text-current">
                         A FRESH, NEW SEASON
                     </h3>
-                    <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] opacity-60">
+                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] opacity-60">
                         LEADERBOARDS GO LIVE AT LAUNCH
                     </p>
                 </div>
@@ -1611,9 +1670,8 @@ export default function App() {
   );
 }
 
-// --- BOILERPLATE FOR ROOT RENDERING ---
-const container = document.getElementById('root');
-const root = createRoot(container);
+// --- RENDERING ---
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <App />
