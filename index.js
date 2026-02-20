@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
+
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
   <style>{`
