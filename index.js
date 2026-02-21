@@ -5,11 +5,19 @@ import { createRoot } from 'react-dom/client';
  * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
  * Core Model: Gemini 3 Flash
  * Generation Date: 2026-02-20
+ * * UPDATE: Phase 1 (Anti-Fragility & Debounce Optimization) applied.
+ * * UPDATE: Phase 2 (Lazy Load Memory Optimization) applied.
+ * * UPDATE: Phase 3 (Leaflet Singleton & Stability) applied.
+ * * UPDATE: Phase 4 (Typography, Skeletons, & Sanitization) applied.
+ * * UPDATE: Phase 5 (Virtualization, Gradient Avatars, & Tooltips) applied.
+ * * UPDATE: Phase 6 (Persistence, PWA Tags, & Deep Tooltips) applied.
  */
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
   <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
+
     @keyframes subtlePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
     .animate-subtle-pulse { animation: subtlePulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     .glow-gold { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.6)); }
@@ -46,6 +54,7 @@ const CustomStyles = () => (
     }
     
     html, body { 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       text-rendering: optimizeLegibility; 
       width: 100%; 
       margin: 0; 
@@ -53,6 +62,10 @@ const CustomStyles = () => (
       overflow-x: hidden;
       overflow-y: auto;
       min-height: 100%;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace !important;
     }
 
     .data-table, .hof-table { 
@@ -138,6 +151,69 @@ const IconVideoPlay = ({ size = 16, className = "" }) => (
   </svg>
 );
 
+// --- UI COMPONENTS & UTILS ---
+const ASRTooltip = ({ text, children }) => (
+  <div className="relative group/tooltip inline-flex items-center justify-center cursor-help">
+    {children}
+    <div className="absolute bottom-full mb-2 z-[200] w-48 sm:w-56 p-2.5 text-[10px] sm:text-xs font-bold normal-case tracking-normal leading-relaxed rounded-xl bg-black/90 backdrop-blur-xl text-slate-200 border border-white/10 shadow-2xl left-1/2 -translate-x-1/2 pointer-events-none opacity-0 invisible translate-y-1 group-hover/tooltip:opacity-100 group-hover/tooltip:visible group-hover/tooltip:-translate-y-0 transition-all duration-300">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white/10">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90 translate-y-[3px]" />
+      </div>
+    </div>
+  </div>
+);
+
+const stringToHash = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return Math.abs(hash);
+};
+
+const GRADIENTS = [
+  'from-rose-500 to-orange-400', 'from-blue-500 to-indigo-600', 'from-emerald-500 to-cyan-600',
+  'from-amber-400 to-orange-600', 'from-fuchsia-600 to-pink-600', 'from-violet-600 to-purple-600',
+  'from-cyan-500 to-blue-600', 'from-teal-500 to-emerald-600'
+];
+
+const FallbackAvatar = ({ name, sizeCls = "text-2xl sm:text-5xl" }) => {
+  const hash = stringToHash(name || "");
+  const grad = GRADIENTS[hash % GRADIENTS.length];
+  return (
+    <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black drop-shadow-md ${sizeCls}`}>
+      {getInitials(name)}
+    </div>
+  );
+};
+
+const ASRSkeletonTable = ({ theme }) => (
+    <div className={`relative border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col w-full animate-in fade-in duration-500 ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+        <div className={`p-4 sm:p-5 border-b flex items-center gap-4 ${theme === 'dark' ? 'border-white/5' : 'border-slate-200'}`}>
+             <div className={`h-3 w-12 rounded bg-current opacity-10 animate-pulse`} />
+             <div className={`h-3 w-24 rounded bg-current opacity-10 animate-pulse`} />
+             <div className="flex-1" />
+             <div className={`h-3 w-16 rounded bg-current opacity-10 animate-pulse hidden sm:block`} />
+             <div className={`h-3 w-16 rounded bg-current opacity-10 animate-pulse`} />
+        </div>
+        <div className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
+            {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center p-3 sm:p-5 gap-3 sm:gap-6">
+                    <div className={`h-7 w-7 sm:h-10 sm:w-10 rounded-full bg-current opacity-5 animate-pulse shrink-0`} />
+                    <div className="flex-1 space-y-2">
+                        <div className={`h-3 sm:h-4 w-32 sm:w-48 rounded bg-current opacity-10 animate-pulse`} />
+                        <div className={`h-2 sm:h-3 w-16 sm:w-24 rounded bg-current opacity-5 animate-pulse`} />
+                    </div>
+                    <div className="flex gap-4 sm:gap-8 items-center shrink-0">
+                        <div className={`h-4 w-12 sm:w-16 rounded bg-blue-500/20 animate-pulse`} />
+                        <div className={`h-4 w-8 sm:w-12 rounded bg-current opacity-10 animate-pulse hidden sm:block`} />
+                        <div className={`h-4 w-8 sm:w-12 rounded bg-current opacity-10 animate-pulse`} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
 const CountdownTimer = ({ targetDate, theme }) => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -190,21 +266,60 @@ const CountdownTimer = ({ targetDate, theme }) => {
 };
 
 // --- LEAFLET HOOK ---
+let isLeafletInjecting = false;
+
 const useLeaflet = () => {
     const [loaded, setLoaded] = useState(!!window.L);
-    useEffect(() => {
-        if (window.L) return setLoaded(true);
-        const css = document.createElement('link');
-        css.rel = 'stylesheet';
-        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(css);
 
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.onload = () => setLoaded(true);
-        document.head.appendChild(script);
+    useEffect(() => {
+        if (window.L) {
+            setLoaded(true);
+            return;
+        }
+
+        if (!isLeafletInjecting) {
+            isLeafletInjecting = true;
+            
+            // Inject CSS safely
+            if (!document.querySelector('link[href*="leaflet.css"]')) {
+                const css = document.createElement('link');
+                css.rel = 'stylesheet';
+                css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(css);
+            }
+
+            // Inject JS safely
+            if (!document.querySelector('script[src*="leaflet.js"]')) {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = () => setLoaded(true);
+                document.head.appendChild(script);
+            }
+        } else {
+            // If already injecting, poll gently until ready to prevent race conditions
+            const checkLeaflet = setInterval(() => {
+                if (window.L) {
+                    setLoaded(true);
+                    clearInterval(checkLeaflet);
+                }
+            }, 100);
+            return () => clearInterval(checkLeaflet);
+        }
     }, []);
+
     return loaded;
+};
+
+// --- DEBOUNCE HOOK ---
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
 };
 
 const useGeoJSON = () => {
@@ -265,6 +380,16 @@ const getContinentData = (country) => {
 };
 
 // --- DATA HELPERS ---
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
+};
+
 const robustSort = (a, b, key, dir) => {
     let aVal = a[key];
     let bVal = b[key];
@@ -347,7 +472,7 @@ const processRankingData = (csv, gender) => {
   const setIdx = findIdx(['sets', 'total sets']);
   const cIdx = findIdx(['🪙', 'contribution']);
   const fireIdx = findIdx(['🔥', 'fire']);
-  const igIdx = findIdx(['ig', 'instagram', 'social']) !== -1 ? findIdx(['ig', 'instagram', 'social']) : 16;
+  const igIdx = findIdx(['ig', 'instagram', 'social']);
 
   return lines.slice(hIdx + 1).map((line, i) => {
     const vals = parseLine(line); 
@@ -391,9 +516,11 @@ const processSetListData = (csv) => {
     const flagIdx = findIdx(['flag', 'emoji']);
     const dateIdx = findIdx(['date', 'year']);
     const dateSetIdx = findIdx(['set on', 'updated', 'date set']);
-    const demoIdx = findIdx(['demo', 'rules', 'video']) !== -1 ? findIdx(['demo', 'rules', 'video']) : 31;
-    const coordsIdx = findIdx(['coord', 'gps', 'location', 'pin']) !== -1 ? findIdx(['coord', 'gps', 'location', 'pin']) : 14;
-    const stateIdx = 11; 
+    const demoIdx = findIdx(['demo', 'rules', 'video', 'url']);
+    const coordsIdx = findIdx(['coord', 'gps', 'location', 'pin']);
+    const stateIdx = findIdx(['state', 'prov', 'region']); 
+    const leadsIdx = findIdx(['lead', 'lead setter', 'leads', 'leadsetters']);
+    const assistsIdx = findIdx(['assistant', 'assistants', 'assistant setter', 'assistantsetters']);
     
     const map = {};
     lines.slice(1).forEach(l => {
@@ -404,20 +531,21 @@ const processSetListData = (csv) => {
             const rawFlag = (vals[flagIdx] || "").trim();
             const fixed = fixCountryEntity(rawCountry, rawFlag);
             
-            const leadSetters = vals[29] ? vals[29].trim() : "";
-            const assistantSetters = vals[30] ? vals[30].trim() : "";
+            const leadSetters = leadsIdx !== -1 ? (vals[leadsIdx] || "").trim() : "";
+            const assistantSetters = assistsIdx !== -1 ? (vals[assistsIdx] || "").trim() : "";
             
             let combinedSetter = leadSetters;
             if(assistantSetters) combinedSetter = combinedSetter ? `${combinedSetter}, ${assistantSetters}` : assistantSetters;
 
             const demoVideo = demoIdx !== -1 ? (vals[demoIdx] || "").trim() : "";
             const coordinates = coordsIdx !== -1 ? (vals[coordsIdx] || "").trim() : "";
+            const stateProv = stateIdx !== -1 ? (vals[stateIdx] || "").trim().toUpperCase() : "";
 
             map[course] = { 
                 is2026: (vals[dateIdx] || "").includes('2026'), 
                 flag: fixed.flag || '🏳️',
                 city: (vals[cityIdx] || "").trim().toUpperCase() || "UNKNOWN", 
-                stateProv: (vals[stateIdx] || "").trim().toUpperCase(),
+                stateProv: stateProv,
                 country: fixed.name.toUpperCase() || "UNKNOWN", 
                 difficulty: (vals[ratingIdx] || "").trim(),
                 length: (vals[lengthIdx] || "").trim(),
@@ -443,9 +571,9 @@ const processSettersData = (csv) => {
     const findIdx = (keys) => headers.findIndex(h => keys.some(k => h.toLowerCase().trim() === k || h.toLowerCase().includes(k)));
     
     const nameIdx = findIdx(['setter', 'name']);
-    let leadsIdx = 10;
-    let assistsIdx = 11;
-    let setsIdx = 12;
+    const leadsIdx = findIdx(['lead', 'leads', 'lead sets']);
+    const assistsIdx = findIdx(['assist', 'assists', 'assistant', 'assistant sets']);
+    const setsIdx = findIdx(['sets', 'total sets']);
 
     const countryIdx = findIdx(['country', 'nation']);
     const flagIdx = findIdx(['flag', 'emoji', 'region']);
@@ -470,9 +598,9 @@ const processSettersData = (csv) => {
             region: fixed.flag || '🏳️',
             countryName: fixed.name,
             igHandle: rawIg,
-            sets: cleanNumeric(vals[setsIdx]) || 0,
-            leads: cleanNumeric(vals[leadsIdx]) || 0,
-            assists: cleanNumeric(vals[assistsIdx]) || 0
+            sets: setsIdx !== -1 ? (cleanNumeric(vals[setsIdx]) || 0) : 0,
+            leads: leadsIdx !== -1 ? (cleanNumeric(vals[leadsIdx]) || 0) : 0,
+            assists: assistsIdx !== -1 ? (cleanNumeric(vals[assistsIdx]) || 0) : 0
         };
     }).filter(p => p !== null);
 };
@@ -493,8 +621,9 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
   const resultIdx = Math.max(0, findIdx(['result', 'time', 'pb']));
   const genderIdx = findIdx(['div', 'gender', 'sex']);
   const dateIdx = findIdx(['date', 'day', 'timestamp']);
-  const videoIdx = findIdx(['video', 'proof', 'link']) !== -1 ? findIdx(['video', 'proof', 'link']) : 7;
-  const tagIdx = findIdx(['tag', 'event', 'category']) !== -1 ? findIdx(['tag', 'event', 'category']) : 6;
+  const videoIdx = findIdx(['video', 'proof', 'link', 'url']);
+  const tagIdx = findIdx(['tag', 'event', 'category', 'season']);
+  
   const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
   const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
   const openAthleteSetCount = {}; const athleteDisplayNameMap = {};
@@ -506,7 +635,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     const numericValue = cleanNumeric(vals[resultIdx]);
     const runDate = dateIdx !== -1 ? new Date(vals[dateIdx]) : null;
     const rawVideo = videoIdx !== -1 ? (vals[videoIdx] || "").trim() : "";
-    const rawTag = tagIdx !== -1 ? (vals[tagIdx] || "") : (vals[6] || "");
+    const rawTag = tagIdx !== -1 ? (vals[tagIdx] || "") : "";
     if (!pName || !rawCourse || numericValue === null) return;
     const pKey = normalizeName(pName);
     const normalizedCourseName = rawCourse.toUpperCase();
@@ -739,11 +868,11 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 }
 
                 return (
-                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={c.name} onClick={() => onCourseClick(c)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
-                                <span className="text-xs sm:text-base font-black uppercase truncate">{c.name}</span>
+                                <span className="text-xs sm:text-base font-black uppercase truncate transition-colors group-hover:text-blue-500">{c.name}</span>
                                 <div className="text-[10px] sm:text-xs font-black uppercase flex items-center gap-1 mt-0.5">
                                     <span className="opacity-40 truncate">{locText}</span>
                                     <span className="opacity-100 shrink-0 text-[10px] sm:text-xs">{c.flag}</span>
@@ -752,7 +881,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[9px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
                                 <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
@@ -796,23 +925,35 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   );
 };
 
-const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme, header, children }) => {
+const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme, header, breadcrumbs, onBreadcrumbClick, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-500 cursor-pointer" onClick={onClose}>
-      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-500 flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-300 cursor-pointer" onClick={onClose}>
+      <div className={`${theme === 'dark' ? 'bg-[#121214] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
         <div className={`shrink-0 relative h-fit min-h-[120px] sm:min-h-[160px] p-5 sm:p-10 flex flex-col justify-end bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-400/40'} to-transparent`}>
-          <div className="absolute top-4 left-4 flex items-center gap-1.5 z-10">
-              <button aria-label="Go Back" onClick={onBack} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Back">
+          <div className="absolute top-4 left-4 right-14 flex items-center gap-1.5 z-10 min-w-0">
+              <button aria-label="Go Back" onClick={onBack} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer shrink-0" title="Go Back">
                   <IconCornerUpLeft size={16} />
               </button>
               {canGoForward && (
-                  <button aria-label="Go Forward" onClick={onForward} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Go Forward">
+                  <button aria-label="Go Forward" onClick={onForward} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer shrink-0" title="Go Forward">
                       <IconCornerUpRight size={16} />
                   </button>
               )}
+              {breadcrumbs && breadcrumbs.length > 0 && (
+                  <div className="ml-1 sm:ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white whitespace-nowrap bg-black/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/10 shadow-lg shrink min-w-0">
+                      {breadcrumbs.map((b, i) => (
+                          <React.Fragment key={i}>
+                              <span className={`transition-colors ${i === breadcrumbs.length - 1 ? 'opacity-100' : 'opacity-50 cursor-pointer hover:opacity-100'}`} onClick={() => onBreadcrumbClick(i)}>
+                                  {b}
+                              </span>
+                              {i < breadcrumbs.length - 1 && <span className="opacity-30 shrink-0">/</span>}
+                          </React.Fragment>
+                      ))}
+                  </div>
+              )}
           </div>
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-10 shrink-0">
               <button aria-label="Close Modal" onClick={onClose} className="p-2 sm:p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all cursor-pointer" title="Close">
                   <IconX size={16} />
               </button>
@@ -829,7 +970,7 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
   );
 };
 
-const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, data, type, theme, courses, onCourseClick }) => {
+const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, data, type, theme, courses, onCourseClick, breadcrumbs, onBreadcrumbClick }) => {
     if (!isOpen || !data) return null;
     const isCity = type === 'city';
     const isContinent = type === 'continent';
@@ -870,7 +1011,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
     );
 
     return (
-        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
+        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={onBreadcrumbClick}>
             <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                     {type === 'city' ? 'CITY STATS' : type === 'continent' ? 'CONTINENT STATS' : 'COUNTRY STATS'}
@@ -895,7 +1036,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
     );
 };
 
-const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, setter, theme, courses, onCourseClick }) => {
+const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, setter, theme, courses, onCourseClick, breadcrumbs, onBreadcrumbClick }) => {
     const [imgError, setImgError] = useState(false);
     
     useEffect(() => { 
@@ -909,7 +1050,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
     );
 
     const stats = [
-        { l: 'IMPACT', v: setter.impact, c: 'text-blue-500' },
+        { l: 'IMPACT', v: setter.impact, c: 'text-blue-500', tip: 'Total athlete runs on courses you have set.' },
         { l: 'SETS', v: setter.sets },
         { l: 'LEADS', v: setter.leads },
         { l: 'ASSISTS', v: setter.assists }
@@ -923,7 +1064,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
                 {!imgError ? (
                     <img src={avatarUrl} alt={setter.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
                 ) : (
-                    getInitials(setter.name)
+                    <FallbackAvatar name={setter.name} />
                 )}
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
@@ -944,7 +1085,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
     );
 
     return (
-        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
+        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={onBreadcrumbClick}>
             <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                     SETTER STATS
@@ -952,7 +1093,9 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
                         <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap flex items-center">
+                                {s.tip ? <ASRTooltip text={s.tip}><span className="cursor-help border-b border-dashed border-current">{s.l}</span></ASRTooltip> : s.l}
+                            </span>
                             <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                         </div>
                     ))}
@@ -978,7 +1121,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
     );
 };
 
-const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, player: p, theme, performanceData, onCourseClick }) => {
+const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, player: p, theme, performanceData, onCourseClick, breadcrumbs, onBreadcrumbClick }) => {
   const [imgError, setImgError] = useState(false);
   
   useEffect(() => { 
@@ -1006,17 +1149,16 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
     { l: 'SETS', v: p.sets || 0 }, { l: '🔥', v: totalFires, g: 'glow-fire' }
   ];
 
+  const tooltipMap = { 
+      '🔥': "Fire Tokens: Awarded for elite sub-7 (M) / sub-9 (W) times.", 
+      '🪙': "Contribution Score: Earned by setting runs, adding courses, and community activity." 
+  };
+
   const avatarUrl = `./avatars/${pKey}.jpg`;
 
   const Header = (
     <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
-        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
-            {!imgError ? (
-                <img src={avatarUrl} alt={p.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
-            ) : (
-                getInitials(p.name)
-            )}
-        </div>
+        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
         <div className="min-w-0 flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 min-w-0">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{p.name}</h2>
@@ -1035,7 +1177,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
   );
 
   return (
-    <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
+    <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={onBreadcrumbClick}>
         <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
             <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                 PLAYER STATS
@@ -1043,7 +1185,9 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             {stats.map((s, i) => (
                 <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
+                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'} flex items-center`}>
+                    {tooltipMap[s.l] ? <ASRTooltip text={tooltipMap[s.l]}><span className="cursor-help border-b border-dashed border-current">{s.l}</span></ASRTooltip> : s.l}
+                </span>
                 <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
                 </div>
             ))}
@@ -1056,9 +1200,9 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             </h3>
             <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {courseData.map((c, i) => (
-                <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                     <div className="flex flex-col min-w-0 pr-3">
-                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
+                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                         {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
                         {c.rank >= 4 && <span className="text-[10px] font-mono font-black italic opacity-40">{c.rank}</span>}
@@ -1094,11 +1238,11 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                 const meta = athleteMetadata[pKey] || {};
                 const points = genderRecord ? (genderRecord / time) * 100 : 0;
                 return (
-                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`group flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                             <ASRRankBadge rank={i + 1} theme={theme} />
                             <div className="flex flex-col min-w-0">
-                              <span className={`text-xs sm:text-sm font-black uppercase ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
+                              <span className={`text-xs sm:text-sm font-black uppercase transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{athleteDisplayNameMap[pKey]}</span>
                               <span className="text-[10px] sm:text-xs uppercase font-black">{meta.region || '🏳️'}</span>
                             </div>
                         </div>
@@ -1142,7 +1286,7 @@ const SetterDisplay = ({ text, onSetterClick }) => {
     );
 };
 
-const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
+const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick, breadcrumbs, onBreadcrumbClick }) => {
     if (!isOpen || !course) return null;
     const displayDifficulty = course.difficulty ? Array.from(course.difficulty).join(' ') : '-';
     const isPlural = (str) => String(str).includes(',') || String(str).includes('&') || String(str).toLowerCase().includes(' and ');
@@ -1162,7 +1306,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
     if (course.city && course.city !== 'UNKNOWN') {
         locStr = course.city;
         if ((course.country === 'USA' || course.country === 'CANADA') && course.stateProv) {
-            locStr += `, ${course.stateProv}`;
+            locText += `, ${course.stateProv}`;
         }
         locStr += ', ';
     }
@@ -1180,7 +1324,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
     );
 
     return (
-        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
+        <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={onBreadcrumbClick}>
             {(course.demoVideo || course.coordinates) && (
                 <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
                     {course.demoVideo && (
@@ -1252,20 +1396,48 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
     );
 };
 
-const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
-  return (
-    <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, theme, tooltip }) => {
+  const content = (
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-tighter text-[10px] sm:text-xs font-black leading-none">{l}</span>
+        <span className={`uppercase tracking-tighter text-[10px] sm:text-xs font-black leading-none ${tooltip ? 'cursor-help border-b border-dashed border-current' : ''}`}>{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
         </div>
       </div>
+  );
+  return (
+    <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'} ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+      {tooltip ? <ASRTooltip text={tooltip}>{content}</ASRTooltip> : content}
     </th>
   );
 };
 
 const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
+    const [visibleCount, setVisibleCount] = useState(50);
+    const observerTarget = useRef(null);
+
+    // Reset pagination when data changes (e.g. searching or changing tabs/sorts)
+    useEffect(() => {
+        setVisibleCount(50);
+    }, [data, sort]);
+
+    // Progressive rendering intersection observer
+    useEffect(() => {
+        if (!observerTarget.current) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount(prev => Math.min(prev + 50, data.length));
+                }
+            },
+            { threshold: 0.1, rootMargin: '200px' }
+        );
+        observer.observe(observerTarget.current);
+        return () => observer.disconnect();
+    }, [data.length]);
+
+    const visibleData = useMemo(() => data.slice(0, visibleCount), [data, visibleCount]);
+
     const renderCell = (col, item) => {
         const val = item[col.key];
         if (col.isRank) return <ASRRankBadge rank={item.currentRank} theme={theme} />;
@@ -1290,18 +1462,18 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
     };
 
     return (
-        <table className={`data-table min-w-full`}>
-            <thead>
-                <tr className={`border-b text-[10px] sm:text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+        <table className={`data-table min-w-full relative`}>
+            <thead className={`sticky top-0 z-20 backdrop-blur-xl shadow-sm ${theme === 'dark' ? 'bg-[#18181b]/95 text-slate-400' : 'bg-[#f8fafc]/95 text-slate-500'}`}>
+                <tr className={`text-[10px] sm:text-xs font-black uppercase tracking-widest`}>
                     {columns.map((col, i) => (
                         col.isRank ? 
-                            <th key={i} className="pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap">RANK</th> :
-                            <ASRHeaderComp key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} activeSort={sort} handler={onSort} />
+                            <th key={i} className={`pl-3 sm:pl-10 py-4 sm:py-5 text-left w-12 sm:w-28 whitespace-nowrap border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>RANK</th> :
+                            <ASRHeaderComp key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} activeSort={sort} handler={onSort} theme={theme} tooltip={col.tooltip} />
                     ))}
                 </tr>
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
-                {data.map((item, idx) => {
+                {visibleData.map((item, idx) => {
                     if (item.isDivider) {
                         return (
                             <tr key={`divider-${idx}`} className="bg-transparent pointer-events-none">
@@ -1325,6 +1497,12 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                         </tr>
                     );
                 })}
+                {/* Virtualization trigger element */}
+                {visibleCount < data.length && (
+                    <tr ref={observerTarget} className="h-16 pointer-events-none">
+                        <td colSpan={columns.length} className="text-center opacity-0">Loading...</td>
+                    </tr>
+                )}
             </tbody>
         </table>
     );
@@ -1481,8 +1659,8 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
                 }).addTo(layerGroup);
 
                 marker.bindTooltip(`
-                    <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${c.city !== 'UNKNOWN' ? c.city : c.country} <span>${c.flag}</span></div>
-                    <div class="text-xs sm:text-sm font-black uppercase">${c.name}</div>
+                    <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${escapeHTML(c.city !== 'UNKNOWN' ? c.city : c.country)} <span>${escapeHTML(c.flag)}</span></div>
+                    <div class="text-xs sm:text-sm font-black uppercase">${escapeHTML(c.name)}</div>
                 `, { 
                     className: theme === 'dark' ? 'dark-tooltip' : 'light-tooltip',
                     direction: 'top',
@@ -1581,23 +1759,23 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           { l: 'MOST IMPACT', k: 'impact' },
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec) => (
-          <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+          <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
             <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
-            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'}`}>
+            <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'} flex-1`}>
               {stats.topStats[sec.k].map((p, i) => {
                 let displayVal;
                 if (sec.k === 'rating') displayVal = (p.rating || 0).toFixed(2);
                 else if (sec.k === 'winPercentage') displayVal = `${(p.winPercentage || 0).toFixed(1)}%`;
                 else displayVal = (p[sec.k] !== undefined ? String(p[sec.k]) : String(p.value || 0));
                 return (
-                  <div key={`${sec.k}-${i}-${p.name}`} className={`flex items-center justify-between p-2.5 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer group/item'}`} onClick={() => {
+                  <div key={`${sec.k}-${i}-${p.name}`} className={`group flex items-center justify-between p-2.5 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 ${['cityStats', 'countryStats'].includes(sec.k) ? '' : 'cursor-pointer active:scale-[0.98]'}`} onClick={() => {
                       if (['impact', 'sets'].includes(sec.k)) onSetterClick(p);
                       else if (!['cityStats', 'countryStats'].includes(sec.k)) onPlayerClick(p);
                   }}>
                     <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col ml-0.5">
-                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className={`text-xs sm:text-sm font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover:text-blue-500' : ''} transition-colors`}>{p.name}</span>
                         <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
                       </div>
                     </div>
@@ -1609,21 +1787,23 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           </div>
         ))}
       </div>
-      <div className={`relative rounded-2xl sm:rounded-3xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit"><h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
+      <div className={`relative rounded-2xl sm:rounded-3xl border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit shrink-0"><h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">WORLDWIDE MEDAL COUNT</h3></div>
         
-        <div className={`absolute top-[52px] sm:top-[68px] right-0 bottom-0 w-12 sm:hidden pointer-events-none z-10 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#151517]' : 'from-white'}`} />
+        <div className={`absolute top-[52px] sm:top-[68px] right-0 bottom-0 w-12 sm:hidden pointer-events-none z-30 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#151517]' : 'from-white'}`} />
 
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="hof-table min-w-full">
-            <thead><tr className={`border-b text-[10px] sm:text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-white/5 text-slate-500 border-white/5' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-              <ASRHeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28 lg:w-36 pl-2 sm:pl-10" activeSort={medalSort} handler={setMedalSort} />
-              <ASRHeaderComp l="COUNTRY" k="name" a="left" w="w-full px-2" activeSort={medalSort} handler={setMedalSort} />
-              <ASRHeaderComp l="🥇" k="gold" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} />
-              <ASRHeaderComp l="🥈" k="silver" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} />
-              <ASRHeaderComp l="🥉" k="bronze" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} />
-              <ASRHeaderComp l="TOTAL" k="total" a="right" w="w-14 sm:w-28 lg:w-40 pr-4 sm:pr-10 lg:pr-16" activeSort={medalSort} handler={setMedalSort} />
-            </tr></thead>
+        <div className="overflow-auto scrollbar-hide max-h-[60vh] relative w-full">
+          <table className="hof-table min-w-full relative">
+            <thead className={`sticky top-0 z-20 backdrop-blur-xl shadow-sm ${theme === 'dark' ? 'bg-[#121214]/95 text-slate-400' : 'bg-white/95 text-slate-500'}`}>
+              <tr className={`text-[10px] sm:text-xs font-black uppercase tracking-widest`}>
+                <ASRHeaderComp l="RANK" k="rank" a="left" w="w-12 sm:w-28 lg:w-36 pl-2 sm:pl-10" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+                <ASRHeaderComp l="COUNTRY" k="name" a="left" w="w-full px-2" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+                <ASRHeaderComp l="🥇" k="gold" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+                <ASRHeaderComp l="🥈" k="silver" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+                <ASRHeaderComp l="🥉" k="bronze" a="right" w="w-10 sm:w-24 lg:w-32" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+                <ASRHeaderComp l="TOTAL" k="total" a="right" w="w-14 sm:w-28 lg:w-40 pr-4 sm:pr-10 lg:pr-16" activeSort={medalSort} handler={setMedalSort} theme={theme} />
+              </tr>
+            </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
                 <tr key={`medal-row-${c.name}-${c.flag}`} className="group hover:bg-black/[0.02] transition-colors">
@@ -1697,7 +1877,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
         players: 'PLAYERS',
         setters: 'SETTERS',
         courses: 'COURSES',
-        map: 'WORLD MAP',
+        map: 'MAP',
         hof: 'HALL OF FAME'
     };
 
@@ -1902,11 +2082,51 @@ const useASRData = () => {
 
 // --- MAIN APPLICATION COMPONENT ---
 function App() {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => {
+    try {
+        const saved = window.localStorage.getItem('asr-theme');
+        if (saved) return saved;
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    } catch(e) {
+        return 'dark'; // Fallback for strict iframes
+    }
+  });
+
+  useEffect(() => {
+    try {
+        window.localStorage.setItem('asr-theme', theme);
+    } catch(e) {}
+
+    // PWA & Status Bar theme colors
+    let metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (!metaTheme) {
+        metaTheme = document.createElement('meta');
+        metaTheme.name = 'theme-color';
+        document.head.appendChild(metaTheme);
+    }
+    metaTheme.content = theme === 'dark' ? '#09090b' : '#cbd5e1';
+
+    // iOS PWA capability tags
+    if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+        const metaApple = document.createElement('meta');
+        metaApple.name = 'apple-mobile-web-app-capable';
+        metaApple.content = 'yes';
+        document.head.appendChild(metaApple);
+        
+        const metaStatus = document.createElement('meta');
+        metaStatus.name = 'apple-mobile-web-app-status-bar-style';
+        metaStatus.content = 'black-translucent';
+        document.head.appendChild(metaStatus);
+    }
+  }, [theme]);
+
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
   const [view, setView] = useState('players'); 
   const [search, setSearch] = useState('');
+  
+  // Appling Debounce Hook
+  const debouncedSearch = useDebounce(search, 300);
   
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -1971,8 +2191,9 @@ function App() {
   const isAllTimeContext = view === 'hof' || eventType === 'all-time';
 
   const list = useMemo(() => {
+    if (view !== 'players') return []; // Phase 2: Lazy Load
     const src = isAllTimeContext ? data : openData;
-    const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.countryName || "").toLowerCase().includes(search.toLowerCase())));
+    const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (p.countryName || "").toLowerCase().includes(debouncedSearch.toLowerCase())));
     if (filtered.length === 0) return [];
 
     const isQual = (p) => p.gender === 'M' ? p.runs >= 4 : (p.gender === 'F' ? p.runs >= 2 : false);
@@ -2000,7 +2221,7 @@ function App() {
     }
 
     return [...finalQual, ...finalUnranked];
-  }, [search, viewSorts.players, gen, isAllTimeContext, data, openData]);
+  }, [debouncedSearch, viewSorts.players, gen, isAllTimeContext, data, openData, view]);
 
   const rawCourseList = useMemo(() => {
     const contextM = isAllTimeContext ? lbAT.M : lbOpen.M;
@@ -2036,7 +2257,8 @@ function App() {
   }, [lbAT, lbOpen, isAllTimeContext, cMet, atRawBest, opRawBest]);
 
   const courseList = useMemo(() => {
-    const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase()) || c.country.toLowerCase().includes(search.toLowerCase()));
+    if (view !== 'courses') return []; // Phase 2: Lazy Load
+    const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.city.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.country.toLowerCase().includes(debouncedSearch.toLowerCase()));
     if (filtered.length === 0) return [];
 
     const sort = viewSorts.courses;
@@ -2049,7 +2271,7 @@ function App() {
         return robustSort(a, b, sort.key, dir);
     });
     return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, search, viewSorts.courses]);
+  }, [rawCourseList, debouncedSearch, viewSorts.courses, view]);
 
   // Extract core setter mathematical data securely without visual dividers
   const settersWithImpact = useMemo(() => {
@@ -2061,7 +2283,8 @@ function App() {
 
   // Construct UI list containing dividers for the "SETTERS" view specifically
   const settersList = useMemo(() => {
-    const filtered = settersWithImpact.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    if (view !== 'setters') return []; // Phase 2: Lazy Load
+    const filtered = settersWithImpact.filter(s => s.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
     if (filtered.length === 0) return [];
 
     const threshold = 3;
@@ -2083,36 +2306,40 @@ function App() {
     }
     
     return [...finalQual, ...finalUnranked];
-  }, [settersWithImpact, search, viewSorts.setters]);
+  }, [settersWithImpact, debouncedSearch, viewSorts.setters, view]);
 
   const cityList = useMemo(() => {
+    if (view !== 'map' && view !== 'hof') return []; // Phase 2: Lazy Load
     const base = calculateCityStats(rawCourseList);
     const sort = viewSorts.cities;
     const dir = sort.direction === 'ascending' ? 1 : -1;
-    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.countryName.toLowerCase().includes(search.toLowerCase()))
+    const result = base.filter(c => c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.countryName.toLowerCase().includes(debouncedSearch.toLowerCase()))
       .sort((a, b) => robustSort(a, b, sort.key, dir));
     return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, viewSorts.cities, search]);
+  }, [rawCourseList, viewSorts.cities, debouncedSearch, view]);
 
   const countryList = useMemo(() => {
+    if (view !== 'map' && view !== 'hof') return []; // Phase 2: Lazy Load
     const base = calculateCountryStats(rawCourseList);
     const sort = viewSorts.countries;
     const dir = sort.direction === 'ascending' ? 1 : -1;
-    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    const result = base.filter(c => c.name.toLowerCase().includes(debouncedSearch.toLowerCase()))
       .sort((a, b) => robustSort(a, b, sort.key, dir));
     return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, viewSorts.countries, search]);
+  }, [rawCourseList, viewSorts.countries, debouncedSearch, view]);
 
   const continentList = useMemo(() => {
+    if (view !== 'map') return []; // Phase 2: Lazy Load
     const base = calculateContinentStats(rawCourseList);
-    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+    const result = base.filter(c => c.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
     return result.sort((a, b) => b.courses - a.courses).map((c, i) => ({ ...c, currentRank: i + 1 }));
-  }, [rawCourseList, search]);
+  }, [rawCourseList, debouncedSearch, view]);
 
   const hofStats = useMemo(() => {
+    if (view !== 'hof') return null; // Phase 2: Lazy Load
     // We pass settersWithImpact directly to avoid mathematical sorting bugs involving invisible dividers
     return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersWithImpact);
-  }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact]);
+  }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
 
   const currentView = useMemo(() => {
     if (view === 'hof' || view === 'map') return null;
@@ -2125,6 +2352,15 @@ function App() {
     return config ? { ...config, sort: viewSorts[view] } : null;
   }, [view, eventType, viewSorts, list, settersList, courseList, openData.length, openModal]);
 
+  const jumpToHistory = useCallback((index) => {
+    setHistoryIndex(index);
+  }, []);
+  
+  const breadcrumbs = useMemo(() => {
+    if (historyIndex < 0) return [];
+    return modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail');
+  }, [modalHistory, historyIndex]);
+
   const renderActiveModal = () => {
     if (!activeModal) return null;
     
@@ -2135,6 +2371,8 @@ function App() {
         onForward: goForwardModal,
         canGoForward: canGoForward,
         theme: theme,
+        breadcrumbs: breadcrumbs,
+        onBreadcrumbClick: jumpToHistory
     };
 
     switch (activeModal.type) {
@@ -2175,15 +2413,8 @@ function App() {
         )}
 
         {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-32 space-y-6">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin opacity-80 ${theme === 'dark' ? 'text-blue-500' : 'text-blue-600'}`}>
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
-                <div className={`text-xs sm:text-sm font-black uppercase tracking-[0.3em] animate-pulse ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
-                    CHECKING ASR LIVE FEED...
-                </div>
-            </div>
-        ) : hasError && list.length === 0 && settersList.length === 0 ? (
+            <ASRSkeletonTable theme={theme} />
+        ) : hasError && data.length === 0 && settersData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 sm:py-32 space-y-6">
                 <div className="p-6 rounded-full bg-red-500/10 text-red-500 mb-4">
                     <IconX size={32} />
@@ -2201,10 +2432,10 @@ function App() {
         ) : view === 'map' ? (
             <ASRGlobalMap courses={rawCourseList} continents={continentList} cities={cityList} countries={countryList} theme={theme} onCourseClick={(c) => openModal('course', c)} onCountryClick={(c) => openModal('country', c)} onCityClick={(c) => openModal('city', c)} onContinentClick={(c) => openModal('continent', c)} />
         ) : (
-          <div className={`relative border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
-            <div className={`absolute top-0 right-0 bottom-0 w-12 sm:hidden pointer-events-none z-10 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#09090b]' : 'from-white'}`} />
+          <div className={`relative border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
+            <div className={`absolute top-0 right-0 bottom-0 w-12 sm:hidden pointer-events-none z-30 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#09090b]' : 'from-white'}`} />
             
-            <div className="overflow-x-auto scrollbar-hide relative">
+            <div className="overflow-auto scrollbar-hide max-h-[75vh] relative w-full">
               {currentView && currentView.data && currentView.data.length > 0 ? (
                 <ASRDataTable 
                     theme={theme}
@@ -2236,6 +2467,7 @@ function App() {
   );
 }
 
+// --- MOUNTING BOILERPLATE ---
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(
