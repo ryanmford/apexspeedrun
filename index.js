@@ -2593,12 +2593,15 @@ function App() {
     </div>
   );
 }
+// --- MOUNTING ---
+import ReactDOM from 'react-dom/client';
 
-// --- MOUNTING BOILERPLATE ---
-const container = document.getElementById('root');
-const root = createRoot(container);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
