@@ -228,14 +228,6 @@ const formatLocationSubtitle = (namesStr, flagsStr) => {
     }).join('\u00A0\u00A0');
 };
 
-// --- UI COMPONENTS ---
-const ASRStatCard = ({ label, value, colorClass = '', glowClass = '', theme }) => (
-    <div className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{label}</span>
-        <span className={`text-xs sm:text-lg font-mono font-black truncate num-col ${colorClass} ${glowClass}`}>{value}</span>
-    </div>
-);
-
 // --- DATA PROCESSORS ---
 const processRankingData = (csv, gender) => {
   if (!csv) return [];
@@ -406,7 +398,11 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     const pKey = normalizeName(pName);
     const normalizedCourseName = rawCourse.toUpperCase();
     if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
+    
     const pGender = athleteMetadata[pKey]?.gender || (vals[genderIdx]?.toUpperCase().startsWith('F') ? 'F' : 'M');
+    if (!athleteMetadata[pKey]) {
+        athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '' };
+    }
     
     if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
     if (!allTimeAthleteBestTimes[pKey][normalizedCourseName] || numericValue < allTimeAthleteBestTimes[pKey][normalizedCourseName].num) {
@@ -513,7 +509,7 @@ const calculateCountryStats = (rawCourseList) => {
     }));
 };
 
-const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, medalSort, settersList) => {
+const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, medalSort, settersWithImpact) => {
     if (!data.length) return null;
     const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
     const qualifiedAthletes = data.filter(p => (p.gender === 'M' && p.runs >= 4) || (p.gender === 'F' && p.runs >= 2)).map(p => { 
@@ -552,8 +548,8 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
         runs: [...qualifiedAthletes].sort((a,b) => b.runs - a.runs).slice(0, 10), 
         winPercentage: [...qualifiedAthletes].sort((a,b) => b.winPercentage - a.winPercentage || b.runs - a.runs).slice(0, 10),
         wins: [...qualifiedAthletes].sort((a,b) => b.wins - a.wins).slice(0, 10), 
-        impact: [...(settersList || [])].sort((a,b) => b.impact - a.impact).slice(0, 10),
-        sets: [...(settersList || [])].sort((a,b) => b.sets - a.sets).slice(0, 10), 
+        impact: [...(settersWithImpact || [])].sort((a,b) => b.impact - a.impact).slice(0, 10),
+        sets: [...(settersWithImpact || [])].sort((a,b) => b.sets - a.sets).slice(0, 10), 
         contributionScore: [...qualifiedAthletes].sort((a,b) => b.contributionScore - a.contributionScore).slice(0, 10), 
         totalFireCount: [...qualifiedAthletes].sort((a,b) => b.totalFireCount - a.totalFireCount).slice(0, 10), 
         cityStats: [...cityList].sort((a,b) => b.courses - a.courses).slice(0, 10).map(c => ({ name: c.name, cityStats: c.courses, region: c.flag })), 
@@ -588,7 +584,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 }
 
                 return (
-                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
@@ -601,18 +597,18 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
                                 <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                    <span className="opacity-40 pr-0.5">M</span> <span className="opacity-100">🥇</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <span className="opacity-40">M</span> <span className="opacity-100">🥇</span>
                                 </span>
                                 <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.mRecord?.toFixed(2) || '-'}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                    <span className="opacity-40 pr-0.5">W</span> <span className="opacity-100">🥇</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <span className="opacity-40">W</span> <span className="opacity-100">🥇</span>
                                 </span>
                                 <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.fRecord?.toFixed(2) || '-'}</span>
                             </div>
@@ -623,8 +619,6 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
         </div>
     );
 };
-
-// --- COMPONENTS ---
 
 const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
@@ -715,12 +709,26 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
 
     return (
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-                {stats.map((s, i) => (
-                    <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
-                ))}
+            <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                    {type === 'city' ? 'CITY STATS' : 'COUNTRY STATS'}
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    {stats.map((s, i) => (
+                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <ASRProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey={type} filterValue={data.name} />
+            
+            <div className="space-y-2 sm:space-y-3">
+                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                    COURSES
+                </h3>
+                <ASRProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey={type} filterValue={data.name} />
+            </div>
         </ASRBaseModal>
     );
 };
@@ -753,15 +761,23 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
 
     return (
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-                {stats.map((s, i) => (
-                    <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
-                ))}
+            <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                    SETTER STATS
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    {stats.map((s, i) => (
+                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
             
             <div className="space-y-2 sm:space-y-3">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
-                    COURSES SET ({setterCourses.length})
+                    COURSES SET
                 </h3>
                 {setterCourses.length > 0 ? (
                     <ASRProfileCourseList 
@@ -814,38 +830,51 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
 
   return (
     <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
+            <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                PLAYER STATS
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             {stats.map((s, i) => (
-                <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} glowClass={s.g} theme={theme} />
+                <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
+                <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
+                </div>
             ))}
+            </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
-        {courseData.map((c, i) => (
-            <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-            <div className="flex flex-col min-w-0 pr-3">
-                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
-                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
-                {c.rank >= 4 && <span className="text-[10px] font-mono font-black italic opacity-40">{c.rank}</span>}
-                {getFires(c.num, p.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
+        <div className="space-y-2 sm:space-y-3">
+            <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
+                COURSES RUN
+            </h3>
+            <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+            {courseData.map((c, i) => (
+                <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div className="flex flex-col min-w-0 pr-3">
+                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
+                        {c.rank >= 4 && <span className="text-[10px] font-mono font-black italic opacity-40">{c.rank}</span>}
+                        {getFires(c.num, p.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
+                            <span className={`text-[10px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{c.num.toFixed(2)}</span>
+                        </div>
+                        <div className="w-8 flex justify-end shrink-0">
+                            {c.videoUrl && (
+                                <a href={c.videoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`}>
+                                    <IconVideoPlay size={16} />
+                                </a>
+                            )}
+                        </div>
+                    </div>
                 </div>
+            ))}
             </div>
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                <div className="flex flex-col items-end">
-                    <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
-                    <span className="text-[10px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
-                </div>
-                <div className="w-8 flex justify-end shrink-0">
-                    {c.videoUrl && (
-                        <a href={c.videoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`}>
-                            <IconVideoPlay size={16} />
-                        </a>
-                    )}
-                </div>
-            </div>
-            </div>
-        ))}
         </div>
     </ASRBaseModal>
   );
@@ -859,7 +888,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                 const meta = athleteMetadata[pKey] || {};
                 const points = genderRecord ? (genderRecord / time) * 100 : 0;
                 return (
-                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                             <ASRRankBadge rank={i + 1} theme={theme} />
                             <div className="flex flex-col min-w-0">
@@ -887,7 +916,27 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     </div>
 );
 
-const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
+const SetterDisplay = ({ text, onSetterClick }) => {
+    if (!text) return null;
+    const names = text.split(/,|&| and /i).map(n => n.trim()).filter(Boolean);
+    return (
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {names.map((n, idx) => (
+                <React.Fragment key={idx}>
+                    <span 
+                        onClick={() => onSetterClick && onSetterClick(n)} 
+                        className={onSetterClick ? "cursor-pointer hover:text-blue-500 transition-colors underline decoration-blue-500/30 underline-offset-4" : ""}
+                    >
+                        {n}
+                    </span>
+                    {idx < names.length - 1 && <span className="opacity-40">,</span>}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+};
+
+const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
     if (!isOpen || !course) return null;
     const displayDifficulty = course.difficulty ? Array.from(course.difficulty).join(' ') : '-';
     const isPlural = (str) => String(str).includes(',') || String(str).includes('&') || String(str).toLowerCase().includes(' and ');
@@ -927,7 +976,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
     return (
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
             {(course.demoVideo || course.coordinates) && (
-                <div className="flex gap-2 sm:gap-3">
+                <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
                     {course.demoVideo && (
                         <a 
                             href={course.demoVideo} 
@@ -953,34 +1002,41 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6">
                 <ASRRankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
                 <ASRRankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
             </div>
 
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE STATS</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
-                        <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
+                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
+                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                        </div>
                     ))}
                 </div>
             </div>
             
             {(course.leadSetters || course.assistantSetters) && (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2 sm:space-y-3 mt-6 sm:mt-8">
                     <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE SETTERS</h3>
                     <div className="space-y-2">
                          {course.leadSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.leadSetters) ? 'LEADS' : 'LEAD'}</span>
-                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
+                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
+                                </span>
                             </div>
                         )}
                          {course.assistantSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.assistantSetters) ? 'ASSISTANTS' : 'ASSISTANT'}</span>
-                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
+                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <SetterDisplay text={course.assistantSetters} onSetterClick={onSetterClick} />
+                                </span>
                             </div>
                         )}
                     </div>
@@ -994,7 +1050,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
   return (
     <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-widest text-[10px] sm:text-xs font-black leading-none">{l}</span>
+        <span className="uppercase tracking-tighter text-[10px] sm:text-xs font-black leading-none">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
         </div>
@@ -1101,7 +1157,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                     <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col ml-0.5">
-                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className={`text-xs sm:text-sm font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
                         <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
                       </div>
                     </div>
@@ -1506,8 +1562,10 @@ function App() {
 
   const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData, atRawBest, opRawBest, isLoading, hasError, hasPartialError } = useASRData();
 
+  const isAllTimeContext = view === 'hof' || eventType === 'all-time';
+
   const list = useMemo(() => {
-    const src = eventType === 'all-time' ? data : openData;
+    const src = isAllTimeContext ? data : openData;
     const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.countryName || "").toLowerCase().includes(search.toLowerCase())));
     if (filtered.length === 0) return [];
 
@@ -1536,12 +1594,12 @@ function App() {
     }
 
     return [...finalQual, ...finalUnranked];
-  }, [search, viewSorts.players, gen, eventType, data, openData]);
+  }, [search, viewSorts.players, gen, isAllTimeContext, data, openData]);
 
   const rawCourseList = useMemo(() => {
-    const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
-    const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
-    const contextRaw = eventType === 'all-time' ? atRawBest : opRawBest;
+    const contextM = isAllTimeContext ? lbAT.M : lbOpen.M;
+    const contextF = isAllTimeContext ? lbAT.F : lbOpen.F;
+    const contextRaw = isAllTimeContext ? atRawBest : opRawBest;
     const courseNames = Array.from(new Set([...Object.keys(contextM || {}), ...Object.keys(contextF || {})])).filter(Boolean);
     if (courseNames.length === 0) return [];
     
@@ -1560,7 +1618,7 @@ function App() {
         ...meta
       };
     });
-  }, [lbAT, lbOpen, eventType, cMet, atRawBest, opRawBest]);
+  }, [lbAT, lbOpen, isAllTimeContext, cMet, atRawBest, opRawBest]);
 
   const courseList = useMemo(() => {
     const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase()) || c.country.toLowerCase().includes(search.toLowerCase()));
@@ -1578,13 +1636,15 @@ function App() {
     return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
   }, [rawCourseList, search, viewSorts.courses]);
 
-  const settersList = useMemo(() => {
-    const withImpact = settersData.map(s => {
+  const settersWithImpact = useMemo(() => {
+    return settersData.map(s => {
         const sCourses = rawCourseList.filter(c => (c.setter || "").toLowerCase().includes(s.name.toLowerCase()));
         return { ...s, impact: sCourses.reduce((sum, c) => sum + (c.totalRuns || 0), 0) };
     });
+  }, [settersData, rawCourseList]);
 
-    const filtered = withImpact.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+  const settersList = useMemo(() => {
+    const filtered = settersWithImpact.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     if (filtered.length === 0) return [];
 
     const threshold = 3;
@@ -1606,7 +1666,7 @@ function App() {
     }
     
     return [...finalQual, ...finalUnranked];
-  }, [settersData, rawCourseList, search, viewSorts.setters]);
+  }, [settersWithImpact, search, viewSorts.setters]);
 
   const cityList = useMemo(() => {
     const base = calculateCityStats(rawCourseList);
@@ -1627,8 +1687,8 @@ function App() {
   }, [rawCourseList, viewSorts.countries, search]);
 
   const hofStats = useMemo(() => {
-    return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersList);
-  }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersList]);
+    return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersWithImpact);
+  }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact]);
 
   const currentView = useMemo(() => {
     if (view === 'hof') return null;
@@ -1657,11 +1717,14 @@ function App() {
 
     switch (activeModal.type) {
         case 'player':
-            return <ASRPlayerModal {...props} player={activeModal.data} performanceData={eventType === 'all-time' ? atPerfs : opPerfs} onCourseClick={(name) => { const c = rawCourseList.find(x => x.name === name); if(c) openModal('course', c); }} />;
+            return <ASRPlayerModal {...props} player={activeModal.data} performanceData={isAllTimeContext ? atPerfs : opPerfs} onCourseClick={(name) => { const c = rawCourseList.find(x => x.name === name); if(c) openModal('course', c); }} />;
         case 'setter':
             return <ASRSetterModal {...props} setter={activeModal.data} courses={rawCourseList} onCourseClick={(c) => openModal('course', c)} />;
         case 'course':
-            return <ASRCourseModal {...props} course={activeModal.data} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => openModal('player', p)} />;
+            return <ASRCourseModal {...props} course={activeModal.data} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => openModal('player', p)} onSetterClick={(sName) => {
+                const sObj = settersWithImpact.find(s => s.name.toLowerCase() === sName.toLowerCase());
+                if (sObj) openModal('setter', sObj);
+            }} />;
         case 'city':
             return <ASRLocationModal {...props} data={activeModal.data} type='city' courses={rawCourseList} onCourseClick={(c) => openModal('course', c)} />;
         case 'country':
@@ -1747,6 +1810,7 @@ function App() {
   );
 }
 
+// --- MOUNTING BOILERPLATE ---
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(
