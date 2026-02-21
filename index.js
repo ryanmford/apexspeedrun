@@ -125,6 +125,13 @@ const IconGlobe = ({ size = 20 }) => (
         <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
     </svg>
 );
+const IconInstagram = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
 const IconVideoPlay = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
     <polygon points="5 3 19 12 5 21 5 3" />
@@ -305,16 +312,20 @@ const cleanNumeric = (v) => {
   return (isNaN(num) || num < 0) ? null : num;
 };
 
-const formatLocationSubtitle = (namesStr, flagsStr) => {
-    if (!namesStr && !flagsStr) return 'UNKNOWN 🏳️';
-    if (!namesStr) return flagsStr;
+const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
+    if (!namesStr && !flagsStr) return <div className="truncate">{prefix}UNKNOWN 🏳️</div>;
+    if (!namesStr) return <div className="truncate">{prefix}{flagsStr}</div>;
     const names = String(namesStr).split(/[,\/]/).map(s => s.trim()).filter(Boolean);
     const flagsMatch = String(flagsStr || '').match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|🏳️/g) || [];
     
-    return names.map((name, i) => {
-        const flag = flagsMatch[i] || flagsMatch[0] || '';
-        return `${name} ${flag}`.trim();
-    }).join('\u00A0\u00A0');
+    return (
+        <div className="flex flex-col gap-0.5 min-w-0">
+            {names.map((name, i) => {
+                const flag = flagsMatch[i] || flagsMatch[0] || '';
+                return <div key={i} className="truncate">{i === 0 ? prefix : ''}{name} {flag}</div>;
+            })}
+        </div>
+    );
 };
 
 // --- DATA PROCESSORS ---
@@ -336,6 +347,7 @@ const processRankingData = (csv, gender) => {
   const setIdx = findIdx(['sets', 'total sets']);
   const cIdx = findIdx(['🪙', 'contribution']);
   const fireIdx = findIdx(['🔥', 'fire']);
+  const igIdx = findIdx(['ig', 'instagram', 'social']) !== -1 ? findIdx(['ig', 'instagram', 'social']) : 16;
 
   return lines.slice(hIdx + 1).map((line, i) => {
     const vals = parseLine(line); 
@@ -344,11 +356,17 @@ const processRankingData = (csv, gender) => {
     const rawCountry = countryNameIdx !== -1 ? vals[countryNameIdx]?.trim() : "";
     const rawFlag = flagEmojiIdx !== -1 ? (vals[flagEmojiIdx]?.trim() || "🏳️") : "🏳️";
     const fixed = fixCountryEntity(rawCountry, rawFlag);
+    
+    let rawIg = igIdx !== -1 ? (vals[igIdx] || "") : "";
+    rawIg = rawIg.replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
+    if (rawIg.includes('/')) rawIg = rawIg.split('/')[0];
+
     return { 
       id: `${gender}-${normalizeName(pName)}-${i}`, 
       name: pName, pKey: normalizeName(pName), gender, 
       countryName: fixed.name, 
       region: fixed.flag, 
+      igHandle: rawIg,
       rating: cleanNumeric(vals[ratingIdx]) || 0, runs: Math.floor(cleanNumeric(vals[runIdx]) || 0), 
       wins: Math.floor(cleanNumeric(vals[winIdx]) || 0), pts: cleanNumeric(vals[ptsIdx]) || 0, 
       sets: Math.floor(cleanNumeric(vals[setIdx]) || 0), 
@@ -431,6 +449,7 @@ const processSettersData = (csv) => {
 
     const countryIdx = findIdx(['country', 'nation']);
     const flagIdx = findIdx(['flag', 'emoji', 'region']);
+    const igIdx = findIdx(['ig', 'instagram', 'social']);
 
     return lines.slice(1).map((line, i) => {
         const vals = parseLine(line);
@@ -441,11 +460,16 @@ const processSettersData = (csv) => {
         const rawFlag = flagIdx !== -1 ? vals[flagIdx] : "";
         const fixed = fixCountryEntity(rawCountry, rawFlag);
 
+        let rawIg = igIdx !== -1 ? (vals[igIdx] || "") : "";
+        rawIg = rawIg.replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
+        if (rawIg.includes('/')) rawIg = rawIg.split('/')[0];
+
         return {
             id: `setter-${normalizeName(name)}-${i}`,
             name: name.trim(),
             region: fixed.flag || '🏳️',
             countryName: fixed.name,
+            igHandle: rawIg,
             sets: cleanNumeric(vals[setsIdx]) || 0,
             leads: cleanNumeric(vals[leadsIdx]) || 0,
             assists: cleanNumeric(vals[assistsIdx]) || 0
@@ -543,7 +567,8 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       sets: openAthleteSetCount[pKey] || 0,
       region: athleteMetadata[pKey]?.region || '🏳️',
       allTimeRank: athleteMetadata[pKey]?.allTimeRank || 9999,
-      countryName: athleteMetadata[pKey]?.countryName || ""
+      countryName: athleteMetadata[pKey]?.countryName || "",
+      igHandle: athleteMetadata[pKey]?.igHandle || ""
     };
   });
   
@@ -663,7 +688,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
             const fixed = fixCountryEntity(name, (flags[i] || flags[0] || '🏳️').trim());
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-            numPoints: medalsBase[fixed.name].total++;
+            medalsBase[fixed.name].total++;
           });
         });
       });
@@ -714,7 +739,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 }
 
                 return (
-                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
@@ -727,7 +752,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
+                                <span className={`text-[9px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
                                 <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
@@ -833,9 +858,9 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
             </div>
             <div className="flex flex-col min-w-0 justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight uppercase truncate leading-none">{data.name}</h2>
-                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 min-w-0">
                     {type === 'continent' || type === 'country' ? (
-                        <span className="text-base sm:text-xl leading-none">{data.flag}</span>
+                        <span className="text-base sm:text-xl leading-none truncate block">{data.flag}</span>
                     ) : (
                         formatLocationSubtitle(data.countryName || data.name, data.flag)
                     )}
@@ -871,6 +896,12 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
 };
 
 const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, setter, theme, courses, onCourseClick }) => {
+    const [imgError, setImgError] = useState(false);
+    
+    useEffect(() => { 
+        if (isOpen) setImgError(false); 
+    }, [setter?.name, isOpen]);
+
     if (!isOpen || !setter) return null;
 
     const setterCourses = courses.filter(c => 
@@ -884,12 +915,28 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
         { l: 'ASSISTS', v: setter.assists }
     ];
 
+    const avatarUrl = `./avatars/${normalizeName(setter.name)}.jpg`;
+
     const Header = (
         <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
-            <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(setter.name)}</div>
+            <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
+                {!imgError ? (
+                    <img src={avatarUrl} alt={setter.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+                ) : (
+                    getInitials(setter.name)
+                )}
+            </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{setter.name}</h2>
-                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 min-w-0">
+                    <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{setter.name}</h2>
+                    {setter.igHandle && (
+                        <a href={`https://instagram.com/${setter.igHandle}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`w-fit shrink-0 flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full transition-all hover:-translate-y-0.5 shadow-sm hover:shadow-md border ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-900 border-slate-200'}`} title={`@${setter.igHandle} on Instagram`}>
+                            <div className="text-[#E1306C]"><IconInstagram size={14} className="sm:w-4 sm:h-4" /></div>
+                            <span className="text-[9px] sm:text-[11px] font-black tracking-widest uppercase mt-0.5 hidden xs:inline">@{setter.igHandle}</span>
+                        </a>
+                    )}
+                </div>
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-0 min-w-0">
                     {formatLocationSubtitle(setter.countryName, setter.region)}
                 </div>
             </div>
@@ -932,6 +979,12 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
 };
 
 const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, player: p, theme, performanceData, onCourseClick }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  useEffect(() => { 
+    if (isOpen) setImgError(false); 
+  }, [p?.pKey, isOpen]);
+
   if (!isOpen || !p) return null;
   const pKey = p.pKey || normalizeName(p.name);
   const courseData = useMemo(() => {
@@ -953,12 +1006,28 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
     { l: 'SETS', v: p.sets || 0 }, { l: '🔥', v: totalFires, g: 'glow-fire' }
   ];
 
+  const avatarUrl = `./avatars/${pKey}.jpg`;
+
   const Header = (
     <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
-        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
+        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
+            {!imgError ? (
+                <img src={avatarUrl} alt={p.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+            ) : (
+                getInitials(p.name)
+            )}
+        </div>
         <div className="min-w-0 flex-1 flex flex-col justify-center">
-            <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{p.name}</h2>
-            <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
+            <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 min-w-0">
+                <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{p.name}</h2>
+                {p.igHandle && (
+                    <a href={`https://instagram.com/${p.igHandle}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`w-fit shrink-0 flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full transition-all hover:-translate-y-0.5 shadow-sm hover:shadow-md border ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-900 border-slate-200'}`} title={`@${p.igHandle} on Instagram`}>
+                        <div className="text-[#E1306C]"><IconInstagram size={14} className="sm:w-4 sm:h-4" /></div>
+                        <span className="text-[9px] sm:text-[11px] font-black tracking-widest uppercase mt-0.5 hidden xs:inline">@{p.igHandle}</span>
+                    </a>
+                )}
+            </div>
+            <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-0 min-w-0">
                 {formatLocationSubtitle(p.countryName, p.region)}
             </div>
         </div>
@@ -1100,11 +1169,11 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
 
     const Header = (
         <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
-            <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-blue-500 shrink-0 shadow-xl ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'}`}><IconCourse size={32} /></div>
+            <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-blue-500 shrink-0 shadow-xl ${theme === 'dark' ? 'bg-black/30 border-white/10' : 'bg-white/50 border-slate-300'} `}><IconCourse size={32} /></div>
             <div className="flex flex-col min-w-0 justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight uppercase truncate leading-none">{course.name}</h2>
-                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
-                    {locStr}{formatLocationSubtitle(course.country, course.flag)}
+                <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 min-w-0">
+                    {formatLocationSubtitle(course.country, course.flag, locStr)}
                 </div>
             </div>
         </div>
@@ -1258,6 +1327,240 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                 })}
             </tbody>
         </table>
+    );
+};
+
+const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+    const loaded = useLeaflet();
+    const geoData = useGeoJSON();
+    const mapContainerRef = useRef(null);
+    const mapRef = useRef(null);
+    const tileLayerRef = useRef(null);
+    const dataLayersRef = useRef(null);
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('continents');
+
+    const displayData = useMemo(() => {
+        const data = activeTab === 'cities' ? cities : activeTab === 'countries' ? countries : continents;
+        // Explicitly sort by number of courses for this specific view
+        return [...data].sort((a, b) => b.courses - a.courses);
+    }, [activeTab, cities, countries, continents]);
+
+    // 1. Initialize and Cleanup Map
+    useEffect(() => {
+        if (!loaded || !window.L || !mapContainerRef.current) return;
+
+        if (!mapRef.current) {
+            const map = window.L.map(mapContainerRef.current, {
+                zoomControl: false,
+                minZoom: 2,
+                maxBounds: [
+                    [-90, -180],
+                    [90, 180]
+                ],
+                maxBoundsViscosity: 1.0,
+                worldCopyJump: false
+            }).setView([20, 0], 2);
+            
+            window.L.control.zoom({ position: 'bottomright' }).addTo(map);
+            
+            // Custom pane for pins so they always stay on top of highlighted countries
+            map.createPane('asr-pins');
+            map.getPane('asr-pins').style.zIndex = 650;
+            
+            dataLayersRef.current = window.L.layerGroup().addTo(map);
+            mapRef.current = map;
+
+            // Fix for partial map loading bug (forces Leaflet to recalculate size after CSS animations finish)
+            setTimeout(() => map.invalidateSize(), 100);
+            setTimeout(() => map.invalidateSize(), 500);
+        }
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+        };
+    }, [loaded]);
+
+    // 2. Handle Tiles (Theme Changes)
+    useEffect(() => {
+        if (!loaded || !window.L || !mapRef.current) return;
+        
+        if (tileLayerRef.current) {
+            mapRef.current.removeLayer(tileLayerRef.current);
+        }
+
+        tileLayerRef.current = window.L.tileLayer(
+            theme === 'dark' 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            {
+                attribution: '© OSM © CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20,
+                noWrap: true
+            }
+        ).addTo(mapRef.current);
+    }, [theme, loaded]);
+
+    // 3. Handle GeoJSON and Markers
+    useEffect(() => {
+        if (!loaded || !window.L || !mapRef.current || !dataLayersRef.current) return;
+
+        const layerGroup = dataLayersRef.current;
+        layerGroup.clearLayers(); // Safely clears overlays without touching base tiles
+
+        let geoJsonLayer;
+        if (geoData) {
+            geoJsonLayer = window.L.geoJSON(geoData, {
+                style: {
+                    fillColor: 'transparent',
+                    color: 'transparent',
+                    weight: 1
+                },
+                onEachFeature: (feature, layer) => {
+                    const props = feature.properties || {};
+                    const possibleGeoNames = [
+                        props.ADMIN, 
+                        props.name, 
+                        props.SOVEREIGNT, 
+                        props.BRK_NAME, 
+                        props.NAME, 
+                        props.FORMAL_EN
+                    ].filter(Boolean);
+
+                    let countryData = null;
+                    
+                    for (let gName of possibleGeoNames) {
+                        const normalizedGeo = normalizeCountryName(gName);
+                        // Normalize BOTH the GeoJSON name and the ASR CSV name to ensure a perfect match
+                        countryData = countries.find(c => normalizeCountryName(c.name) === normalizedGeo);
+                        if (countryData) break;
+                    }
+
+                    // Only add hover/click interactions if we have ASR courses in this country
+                    if (countryData) {
+                        layer.on({
+                            mouseover: (e) => {
+                                const l = e.target;
+                                l.setStyle({
+                                    fillColor: '#3b82f6',
+                                    fillOpacity: 0.15,
+                                    color: '#3b82f6',
+                                    opacity: 0.6,
+                                    weight: 2
+                                });
+                                if (!window.L.Browser.ie && !window.L.Browser.opera && !window.L.Browser.edge) {
+                                    l.bringToFront();
+                                }
+                            },
+                            mouseout: (e) => {
+                                if (geoJsonLayer) geoJsonLayer.resetStyle(e.target);
+                            },
+                            click: () => {
+                                if (onCountryClick) onCountryClick(countryData);
+                            }
+                        });
+                    }
+                }
+            }).addTo(layerGroup);
+        }
+
+        courses.forEach(c => {
+            if (c.parsedCoords) {
+                const marker = window.L.circleMarker(c.parsedCoords, {
+                    pane: 'asr-pins',
+                    radius: 5,
+                    fillColor: '#3b82f6',
+                    color: theme === 'dark' ? '#09090b' : '#ffffff',
+                    weight: 1.5,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(layerGroup);
+
+                marker.bindTooltip(`
+                    <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${c.city !== 'UNKNOWN' ? c.city : c.country} <span>${c.flag}</span></div>
+                    <div class="text-xs sm:text-sm font-black uppercase">${c.name}</div>
+                `, { 
+                    className: theme === 'dark' ? 'dark-tooltip' : 'light-tooltip',
+                    direction: 'top',
+                    offset: [0, -10]
+                });
+
+                marker.on('click', () => onCourseClick && onCourseClick(c));
+            }
+        });
+        
+    }, [courses, geoData, countries, theme, loaded, onCourseClick, onCountryClick]);
+
+    if (!loaded) {
+        return (
+            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
+                <div className="animate-spin opacity-50 mb-4">
+                    <IconSpeed />
+                </div>
+                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-50">Loading Geographic Modules...</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`relative w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border ${theme === 'dark' ? 'dark-zoom border-white/10' : 'light-zoom border-slate-300'}`}>
+            <div ref={mapContainerRef} className="w-full h-full z-0" />
+            
+            {/* Lower z-[40] ensures modals on z-[100] cleanly cover this */}
+            <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2.5 pointer-events-none w-[calc(100%-2rem)] max-w-xs h-[calc(100%-5rem)] sm:h-auto">
+                
+                {/* Collapsible Toggle Button */}
+                <button 
+                    onClick={() => setIsPanelOpen(!isPanelOpen)}
+                    className={`pointer-events-auto w-fit px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl sm:rounded-2xl border backdrop-blur-xl shadow-xl transition-all flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'bg-black/80 border-white/10 text-white hover:bg-black' : 'bg-white/90 border-slate-300 text-slate-900 hover:bg-white'}`}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    {isPanelOpen ? 'HIDE STATS' : 'REGIONAL STATS'}
+                </button>
+
+                {/* Tabbed Stats Panel */}
+                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-2xl border backdrop-blur-xl shadow-2xl ${isPanelOpen ? 'scale-100 opacity-100 flex-1 sm:max-h-[60vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/80 border-white/10 text-white' : 'bg-white/90 border-slate-300 text-slate-900'}`}>
+                    
+                    {/* Panel Tabs */}
+                    <div className={`flex items-center p-1 sm:p-1.5 border-b shrink-0 gap-1 ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                        <button onClick={() => setActiveTab('continents')} className={`flex-1 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-md sm:rounded-lg transition-colors ${activeTab === 'continents' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>CONTINENTS</button>
+                        <button onClick={() => setActiveTab('countries')} className={`flex-1 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-md sm:rounded-lg transition-colors ${activeTab === 'countries' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>COUNTRIES</button>
+                        <button onClick={() => setActiveTab('cities')} className={`flex-1 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-md sm:rounded-lg transition-colors ${activeTab === 'cities' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>CITIES</button>
+                    </div>
+
+                    {/* Scrollable Data List */}
+                    <div className="flex flex-col gap-0.5 p-2 sm:p-3 overflow-y-auto scrollbar-hide flex-1">
+                        {displayData.slice(0, 15).map((c, i) => {
+                            const handleClick = () => {
+                                if (activeTab === 'cities') onCityClick && onCityClick(c);
+                                else if (activeTab === 'countries') onCountryClick && onCountryClick(c);
+                                else onContinentClick && onContinentClick(c);
+                            };
+                            return (
+                                <div key={i} onClick={handleClick} className={`cursor-pointer flex items-center justify-between p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
+                                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
+                                        <div className="scale-75 sm:scale-90 origin-left shrink-0">
+                                            <ASRRankBadge rank={i + 1} theme={theme} />
+                                        </div>
+                                        <div className="flex flex-col min-w-0 -ml-1 sm:ml-0">
+                                            <span className={`text-[10px] sm:text-[13px] font-black uppercase tracking-tight truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.name}</span>
+                                            <span className="text-xs sm:text-sm leading-none mt-0.5 drop-shadow-sm">{c.flag}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center shrink-0 pl-2 justify-center">
+                                        <span className="text-sm sm:text-base font-mono font-black text-blue-500 tabular-nums num-col">{c.courses}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 
@@ -1479,7 +1782,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                     <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
                         <IconSearch size={12} />
                     </div>
-                    <input type="text" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-xs sm:text-sm font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
+                    <input type="text" aria-label="Search" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-xl sm:rounded-2xl pl-10 pr-10 py-2.5 sm:py-4 w-full text-xs sm:text-sm font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] focus:border-white/10 shadow-xl' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500/30 shadow-md'}`} />
                     {search && (
                         <button aria-label="Clear Search" onClick={() => setSearch('')} className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
                             <IconX size={14} />
@@ -1933,7 +2236,6 @@ function App() {
   );
 }
 
-// --- MOUNTING BOILERPLATE ---
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(
