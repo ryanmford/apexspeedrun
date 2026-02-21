@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 
 /**
  * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
@@ -96,6 +96,11 @@ const IconCourse = ({ size = 20 }) => (
     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
   </svg>
 );
+const IconMapPin = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+  </svg>
+);
 const IconCity = ({ size = 20 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
         <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
@@ -105,6 +110,11 @@ const IconGlobe = ({ size = 20 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
         <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
     </svg>
+);
+const IconVideoPlay = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </svg>
 );
 
 const CountdownTimer = ({ targetDate, theme }) => {
@@ -218,6 +228,14 @@ const formatLocationSubtitle = (namesStr, flagsStr) => {
     }).join('\u00A0\u00A0');
 };
 
+// --- UI COMPONENTS ---
+const ASRStatCard = ({ label, value, colorClass = '', glowClass = '', theme }) => (
+    <div className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{label}</span>
+        <span className={`text-xs sm:text-lg font-mono font-black truncate num-col ${colorClass} ${glowClass}`}>{value}</span>
+    </div>
+);
+
 // --- DATA PROCESSORS ---
 const processRankingData = (csv, gender) => {
   if (!csv) return [];
@@ -274,6 +292,8 @@ const processSetListData = (csv) => {
     const flagIdx = findIdx(['flag', 'emoji']);
     const dateIdx = findIdx(['date', 'year']);
     const dateSetIdx = findIdx(['set on', 'updated', 'date set']);
+    const demoIdx = findIdx(['demo', 'rules', 'video']) !== -1 ? findIdx(['demo', 'rules', 'video']) : 31;
+    const coordsIdx = findIdx(['coord', 'gps', 'location', 'pin']) !== -1 ? findIdx(['coord', 'gps', 'location', 'pin']) : 14;
     const stateIdx = 11; 
     
     const map = {};
@@ -291,6 +311,9 @@ const processSetListData = (csv) => {
             let combinedSetter = leadSetters;
             if(assistantSetters) combinedSetter = combinedSetter ? `${combinedSetter}, ${assistantSetters}` : assistantSetters;
 
+            const demoVideo = demoIdx !== -1 ? (vals[demoIdx] || "").trim() : "";
+            const coordinates = coordsIdx !== -1 ? (vals[coordsIdx] || "").trim() : "";
+
             map[course] = { 
                 is2026: (vals[dateIdx] || "").includes('2026'), 
                 flag: fixed.flag || '🏳️',
@@ -304,7 +327,9 @@ const processSetListData = (csv) => {
                 dateSet: (vals[dateSetIdx] || "").trim(),
                 setter: combinedSetter,
                 leadSetters,
-                assistantSetters
+                assistantSetters,
+                demoVideo,
+                coordinates
             };
         }
     });
@@ -348,9 +373,9 @@ const processSettersData = (csv) => {
 };
 
 const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
-  if (!csv) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap };
+  if (!csv) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, atRawBest: {}, opRawBest: {} };
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 1) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap };
+  if (lines.length < 1) return { allTimePerformances: {}, openPerformances: {}, openRankings: [], allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, atRawBest: {}, opRawBest: {} };
   const OPEN_THRESHOLD = new Date('2026-01-01');
   let headers = []; let hIdx = -1;
   for(let i=0; i<Math.min(10, lines.length); i++) {
@@ -363,6 +388,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
   const resultIdx = Math.max(0, findIdx(['result', 'time', 'pb']));
   const genderIdx = findIdx(['div', 'gender', 'sex']);
   const dateIdx = findIdx(['date', 'day', 'timestamp']);
+  const videoIdx = findIdx(['video', 'proof', 'link']) !== -1 ? findIdx(['video', 'proof', 'link']) : 7;
   const tagIdx = findIdx(['tag', 'event', 'category']) !== -1 ? findIdx(['tag', 'event', 'category']) : 6;
   const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
   const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
@@ -374,24 +400,28 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     const rawCourse = (vals[courseIdx] || "").trim();
     const numericValue = cleanNumeric(vals[resultIdx]);
     const runDate = dateIdx !== -1 ? new Date(vals[dateIdx]) : null;
+    const rawVideo = videoIdx !== -1 ? (vals[videoIdx] || "").trim() : "";
     const rawTag = tagIdx !== -1 ? (vals[tagIdx] || "") : (vals[6] || "");
     if (!pName || !rawCourse || numericValue === null) return;
     const pKey = normalizeName(pName);
     const normalizedCourseName = rawCourse.toUpperCase();
     if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
     const pGender = athleteMetadata[pKey]?.gender || (vals[genderIdx]?.toUpperCase().startsWith('F') ? 'F' : 'M');
+    
     if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
     if (!allTimeAthleteBestTimes[pKey][normalizedCourseName] || numericValue < allTimeAthleteBestTimes[pKey][normalizedCourseName].num) {
-      allTimeAthleteBestTimes[pKey][normalizedCourseName] = { label: rawCourse, value: vals[resultIdx], num: numericValue };
+      allTimeAthleteBestTimes[pKey][normalizedCourseName] = { label: rawCourse, value: vals[resultIdx], num: numericValue, videoUrl: rawVideo };
     }
+    
     if (!allTimeCourseLeaderboards[pGender][normalizedCourseName]) allTimeCourseLeaderboards[pGender][normalizedCourseName] = {};
     if (!allTimeCourseLeaderboards[pGender][normalizedCourseName][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normalizedCourseName][pKey]) {
         allTimeCourseLeaderboards[pGender][normalizedCourseName][pKey] = numericValue;
     }
+    
     if (rawTag.toUpperCase().includes("ASR OPEN") && (!runDate || runDate >= OPEN_THRESHOLD)) {
       if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
       if (!openAthleteBestTimes[pKey][normalizedCourseName] || numericValue < openAthleteBestTimes[pKey][normalizedCourseName].num) {
-        openAthleteBestTimes[pKey][normalizedCourseName] = { label: rawCourse, value: vals[resultIdx], num: numericValue };
+        openAthleteBestTimes[pKey][normalizedCourseName] = { label: rawCourse, value: vals[resultIdx], num: numericValue, videoUrl: rawVideo };
       }
       if (!openCourseLeaderboards[pGender][normalizedCourseName]) openCourseLeaderboards[pGender][normalizedCourseName] = {};
       if (!openCourseLeaderboards[pGender][normalizedCourseName][pKey] || numericValue < openCourseLeaderboards[pGender][normalizedCourseName][pKey]) {
@@ -400,6 +430,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       if (courseSetMap[normalizedCourseName]?.is2026) openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
     }
   });
+  
   const buildPerfs = (source) => {
     const res = {};
     Object.keys(source).forEach(pKey => {
@@ -409,11 +440,12 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
         const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
         const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
         const rank = sorted.findIndex(e => e[0] === pKey) + 1;
-        return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100 };
+        return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl };
       }).sort((a, b) => a.label.localeCompare(b.label));
     });
     return res;
   };
+  
   const openRankingArray = Object.keys(openAthleteBestTimes).map(pKey => {
     const pGender = athleteMetadata[pKey]?.gender || 'M';
     const perfs = buildPerfs(openAthleteBestTimes)[pKey] || [];
@@ -428,6 +460,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       countryName: athleteMetadata[pKey]?.countryName || ""
     };
   });
+  
   return { 
     allTimePerformances: buildPerfs(allTimeAthleteBestTimes), 
     openPerformances: buildPerfs(openAthleteBestTimes), 
@@ -435,7 +468,9 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     allTimeLeaderboards: allTimeCourseLeaderboards, 
     openLeaderboards: openCourseLeaderboards,
     athleteMetadata: athleteMetadata, athleteDisplayNameMap: athleteDisplayNameMap,
-    courseMetadata: courseSetMap
+    courseMetadata: courseSetMap,
+    atRawBest: allTimeAthleteBestTimes,
+    opRawBest: openAthleteBestTimes
   };
 };
 
@@ -502,7 +537,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
             const fixed = fixCountryEntity(name, (flags[i] || flags[0] || '🏳️').trim());
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-            numPoints: medalsBase[fixed.name].total++;
+            medalsBase[fixed.name].total++;
           });
         });
       });
@@ -553,7 +588,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 }
 
                 return (
-                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
@@ -566,18 +601,18 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
+                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
                                 <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                    <span className="opacity-40">M</span> <span className="opacity-100">🥇</span>
+                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <span className="opacity-40 pr-0.5">M</span> <span className="opacity-100">🥇</span>
                                 </span>
                                 <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.mRecord?.toFixed(2) || '-'}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                    <span className="opacity-40">W</span> <span className="opacity-100">🥇</span>
+                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    <span className="opacity-40 pr-0.5">W</span> <span className="opacity-100">🥇</span>
                                 </span>
                                 <span className={`text-xs sm:text-sm font-mono font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.fRecord?.toFixed(2) || '-'}</span>
                             </div>
@@ -588,6 +623,8 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
         </div>
     );
 };
+
+// --- COMPONENTS ---
 
 const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   const isUnranked = rank === "UR";
@@ -680,10 +717,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {stats.map((s, i) => (
-                    <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                        <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
-                    </div>
+                    <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
                 ))}
             </div>
             <ASRProfileCourseList courses={courses} theme={theme} onCourseClick={onCourseClick} filterKey={type} filterValue={data.name} />
@@ -721,14 +755,11 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {stats.map((s, i) => (
-                    <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                        <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
-                    </div>
+                    <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
                 ))}
             </div>
             
-            <div className="space-y-2 sm:space-y-3 mt-6">
+            <div className="space-y-2 sm:space-y-3">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                     COURSES SET ({setterCourses.length})
                 </h3>
@@ -783,18 +814,15 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
 
   return (
     <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
-        {stats.map((s, i) => (
-            <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-            <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{s.l}</span>
-            <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''} ${s.g || ''}`}>{s.v}</span>
-            </div>
-        ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            {stats.map((s, i) => (
+                <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} glowClass={s.g} theme={theme} />
+            ))}
         </div>
 
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
         {courseData.map((c, i) => (
-            <div key={i} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+            <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
             <div className="flex flex-col min-w-0 pr-3">
                 <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -803,10 +831,19 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
                 {getFires(c.num, p.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, p.gender)} />}
                 </div>
             </div>
-            <div className="flex flex-col items-end shrink-0">
-                <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
-                <span className="text-[10px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                <div className="flex flex-col items-end">
+                    <span className="text-xs sm:text-lg font-mono font-black text-blue-500 num-col">{c.points.toFixed(2)}</span>
+                    <span className="text-[10px] sm:text-[10px] font-mono font-bold -mt-0.5 sm:-mt-1 opacity-70 num-col">{c.num.toFixed(2)}</span>
                 </div>
+                <div className="w-8 flex justify-end shrink-0">
+                    {c.videoUrl && (
+                        <a href={c.videoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`}>
+                            <IconVideoPlay size={16} />
+                        </a>
+                    )}
+                </div>
+            </div>
             </div>
         ))}
         </div>
@@ -818,11 +855,11 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     <div className="space-y-2 sm:space-y-3">
         <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
-            {athletes.slice(0, 10).map(([pKey, time], i) => {
+            {athletes.slice(0, 10).map(([pKey, time, videoUrl], i) => {
                 const meta = athleteMetadata[pKey] || {};
                 const points = genderRecord ? (genderRecord / time) * 100 : 0;
                 return (
-                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                             <ASRRankBadge rank={i + 1} theme={theme} />
                             <div className="flex flex-col min-w-0">
@@ -830,7 +867,19 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                               <span className="text-[10px] sm:text-xs uppercase font-black">{meta.region || '🏳️'}</span>
                             </div>
                         </div>
-                        <div className="flex flex-col items-end shrink-0"><span className="text-xs sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span><span className={`text-[10px] sm:text-xs font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span></div>
+                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                            <div className="flex flex-col items-end">
+                                <span className="text-xs sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span>
+                                <span className={`text-[10px] sm:text-xs font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span>
+                            </div>
+                            <div className="w-8 flex justify-end shrink-0">
+                                {videoUrl && (
+                                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`p-1.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`}>
+                                        <IconVideoPlay size={16} />
+                                    </a>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 );
             })}
@@ -877,37 +926,61 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
 
     return (
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6">
+            {(course.demoVideo || course.coordinates) && (
+                <div className="flex gap-2 sm:gap-3">
+                    {course.demoVideo && (
+                        <a 
+                            href={course.demoVideo} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`flex-1 flex items-center justify-center gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-[1rem] sm:rounded-[1.25rem] border-2 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 ${theme === 'dark' ? 'bg-[#cc0000]/10 border-[#cc0000]/30 text-[#ff4444] hover:bg-[#cc0000]/20 hover:border-[#cc0000]/50' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300'}`}
+                        >
+                            <IconVideoPlay size={18} />
+                            <span className="font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">RULES VIDEO</span>
+                        </a>
+                    )}
+                    {course.coordinates && (
+                        <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`flex-1 flex items-center justify-center gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-[1rem] sm:rounded-[1.25rem] border-2 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 ${theme === 'dark' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 hover:border-blue-300'}`}
+                        >
+                            <IconMapPin size={18} />
+                            <span className="font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs">MAP PIN</span>
+                        </a>
+                    )}
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 <ASRRankList title="MEN'S TOP 10" athletes={course.athletesM} genderRecord={course.mRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
                 <ASRRankList title="WOMEN'S TOP 10" athletes={course.athletesF} genderRecord={course.fRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
             </div>
 
-            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
+            <div className="space-y-2 sm:space-y-3">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE STATS</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
-                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
-                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
-                        </div>
+                        <ASRStatCard key={i} label={s.l} value={s.v} colorClass={s.c} theme={theme} />
                     ))}
                 </div>
             </div>
             
             {(course.leadSetters || course.assistantSetters) && (
-                <div className="space-y-2 sm:space-y-3 mt-6 sm:mt-8">
+                <div className="space-y-2 sm:space-y-3">
                     <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE SETTERS</h3>
                     <div className="space-y-2">
                          {course.leadSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.leadSetters) ? 'LEADS' : 'LEAD'}</span>
-                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
+                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.leadSetters}</span>
                             </div>
                         )}
                          {course.assistantSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.assistantSetters) ? 'ASSISTANTS' : 'ASSISTANT'}</span>
-                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
+                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{course.assistantSetters}</span>
                             </div>
                         )}
                     </div>
@@ -921,7 +994,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler }) => {
   return (
     <th className={`${w} px-2 py-4 sm:py-5 cursor-pointer group select-none transition-colors ${activeSort.key === k ? 'bg-blue-600/10' : ''} hover:bg-blue-600/5`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
       <div className={`flex items-center gap-1 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase tracking-tighter text-[10px] sm:text-xs font-black leading-none">{l}</span>
+        <span className="uppercase tracking-widest text-[10px] sm:text-xs font-black leading-none">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-500' : 'opacity-0 group-hover:opacity-40'}`}>
           <IconArrow direction={activeSort.key === k ? activeSort.direction : 'descending'} />
         </div>
@@ -1028,7 +1101,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                     <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col ml-0.5">
-                        <span className={`text-xs sm:text-sm font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
                         <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
                       </div>
                     </div>
@@ -1198,7 +1271,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                             THE 2026 ASR OPEN STARTS IN
                         </h4>
                         <div className="scale-90 sm:scale-100 drop-shadow-xl">
-                           <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
+                            <CountdownTimer targetDate={new Date('2026-03-01T00:00:00-10:00')} theme={theme} />
                         </div>
                     </div>
 
@@ -1294,6 +1367,7 @@ const useASRData = () => {
   const [state, setState] = useState({
     data: [], openData: [], atPerfs: {}, opPerfs: {},
     lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: [],
+    atRawBest: {}, opRawBest: {},
     isLoading: true, hasError: false, hasPartialError: false
   });
 
@@ -1347,6 +1421,8 @@ const useASRData = () => {
         dnMap: processed.athleteDisplayNameMap,
         cMet: processed.courseMetadata,
         settersData: allSetters,
+        atRawBest: processed.atRawBest,
+        opRawBest: processed.opRawBest,
         isLoading: false,
         hasError: hasTotalError,
         hasPartialError
@@ -1428,7 +1504,7 @@ function App() {
     setViewSorts(prev => ({ ...prev, [view]: updated }));
   };
 
-  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData, isLoading, hasError, hasPartialError } = useASRData();
+  const { data, openData, atPerfs, opPerfs, lbAT, lbOpen, atMet, dnMap, cMet, settersData, atRawBest, opRawBest, isLoading, hasError, hasPartialError } = useASRData();
 
   const list = useMemo(() => {
     const src = eventType === 'all-time' ? data : openData;
@@ -1465,12 +1541,13 @@ function App() {
   const rawCourseList = useMemo(() => {
     const contextM = eventType === 'all-time' ? lbAT.M : lbOpen.M;
     const contextF = eventType === 'all-time' ? lbAT.F : lbOpen.F;
+    const contextRaw = eventType === 'all-time' ? atRawBest : opRawBest;
     const courseNames = Array.from(new Set([...Object.keys(contextM || {}), ...Object.keys(contextF || {})])).filter(Boolean);
     if (courseNames.length === 0) return [];
     
     return courseNames.map(name => {
-      const athletesMAll = Object.entries((lbAT?.M || {})[name] || {}).sort((a, b) => a[1] - b[1]);
-      const athletesFAll = Object.entries((lbAT?.F || {})[name] || {}).sort((a, b) => a[1] - b[1]);
+      const athletesMAll = Object.entries((contextM || {})[name] || {}).map(([pKey, time]) => [pKey, time, contextRaw?.[pKey]?.[name]?.videoUrl]).sort((a, b) => a[1] - b[1]);
+      const athletesFAll = Object.entries((contextF || {})[name] || {}).map(([pKey, time]) => [pKey, time, contextRaw?.[pKey]?.[name]?.videoUrl]).sort((a, b) => a[1] - b[1]);
       const ctxM = Object.entries((contextM || {})[name] || {});
       const ctxF = Object.entries((contextF || {})[name] || {});
       const meta = cMet[name] || {};
@@ -1483,7 +1560,7 @@ function App() {
         ...meta
       };
     });
-  }, [lbAT, lbOpen, eventType, cMet]);
+  }, [lbAT, lbOpen, eventType, cMet, atRawBest, opRawBest]);
 
   const courseList = useMemo(() => {
     const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase()) || c.country.toLowerCase().includes(search.toLowerCase()));
@@ -1670,8 +1747,8 @@ function App() {
   );
 }
 
-// --- RENDERING ---
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const container = document.getElementById('root');
+const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <App />
