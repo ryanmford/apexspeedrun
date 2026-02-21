@@ -862,7 +862,6 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                     if ((c.country === 'USA' || c.country === 'CANADA') && c.stateProv) {
                         locText += `, ${c.stateProv}`;
                     }
-                    locText += `, ${c.country}`;
                 } else {
                     locText = c.country || 'UNKNOWN';
                 }
@@ -881,8 +880,8 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                         </div>
                         <div className="flex gap-2 sm:gap-6 shrink-0">
                             <div className="flex flex-col items-end">
-                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>PLAYERS</span>
-                                <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalAthletes}</span>
+                                <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} opacity-40`}>RUNS</span>
+                                <span className="text-xs sm:text-sm font-mono font-bold text-blue-500">{c.totalRuns || c.totalAthletes}</span>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className={`text-[10px] sm:text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
@@ -941,13 +940,17 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
                   </button>
               )}
               {breadcrumbs && breadcrumbs.length > 0 && (
-                  <div className="ml-1 sm:ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white whitespace-nowrap bg-black/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/10 shadow-lg shrink min-w-0">
+                  <div className="ml-1 sm:ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white whitespace-nowrap bg-black/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/10 shadow-lg shrink min-w-0 pointer-events-auto">
                       {breadcrumbs.map((b, i) => (
                           <React.Fragment key={i}>
-                              <span className={`transition-colors ${i === breadcrumbs.length - 1 ? 'opacity-100' : 'opacity-50 cursor-pointer hover:opacity-100'}`} onClick={() => onBreadcrumbClick(i)}>
-                                  {b}
-                              </span>
-                              {i < breadcrumbs.length - 1 && <span className="opacity-30 shrink-0">/</span>}
+                              <button 
+                                  onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(i); }}
+                                  disabled={i === breadcrumbs.length - 1}
+                                  className={`transition-colors outline-none whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'opacity-100' : 'opacity-50 cursor-pointer hover:opacity-100 active:opacity-75'}`}
+                              >
+                                  {String(b).toUpperCase()}
+                              </button>
+                              {i < breadcrumbs.length - 1 && <span className="opacity-30 shrink-0 pointer-events-none">/</span>}
                           </React.Fragment>
                       ))}
                   </div>
@@ -1158,7 +1161,13 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
 
   const Header = (
     <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
-        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>{getInitials(p.name)}</div>
+        <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
+            {!imgError ? (
+                <img src={avatarUrl} alt={p.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+            ) : (
+                <FallbackAvatar name={p.name} />
+            )}
+        </div>
         <div className="min-w-0 flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 min-w-0">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight leading-none truncate uppercase">{p.name}</h2>
@@ -1200,7 +1209,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             </h3>
             <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {courseData.map((c, i) => (
-                <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                <div key={i} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                     <div className="flex flex-col min-w-0 pr-3">
                         <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -1306,7 +1315,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
     if (course.city && course.city !== 'UNKNOWN') {
         locStr = course.city;
         if ((course.country === 'USA' || course.country === 'CANADA') && course.stateProv) {
-            locText += `, ${course.stateProv}`;
+            locStr += `, ${course.stateProv}`;
         }
         locStr += ', ';
     }
@@ -1760,7 +1769,19 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec) => (
           <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">{sec.l.split(' ').map((word, wi) => (<span key={wi} className={word === '🔥' || word === '🪙' ? 'opacity-100 brightness-150 glow-fire' : 'opacity-60'}>{word}{' '}</span>))}</h4></div>
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+                    {sec.l.split(' ').map((word, wi) => {
+                        const isFire = word === '🔥';
+                        const isGold = word === '🪙';
+                        const isImpact = word === 'IMPACT';
+                        
+                        const highlight = isFire || isGold ? 'opacity-100 brightness-150 glow-fire cursor-help' : isImpact ? 'opacity-60 cursor-help border-b border-dashed border-current' : 'opacity-60';
+                        const text = isFire ? "Fire Tokens: Awarded for elite sub-7 (M) / sub-9 (W) times." : isGold ? "Contribution Score: Earned by setting runs, adding courses, and community activity." : isImpact ? "Total athlete runs on courses you've set." : "";
+                        
+                        const content = <span key={wi} className={highlight}>{word}</span>;
+                        return text ? <ASRTooltip key={wi} text={text}>{content}</ASRTooltip> : content;
+                    })}
+                </h4></div>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'} flex-1`}>
               {stats.topStats[sec.k].map((p, i) => {
                 let displayVal;
@@ -1828,49 +1849,58 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
   );
 };
 
-const ASRNavBar = ({ theme, setTheme, view, setView }) => (
-    <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-20 flex items-center justify-between px-2 sm:px-8 gap-2 sm:gap-6 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
-        <div className="flex items-center gap-1.5 shrink-0">
-            <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
-                <IconSpeed />
+const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) => {
+    const navItems = [
+        {id:'players',l:'PLAYERS'},
+        {id:'setters',l:'SETTERS'},
+        {id:'courses',l:'COURSES'},
+        {id:'map',l:'MAP'}
+    ];
+
+    return (
+        <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-20 flex items-center justify-between px-2 sm:px-8 gap-2 sm:gap-6 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
+            <div className="flex items-center gap-1.5 shrink-0">
+                <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}>
+                    <IconSpeed />
+                </div>
+                <span className="font-black tracking-tighter text-xs sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
+                    ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
+                </span>
             </div>
-            <span className="font-black tracking-tighter text-xs sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
-                ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
-            </span>
-        </div>
-        
-        <div className="flex-1 flex justify-center min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide py-1 px-1 w-full sm:w-auto justify-start sm:justify-center">
-                {[
-                    {id:'players',l:'PLAYERS'},
-                    {id:'setters',l:'SETTERS'},
-                    {id:'courses',l:'COURSES'},
-                    {id:'map',l:'MAP'}
-                ].map(v => (
-                    <button 
-                        key={v.id} 
-                        onClick={() => setView(v.id)} 
-                        className={`
-                            shrink-0 border px-3 sm:px-5 py-1.5 sm:py-2 rounded-full 
-                            text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300
-                            whitespace-nowrap select-none
-                            ${view === v.id 
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' 
-                                : (theme === 'dark' ? 'border-white/10 text-slate-400 hover:border-white/30 hover:text-white' : 'border-slate-400/30 text-slate-500 hover:border-slate-400 hover:text-slate-700 bg-white/20')
-                            }
-                        `}
-                    >
-                        {v.l}
-                    </button>
-                ))}
+            
+            <div className="flex-1 flex justify-center min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide py-1 px-1 w-full sm:w-auto justify-start sm:justify-center">
+                    {navItems.map(v => (
+                        <button 
+                            key={v.id} 
+                            onClick={() => {
+                                setView(v.id);
+                                if (v.id === 'map' && eventType === 'open') {
+                                    setEventType('all-time');
+                                }
+                            }} 
+                            className={`
+                                shrink-0 border px-3 sm:px-5 py-1.5 sm:py-2 rounded-full 
+                                text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300
+                                whitespace-nowrap select-none
+                                ${view === v.id 
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' 
+                                    : (theme === 'dark' ? 'border-white/10 text-slate-400 hover:border-white/30 hover:text-white' : 'border-slate-400/30 text-slate-500 hover:border-slate-400 hover:text-slate-700 bg-white/20')
+                                }
+                            `}
+                        >
+                            {v.l}
+                        </button>
+                    ))}
+                </div>
             </div>
-        </div>
-        
-        <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
-            {theme === 'dark' ? <IconSun /> : <IconMoon />}
-        </button>
-    </nav>
-);
+            
+            <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
+                {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            </button>
+        </nav>
+    );
+};
 
 const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, search, setSearch, theme }) => {
     const titles = {
@@ -1890,13 +1920,19 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                 <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                     <div className="flex flex-wrap gap-0.5">
                         <button 
-                            onClick={() => { setEventType('open'); if(view === 'hof') setView('players'); }} 
+                            onClick={() => { 
+                                setEventType('open'); 
+                                if(view === 'hof' || view === 'map') setView('players'); 
+                            }} 
                             className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
                         >
                             2026 OPEN
                         </button>
                         <button 
-                            onClick={() => { setEventType('all-time'); if(view === 'hof') setView('players'); }} 
+                            onClick={() => { 
+                                setEventType('all-time'); 
+                                if(view === 'hof') setView('players'); 
+                            }} 
                             className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700 hover:bg-black/5 dark:hover:text-slate-300 dark:hover:bg-white/5'}`}
                         >
                             ALL-TIME
@@ -1991,7 +2027,7 @@ const PLAYER_COLS = [
 const SETTERS_COLS = [
     { isRank: true },
     { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-auto px-2 py-4 sm:py-5 min-w-[120px] sm:min-w-[160px]' },
-    { label: 'IMPACT', type: 'highlight', key: 'impact', align: 'right', width: 'w-14 sm:w-32' },
+    { label: 'IMPACT', type: 'highlight', key: 'impact', align: 'right', width: 'w-14 sm:w-32', tooltip: 'Total athlete runs on courses you\'ve set.' },
     { label: 'SETS', type: 'number', key: 'sets', align: 'right', width: 'w-12 sm:w-24' },
     { label: 'LEADS', type: 'number', key: 'leads', align: 'right', width: 'w-12 sm:w-24' },
     { label: 'ASSISTS', type: 'number', key: 'assists', align: 'right', width: 'w-12 sm:w-24 pr-4 sm:pr-10' }
@@ -2145,28 +2181,23 @@ function App() {
   const openModal = useCallback((type, data) => {
     setHistoryIndex(currIdx => {
         setModalHistory(prev => {
-            const newHistory = prev.slice(0, currIdx + 1);
+            const newHistory = prev.slice(0, currIdx < 0 ? 0 : currIdx + 1);
             return [...newHistory, { type, data }];
         });
-        return currIdx + 1;
+        return currIdx < 0 ? 0 : currIdx + 1;
     });
   }, []);
 
   const closeAllModals = useCallback(() => {
-    setModalHistory([]);
     setHistoryIndex(-1);
   }, []);
 
   const goBackModal = useCallback(() => {
-    if (historyIndex > 0) {
-        setHistoryIndex(currIdx => currIdx - 1);
-    } else {
-        closeAllModals();
-    }
-  }, [historyIndex, closeAllModals]);
+    setHistoryIndex(currIdx => Math.max(-1, currIdx - 1));
+  }, []);
 
   const goForwardModal = useCallback(() => {
-    setHistoryIndex(currIdx => currIdx < modalHistory.length - 1 ? currIdx + 1 : currIdx);
+    setHistoryIndex(currIdx => Math.min(modalHistory.length - 1, currIdx + 1));
   }, [modalHistory.length]);
 
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
@@ -2341,6 +2372,15 @@ function App() {
     return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersWithImpact);
   }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
 
+  const jumpToHistory = useCallback((index) => {
+    setHistoryIndex(index);
+  }, []);
+  
+  const breadcrumbs = useMemo(() => {
+    if (historyIndex < 0) return [];
+    return modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail');
+  }, [modalHistory, historyIndex]);
+
   const currentView = useMemo(() => {
     if (view === 'hof' || view === 'map') return null;
     const isEmpty = eventType === 'open' && openData.length === 0;
@@ -2351,15 +2391,6 @@ function App() {
     }[view];
     return config ? { ...config, sort: viewSorts[view] } : null;
   }, [view, eventType, viewSorts, list, settersList, courseList, openData.length, openModal]);
-
-  const jumpToHistory = useCallback((index) => {
-    setHistoryIndex(index);
-  }, []);
-  
-  const breadcrumbs = useMemo(() => {
-    if (historyIndex < 0) return [];
-    return modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail');
-  }, [modalHistory, historyIndex]);
 
   const renderActiveModal = () => {
     if (!activeModal) return null;
@@ -2399,7 +2430,7 @@ function App() {
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
       <CustomStyles />
-      <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} />
+      <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       
       {renderActiveModal()}
       
