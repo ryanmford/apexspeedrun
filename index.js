@@ -11,6 +11,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
  * * UPDATE: Phase 5 (Virtualization, Gradient Avatars, & Tooltips) applied.
  * * UPDATE: Phase 6 (Persistence, PWA Tags, & Deep Tooltips) applied.
  * * UPDATE: Phase 7 (Map Clustering & Image Lazy Loading) applied.
+ * * UPDATE: Phase 8 (Critical Crash Fixes & Safety Fallbacks) applied.
  */
 
 // --- CUSTOM STYLES ---
@@ -422,7 +423,8 @@ const fixCountryEntity = (name, flag) => {
     const f = (flag || "").trim();
     if (n === "PUERTO RICO" || f === "🇵🇷") return { name: "PUERTO RICO", flag: "🇵🇷" };
     if (n === "USA" || n === "UNITED STATES" || n === "UNITED STATES OF AMERICA") return { name: "USA", flag: "🇺🇸" };
-    return { name, flag };
+    // Provide a strict fallback to ensure name is NEVER undefined, avoiding downstream .toLowerCase() crashes
+    return { name: name ? String(name).trim() : "UNKNOWN", flag: f || "🏳️" };
 };
 
 const parseLine = (line = '') => {
@@ -649,7 +651,8 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     const pName = (vals[athleteIdx] || "").trim();
     const rawCourse = (vals[courseIdx] || "").trim();
     const numericValue = cleanNumeric(vals[resultIdx]);
-    const runDate = dateIdx !== -1 ? new Date(vals[dateIdx]) : null;
+    const runDateStr = dateIdx !== -1 ? vals[dateIdx] : null;
+    const runDate = runDateStr ? new Date(runDateStr) : null;
     const rawVideo = videoIdx !== -1 ? (vals[videoIdx] || "").trim() : "";
     const rawTag = tagIdx !== -1 ? (vals[tagIdx] || "") : "";
     if (!pName || !rawCourse || numericValue === null) return;
@@ -658,7 +661,8 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
     
     // dynamically populate metadata for runners who exist in open but not all-time
-    const pGender = athleteMetadata[pKey]?.gender || (vals[genderIdx]?.toUpperCase().startsWith('F') ? 'F' : 'M');
+    // Guard against undefined gender index strings crashing .toUpperCase()
+    const pGender = athleteMetadata[pKey]?.gender || ((vals[genderIdx] || "").toUpperCase().startsWith('F') ? 'F' : 'M');
     if (!athleteMetadata[pKey]) {
         athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '' };
     }
@@ -673,7 +677,9 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
         allTimeCourseLeaderboards[pGender][normalizedCourseName][pKey] = numericValue;
     }
     
-    if (rawTag.toUpperCase().includes("ASR OPEN") && (!runDate || runDate >= OPEN_THRESHOLD)) {
+    // Validate runDate correctly to avoid Invalid Date breaking the boolean logic
+    const isValidDate = runDate && !isNaN(runDate);
+    if (rawTag.toUpperCase().includes("ASR OPEN") && (!isValidDate || runDate >= OPEN_THRESHOLD)) {
       if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
       if (!openAthleteBestTimes[pKey][normalizedCourseName] || numericValue < openAthleteBestTimes[pKey][normalizedCourseName].num) {
         openAthleteBestTimes[pKey][normalizedCourseName] = { label: rawCourse, value: vals[resultIdx], num: numericValue, videoUrl: rawVideo };
@@ -691,7 +697,8 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     Object.keys(source).forEach(pKey => {
       const pGender = athleteMetadata[pKey]?.gender || 'M';
       res[pKey] = Object.entries(source[pKey]).map(([normL, data]) => {
-        const record = (pGender === 'F' ? Math.min(...Object.values(allTimeCourseLeaderboards['F'][normL] || {})) : Math.min(...Object.values(allTimeCourseLeaderboards['M'][normL] || {}))) || data.num;
+        const boardValues = Object.values((allTimeCourseLeaderboards[pGender] || {})[normL] || {});
+        const record = boardValues.length > 0 ? Math.min(...boardValues) : data.num;
         const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
         const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
         const rank = sorted.findIndex(e => e[0] === pKey) + 1;
