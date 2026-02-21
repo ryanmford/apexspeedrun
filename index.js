@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
+
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 
 /**
  * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
@@ -384,7 +385,7 @@ const getContinentData = (country) => {
     const na = ['USA', 'CANADA', 'MEXICO', 'PUERTO RICO', 'COSTA RICA', 'CUBA', 'PANAMA', 'GUATEMALA', 'BELIZE', 'HONDURAS', 'EL SALVADOR', 'NICARAGUA', 'JAMAICA', 'BAHAMAS', 'HAITI', 'DOMINICAN REPUBLIC', 'TRINIDAD AND TOBAGO', 'BARBADOS', 'CURACAO', 'ARUBA', 'CAYMAN ISLANDS', 'BERMUDA', 'GREENLAND'];
     const sa = ['BRAZIL', 'ARGENTINA', 'CHILE', 'COLOMBIA', 'PERU', 'ECUADOR', 'VENEZUELA', 'BOLIVIA', 'PARAGUAY', 'URUGUAY', 'GUYANA', 'SURINAME', 'FRENCH GUIANA'];
     const as = ['KOREA', 'JAPAN', 'CHINA', 'TAIWAN', 'MACAU', 'SINGAPORE', 'INDIA', 'MALAYSIA', 'THAILAND', 'VIETNAM', 'PHILIPPINES', 'INDONESIA', 'UAE', 'SAUDI ARABIA', 'ISRAEL', 'TURKEY', 'IRAN', 'IRAQ', 'SYRIA', 'JORDAN', 'LEBANON', 'OMAN', 'YEMEN', 'QATAR', 'KUWAIT', 'BAHRAIN', 'PAKISTAN', 'AFGHANISTAN', 'KAZAKHSTAN', 'UZBEKISTAN', 'TURKMENISTAN', 'KYRGYZSTAN', 'TAJIKISTAN', 'MONGOLIA', 'NEPAL', 'BHUTAN', 'BANGLADESH', 'SRI LANKA', 'MYANMAR', 'CAMBODIA', 'LAOS', 'BRUNEI', 'HONG KONG'];
-    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEG', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
+    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEA', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
     const af = ['SOUTH AFRICA', 'EGYPT', 'MOROCCO', 'KENYA', 'NIGERIA', 'ALGERIA', 'TUNISIA', 'LIBYA', 'SUDAN', 'ETHIOPIA', 'TANZANIA', 'UGANDA', 'RWANDA', 'GHANA', 'SENEGAL', 'COTE D IVOIRE', 'CAMEROON', 'MALI', 'MADAGASCAR', 'ANGOLA', 'MOZAMBIQUE', 'ZAMBIA', 'ZIMBABWE', 'BOTSWANA', 'NAMIBIA'];
 
     if (eu.includes(c)) return { name: 'EUROPE', flag: '🌍' };
@@ -400,11 +401,11 @@ const getContinentData = (country) => {
 const escapeHTML = (str) => {
     if (str === null || str === undefined) return '';
     return String(str)
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
-        .replace(/'/g, ''');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 };
 
 const robustSort = (a, b, key, dir) => {
@@ -771,7 +772,6 @@ const calculateCountryStats = (rawCourseList) => {
 };
 
 const calculateContinentStats = (rawCourseList) => {
-    // Pre-populate all 7 core regions so they always show up in the UI, even with 0 courses
     const map = {
         'NORTH AMERICA': { name: 'NORTH AMERICA', flag: '🌎', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
         'SOUTH AMERICA': { name: 'SOUTH AMERICA', flag: '🌎', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
@@ -786,7 +786,6 @@ const calculateContinentStats = (rawCourseList) => {
         const contName = c.continent || 'GLOBAL';
         const contFlag = c.continentFlag || '🌐';
         
-        // Failsafe in case a course slips into 'GLOBAL' somehow
         if (!map[contName]) {
             map[contName] = { name: contName, flag: contFlag, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() };
         }
@@ -1208,7 +1207,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
                 PLAYER STATS
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {stats.map((s, i) => (
                 <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl sm:rounded-2xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                 <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'} flex items-center`}>
@@ -1226,7 +1225,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             </h3>
             <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {courseData.map((c, i) => (
-                <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                <div key={i} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                     <div className="flex flex-col min-w-0 pr-3">
                         <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -1275,7 +1274,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                             <div className="flex flex-col items-end">
                                 <span className="text-xs sm:text-sm font-mono font-black text-blue-500 num-col">{time.toFixed(2)}</span>
-                                <span className={`text-[10px] sm:text-xs font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span>
+                                <span className={`text-[10px] sm:text-[10px] font-mono font-black num-col ${theme === 'dark' ? 'text-white/60' : 'text-slate-400'}`}>{points.toFixed(2)}</span>
                             </div>
                             <div className="w-8 flex justify-end shrink-0">
                                 {videoUrl && (
@@ -1402,7 +1401,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                          {course.leadSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.leadSetters) ? 'LEADS' : 'LEAD'}</span>
-                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                                     <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                                 </span>
                             </div>
@@ -1410,7 +1409,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                          {course.assistantSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider opacity-50 mb-1">{isPlural(course.assistantSetters) ? 'ASSISTANTS' : 'ASSISTANT'}</span>
-                                <span className={`text-xs sm:text-base font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                <span className={`text-xs sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                                     <SetterDisplay text={course.assistantSetters} onSetterClick={onSetterClick} />
                                 </span>
                             </div>
@@ -1621,7 +1620,7 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
                 ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                 : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             {
-                attribution: '© OSM © CARTO',
+                attribution: '&copy; OSM &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 20,
                 noWrap: true
@@ -1811,7 +1810,8 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec) => (
           <div key={sec.k} className={`rounded-2xl sm:rounded-3xl border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'}`}>
-            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between"><h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+            <div className="p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between">
+                <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
                     {sec.l.split(' ').map((word, wi) => {
                         const isFire = word === '🔥';
                         const isGold = word === '🪙';
@@ -1823,7 +1823,8 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                         const content = <span key={wi} className={highlight}>{word}</span>;
                         return text ? <ASRTooltip key={wi} text={text}>{content}</ASRTooltip> : content;
                     })}
-                </h4></div>
+                </h4>
+            </div>
             <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'} flex-1`}>
               {stats.topStats[sec.k].map((p, i) => {
                 let displayVal;
@@ -1949,7 +1950,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
         players: 'PLAYERS',
         setters: 'SETTERS',
         courses: 'COURSES',
-        map: 'WORLD MAP',
+        map: 'MAP',
         hof: 'HALL OF FAME'
     };
 
