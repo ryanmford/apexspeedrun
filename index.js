@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
  * * UPDATE: Phase 4 (Typography, Skeletons, & Sanitization) applied.
  * * UPDATE: Phase 5 (Virtualization, Gradient Avatars, & Tooltips) applied.
  * * UPDATE: Phase 6 (Persistence, PWA Tags, & Deep Tooltips) applied.
+ * * UPDATE: Phase 7 (Map Clustering & Image Lazy Loading) applied.
  */
 
 // --- CUSTOM STYLES ---
@@ -45,6 +46,11 @@ const CustomStyles = () => (
     .light-zoom .leaflet-control-zoom a { background-color: #ffffff !important; color: #0f172a !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
     .light-zoom .leaflet-control-zoom a:hover { background-color: #f1f5f9 !important; }
     
+    /* Cluster Styles */
+    .asr-cluster { border-radius: 50%; border: 3px solid; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .dark-zoom .asr-cluster { background-color: rgba(37, 99, 235, 0.9); border-color: rgba(255, 255, 255, 0.1); color: white; }
+    .light-zoom .asr-cluster { background-color: rgba(37, 99, 235, 0.9); border-color: rgba(255, 255, 255, 0.8); color: white; }
+
     .leaflet-interactive { transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease, fill 0.2s ease, stroke 0.2s ease; }
 
     * { 
@@ -269,10 +275,10 @@ const CountdownTimer = ({ targetDate, theme }) => {
 let isLeafletInjecting = false;
 
 const useLeaflet = () => {
-    const [loaded, setLoaded] = useState(!!window.L);
+    const [loaded, setLoaded] = useState(!!(window.L && window.L.markerClusterGroup));
 
     useEffect(() => {
-        if (window.L) {
+        if (window.L && window.L.markerClusterGroup) {
             setLoaded(true);
             return;
         }
@@ -280,25 +286,36 @@ const useLeaflet = () => {
         if (!isLeafletInjecting) {
             isLeafletInjecting = true;
             
+            const loadCss = (href) => {
+                if (!document.querySelector(`link[href*="${href}"]`)) {
+                    const css = document.createElement('link');
+                    css.rel = 'stylesheet';
+                    css.href = href;
+                    document.head.appendChild(css);
+                }
+            };
+            
             // Inject CSS safely
-            if (!document.querySelector('link[href*="leaflet.css"]')) {
-                const css = document.createElement('link');
-                css.rel = 'stylesheet';
-                css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-                document.head.appendChild(css);
-            }
+            loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+            loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css');
+            loadCss('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css');
 
-            // Inject JS safely
+            // Inject JS safely & sequentially
             if (!document.querySelector('script[src*="leaflet.js"]')) {
                 const script = document.createElement('script');
                 script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                script.onload = () => setLoaded(true);
+                script.onload = () => {
+                    const clusterScript = document.createElement('script');
+                    clusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+                    clusterScript.onload = () => setLoaded(true);
+                    document.head.appendChild(clusterScript);
+                };
                 document.head.appendChild(script);
             }
         } else {
             // If already injecting, poll gently until ready to prevent race conditions
             const checkLeaflet = setInterval(() => {
-                if (window.L) {
+                if (window.L && window.L.markerClusterGroup) {
                     setLoaded(true);
                     clearInterval(checkLeaflet);
                 }
@@ -367,7 +384,7 @@ const getContinentData = (country) => {
     const na = ['USA', 'CANADA', 'MEXICO', 'PUERTO RICO', 'COSTA RICA', 'CUBA', 'PANAMA', 'GUATEMALA', 'BELIZE', 'HONDURAS', 'EL SALVADOR', 'NICARAGUA', 'JAMAICA', 'BAHAMAS', 'HAITI', 'DOMINICAN REPUBLIC', 'TRINIDAD AND TOBAGO', 'BARBADOS', 'CURACAO', 'ARUBA', 'CAYMAN ISLANDS', 'BERMUDA', 'GREENLAND'];
     const sa = ['BRAZIL', 'ARGENTINA', 'CHILE', 'COLOMBIA', 'PERU', 'ECUADOR', 'VENEZUELA', 'BOLIVIA', 'PARAGUAY', 'URUGUAY', 'GUYANA', 'SURINAME', 'FRENCH GUIANA'];
     const as = ['KOREA', 'JAPAN', 'CHINA', 'TAIWAN', 'MACAU', 'SINGAPORE', 'INDIA', 'MALAYSIA', 'THAILAND', 'VIETNAM', 'PHILIPPINES', 'INDONESIA', 'UAE', 'SAUDI ARABIA', 'ISRAEL', 'TURKEY', 'IRAN', 'IRAQ', 'SYRIA', 'JORDAN', 'LEBANON', 'OMAN', 'YEMEN', 'QATAR', 'KUWAIT', 'BAHRAIN', 'PAKISTAN', 'AFGHANISTAN', 'KAZAKHSTAN', 'UZBEKISTAN', 'TURKMENISTAN', 'KYRGYZSTAN', 'TAJIKISTAN', 'MONGOLIA', 'NEPAL', 'BHUTAN', 'BANGLADESH', 'SRI LANKA', 'MYANMAR', 'CAMBODIA', 'LAOS', 'BRUNEI', 'HONG KONG'];
-    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEA', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
+    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEG', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
     const af = ['SOUTH AFRICA', 'EGYPT', 'MOROCCO', 'KENYA', 'NIGERIA', 'ALGERIA', 'TUNISIA', 'LIBYA', 'SUDAN', 'ETHIOPIA', 'TANZANIA', 'UGANDA', 'RWANDA', 'GHANA', 'SENEGAL', 'COTE D IVOIRE', 'CAMEROON', 'MALI', 'MADAGASCAR', 'ANGOLA', 'MOZAMBIQUE', 'ZAMBIA', 'ZIMBABWE', 'BOTSWANA', 'NAMIBIA'];
 
     if (eu.includes(c)) return { name: 'EUROPE', flag: '🌍' };
@@ -1065,7 +1082,7 @@ const ASRSetterModal = ({ isOpen, onClose, onBack, onForward, canGoForward, sett
         <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
             <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
                 {!imgError ? (
-                    <img src={avatarUrl} alt={setter.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+                    <img loading="lazy" src={avatarUrl} alt={setter.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
                 ) : (
                     <FallbackAvatar name={setter.name} />
                 )}
@@ -1163,7 +1180,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
     <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
         <div className={`w-16 h-16 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2rem] border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-500' : 'bg-white/50 border-slate-300 text-slate-500'}`}>
             {!imgError ? (
-                <img src={avatarUrl} alt={p.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+                <img loading="lazy" src={avatarUrl} alt={p.name} onError={() => setImgError(true)} className="w-full h-full object-cover" />
             ) : (
                 <FallbackAvatar name={p.name} />
             )}
@@ -1209,7 +1226,7 @@ const ASRPlayerModal = ({ isOpen, onClose, onBack, onForward, canGoForward, play
             </h3>
             <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
             {courseData.map((c, i) => (
-                <div key={i} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                <div key={c.label} onClick={() => onCourseClick?.(c.label)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                     <div className="flex flex-col min-w-0 pr-3">
                         <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -1524,6 +1541,7 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
     const mapRef = useRef(null);
     const tileLayerRef = useRef(null);
     const dataLayersRef = useRef(null);
+    const clusterGroupRef = useRef(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('continents');
 
@@ -1541,6 +1559,7 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
             const map = window.L.map(mapContainerRef.current, {
                 zoomControl: false,
                 minZoom: 2,
+                maxZoom: 18,
                 maxBounds: [
                     [-90, -180],
                     [90, 180]
@@ -1556,6 +1575,24 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
             map.getPane('asr-pins').style.zIndex = 650;
             
             dataLayersRef.current = window.L.layerGroup().addTo(map);
+
+            // Initialize Cluster Group
+            clusterGroupRef.current = window.L.markerClusterGroup({
+                chunkedLoading: true,
+                maxClusterRadius: 40,
+                showCoverageOnHover: false,
+                spiderfyOnMaxZoom: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    return window.L.divIcon({ 
+                        html: `<div class="flex items-center justify-center w-full h-full font-black text-xs sm:text-sm drop-shadow-md">${count}</div>`,
+                        className: `asr-cluster`, 
+                        iconSize: window.L.point(36, 36) 
+                    });
+                }
+            });
+            map.addLayer(clusterGroupRef.current);
+
             mapRef.current = map;
 
             // Fix for partial map loading bug (forces Leaflet to recalculate size after CSS animations finish)
@@ -1594,10 +1631,11 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
 
     // 3. Handle GeoJSON and Markers
     useEffect(() => {
-        if (!loaded || !window.L || !mapRef.current || !dataLayersRef.current) return;
+        if (!loaded || !window.L || !mapRef.current || !dataLayersRef.current || !clusterGroupRef.current) return;
 
         const layerGroup = dataLayersRef.current;
         layerGroup.clearLayers(); // Safely clears overlays without touching base tiles
+        clusterGroupRef.current.clearLayers();
 
         let geoJsonLayer;
         if (geoData) {
@@ -1655,6 +1693,7 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
             }).addTo(layerGroup);
         }
 
+        const markers = [];
         courses.forEach(c => {
             if (c.parsedCoords) {
                 const marker = window.L.circleMarker(c.parsedCoords, {
@@ -1665,7 +1704,7 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
                     weight: 1.5,
                     opacity: 1,
                     fillOpacity: 0.9
-                }).addTo(layerGroup);
+                });
 
                 marker.bindTooltip(`
                     <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${escapeHTML(c.city !== 'UNKNOWN' ? c.city : c.country)} <span>${escapeHTML(c.flag)}</span></div>
@@ -1677,8 +1716,11 @@ const ASRGlobalMap = ({ courses, continents, cities, countries, theme, onCourseC
                 });
 
                 marker.on('click', () => onCourseClick && onCourseClick(c));
+                markers.push(marker);
             }
         });
+        
+        clusterGroupRef.current.addLayers(markers);
         
     }, [courses, geoData, countries, theme, loaded, onCourseClick, onCountryClick]);
 
@@ -1907,7 +1949,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
         players: 'PLAYERS',
         setters: 'SETTERS',
         courses: 'COURSES',
-        map: 'MAP',
+        map: 'WORLD MAP',
         hof: 'HALL OF FAME'
     };
 
@@ -2372,14 +2414,53 @@ function App() {
     return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersWithImpact);
   }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
 
-  const jumpToHistory = useCallback((index) => {
-    setHistoryIndex(index);
-  }, []);
-  
-  const breadcrumbs = useMemo(() => {
-    if (historyIndex < 0) return [];
-    return modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail');
-  }, [modalHistory, historyIndex]);
+  // --- DEEP LINKING (SHAREABILITY) ---
+  const initialHashRead = useRef(false);
+
+  // Read Hash on Load
+  useEffect(() => {
+      if (!isLoading && !hasError && !initialHashRead.current) {
+          initialHashRead.current = true;
+          try {
+              const hash = window.location.hash;
+              if (hash) {
+                  const [typeRaw, valRaw] = hash.substring(1).split('=');
+                  if (typeRaw && valRaw) {
+                      const val = decodeURIComponent(valRaw);
+                      if (typeRaw === 'player') {
+                          const p = data.find(x => x.pKey === val) || openData.find(x => x.pKey === val);
+                          if (p) openModal('player', p);
+                      } else if (typeRaw === 'course') {
+                          const c = rawCourseList.find(x => x.name.toUpperCase() === val.toUpperCase());
+                          if (c) openModal('course', c);
+                      } else if (typeRaw === 'setter') {
+                          const s = settersWithImpact.find(x => x.name.toLowerCase() === val.toLowerCase());
+                          if (s) openModal('setter', s);
+                      }
+                  }
+              }
+          } catch(e) {
+              // Silently catch hash read errors in strict sandboxes
+          }
+      }
+  }, [isLoading, hasError, data, openData, rawCourseList, settersWithImpact, openModal]);
+
+  // Write Hash on Modal Change
+  useEffect(() => {
+      try {
+          if (historyIndex >= 0 && modalHistory[historyIndex]) {
+              const { type, data } = modalHistory[historyIndex];
+              if (type === 'player') window.history.replaceState(null, null, `#player=${data.pKey}`);
+              else if (type === 'course') window.history.replaceState(null, null, `#course=${encodeURIComponent(data.name)}`);
+              else if (type === 'setter') window.history.replaceState(null, null, `#setter=${encodeURIComponent(data.name)}`);
+          } else if (initialHashRead.current) {
+              // Clear hash when closing all modals
+              window.history.replaceState(null, null, window.location.pathname + window.location.search);
+          }
+      } catch(e) {
+          // Silently catch replaceState security errors in iframe blobs
+      }
+  }, [historyIndex, modalHistory]);
 
   const currentView = useMemo(() => {
     if (view === 'hof' || view === 'map') return null;
@@ -2391,6 +2472,15 @@ function App() {
     }[view];
     return config ? { ...config, sort: viewSorts[view] } : null;
   }, [view, eventType, viewSorts, list, settersList, courseList, openData.length, openModal]);
+
+  const jumpToHistory = useCallback((index) => {
+    setHistoryIndex(index);
+  }, []);
+  
+  const breadcrumbs = useMemo(() => {
+    if (historyIndex < 0) return [];
+    return modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail');
+  }, [modalHistory, historyIndex]);
 
   const renderActiveModal = () => {
     if (!activeModal) return null;
