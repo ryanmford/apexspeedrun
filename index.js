@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-
 /**
  * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
  * Core Model: Gemini 3 Flash
