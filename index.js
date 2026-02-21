@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
 /**
@@ -24,6 +24,20 @@ const CustomStyles = () => (
     .scrollbar-hide::-webkit-scrollbar {
       display: none;
     }
+
+    /* Leaflet Overrides */
+    .leaflet-container { font-family: inherit; z-index: 1; background: transparent; }
+    .leaflet-tooltip { font-family: inherit; border-radius: 8px; border: none; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.3); padding: 8px 12px; }
+    .dark-tooltip { background: #121214; color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); }
+    .light-tooltip { background: #ffffff; color: #0f172a; border: 1px solid rgba(0,0,0,0.1); }
+    .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 10px -1px rgba(0,0,0,0.2) !important; border-radius: 12px !important; overflow: hidden; }
+    .leaflet-control-zoom a { color: inherit !important; display: flex !important; align-items: center; justify-content: center; width: 36px !important; height: 36px !important; transition: all 0.2s; }
+    .dark-zoom .leaflet-control-zoom a { background-color: #121214 !important; color: #f1f5f9 !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+    .dark-zoom .leaflet-control-zoom a:hover { background-color: #27272a !important; }
+    .light-zoom .leaflet-control-zoom a { background-color: #ffffff !important; color: #0f172a !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
+    .light-zoom .leaflet-control-zoom a:hover { background-color: #f1f5f9 !important; }
+    
+    .leaflet-interactive { transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease, fill 0.2s ease, stroke 0.2s ease; }
 
     * { 
       -webkit-tap-highlight-color: transparent;
@@ -166,6 +180,81 @@ const CountdownTimer = ({ targetDate, theme }) => {
             ))}
         </div>
     );
+};
+
+// --- LEAFLET HOOK ---
+const useLeaflet = () => {
+    const [loaded, setLoaded] = useState(!!window.L);
+    useEffect(() => {
+        if (window.L) return setLoaded(true);
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => setLoaded(true);
+        document.head.appendChild(script);
+    }, []);
+    return loaded;
+};
+
+const useGeoJSON = () => {
+    const [data, setData] = useState(null);
+    useEffect(() => {
+        // Fetch a lightweight open-source dataset of global borders
+        fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
+            .then(res => res.json())
+            .then(setData)
+            .catch(err => console.error("Failed to load map borders", err));
+    }, []);
+    return data;
+};
+
+const normalizeCountryName = (name) => {
+    let n = String(name || "").toUpperCase().trim();
+    // Remove accents for cleaner matching (e.g. MÉXICO -> MEXICO)
+    n = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const map = {
+        'UNITED STATES OF AMERICA': 'USA',
+        'UNITED STATES': 'USA',
+        'US': 'USA',
+        'UNITED KINGDOM': 'UK',
+        'UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND': 'UK',
+        'GREAT BRITAIN': 'UK',
+        'ENGLAND': 'UK',
+        'SCOTLAND': 'UK',
+        'WALES': 'UK',
+        'NORTHERN IRELAND': 'UK',
+        'SOUTH KOREA': 'KOREA',
+        'REPUBLIC OF KOREA': 'KOREA',
+        'RUSSIAN FEDERATION': 'RUSSIA',
+        'THE NETHERLANDS': 'NETHERLANDS',
+        'CZECH REPUBLIC': 'CZECHIA',
+        'UNITED MEXICAN STATES': 'MEXICO',
+        'MACAO': 'MACAU'
+    };
+    return map[n] || n;
+};
+
+const getContinentData = (country) => {
+    const c = normalizeCountryName(country);
+    const eu = ['UK', 'NETHERLANDS', 'CZECHIA', 'SPAIN', 'FRANCE', 'GERMANY', 'ITALY', 'SWITZERLAND', 'AUSTRIA', 'SWEDEN', 'NORWAY', 'DENMARK', 'FINLAND', 'BELGIUM', 'POLAND', 'PORTUGAL', 'IRELAND', 'RUSSIA', 'GREECE', 'CROATIA', 'SERBIA', 'ROMANIA', 'BULGARIA', 'HUNGARY', 'SLOVAKIA', 'SLOVENIA', 'ICELAND', 'LITHUANIA', 'LATVIA', 'ESTONIA', 'UKRAINE', 'BELARUS', 'LUXEMBOURG', 'MALTA', 'CYPRUS', 'ANDORRA', 'MONACO', 'LIECHTENSTEIN', 'SAN MARINO', 'VATICAN CITY'];
+    const na = ['USA', 'CANADA', 'MEXICO', 'PUERTO RICO', 'COSTA RICA', 'CUBA', 'PANAMA', 'GUATEMALA', 'BELIZE', 'HONDURAS', 'EL SALVADOR', 'NICARAGUA', 'JAMAICA', 'BAHAMAS', 'HAITI', 'DOMINICAN REPUBLIC', 'TRINIDAD AND TOBAGO', 'BARBADOS', 'CURACAO', 'ARUBA', 'CAYMAN ISLANDS', 'BERMUDA', 'GREENLAND'];
+    const sa = ['BRAZIL', 'ARGENTINA', 'CHILE', 'COLOMBIA', 'PERU', 'ECUADOR', 'VENEZUELA', 'BOLIVIA', 'PARAGUAY', 'URUGUAY', 'GUYANA', 'SURINAME', 'FRENCH GUIANA'];
+    const as = ['KOREA', 'JAPAN', 'CHINA', 'TAIWAN', 'MACAU', 'SINGAPORE', 'INDIA', 'MALAYSIA', 'THAILAND', 'VIETNAM', 'PHILIPPINES', 'INDONESIA', 'UAE', 'SAUDI ARABIA', 'ISRAEL', 'TURKEY', 'IRAN', 'IRAQ', 'SYRIA', 'JORDAN', 'LEBANON', 'OMAN', 'YEMEN', 'QATAR', 'KUWAIT', 'BAHRAIN', 'PAKISTAN', 'AFGHANISTAN', 'KAZAKHSTAN', 'UZBEKISTAN', 'TURKMENISTAN', 'KYRGYZSTAN', 'TAJIKISTAN', 'MONGOLIA', 'NEPAL', 'BHUTAN', 'BANGLADESH', 'SRI LANKA', 'MYANMAR', 'CAMBODIA', 'LAOS', 'BRUNEI', 'HONG KONG'];
+    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEA', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
+    const af = ['SOUTH AFRICA', 'EGYPT', 'MOROCCO', 'KENYA', 'NIGERIA', 'ALGERIA', 'TUNISIA', 'LIBYA', 'SUDAN', 'ETHIOPIA', 'TANZANIA', 'UGANDA', 'RWANDA', 'GHANA', 'SENEGAL', 'COTE D IVOIRE', 'CAMEROON', 'MALI', 'MADAGASCAR', 'ANGOLA', 'MOZAMBIQUE', 'ZAMBIA', 'ZIMBABWE', 'BOTSWANA', 'NAMIBIA'];
+
+    if (eu.includes(c)) return { name: 'EUROPE', flag: '🌍' };
+    if (na.includes(c)) return { name: 'NORTH AMERICA', flag: '🌎' };
+    if (sa.includes(c)) return { name: 'SOUTH AMERICA', flag: '🌎' };
+    if (as.includes(c)) return { name: 'ASIA', flag: '🌏' };
+    if (oc.includes(c)) return { name: 'AUSTRALIA / OCEANIA', flag: '🌏' };
+    if (af.includes(c)) return { name: 'AFRICA', flag: '🌍' };
+    return { name: 'GLOBAL', flag: '🌐' };
 };
 
 // --- DATA HELPERS ---
@@ -399,6 +488,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
     const normalizedCourseName = rawCourse.toUpperCase();
     if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
     
+    // dynamically populate metadata for runners who exist in open but not all-time
     const pGender = athleteMetadata[pKey]?.gender || (vals[genderIdx]?.toUpperCase().startsWith('F') ? 'F' : 'M');
     if (!athleteMetadata[pKey]) {
         athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '' };
@@ -473,7 +563,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
 const calculateCityStats = (rawCourseList) => {
     const cityMap = {};
     rawCourseList.forEach(c => {
-        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, playersSet: new Set() };
+        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, continent: c.continent, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, playersSet: new Set() };
         cityMap[c.city].courses++;
         cityMap[c.city].runs += c.totalRuns;
         const elev = cleanNumeric(c.elevation);
@@ -492,7 +582,7 @@ const calculateCountryStats = (rawCourseList) => {
     const countryMap = {};
     rawCourseList.forEach(c => {
         const fixed = fixCountryEntity(c.country, c.flag);
-        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, citiesSet: new Set(), playersSet: new Set() };
+        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, continent: c.continent, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, citiesSet: new Set(), playersSet: new Set() };
         countryMap[fixed.name].courses++;
         countryMap[fixed.name].runs += c.totalRuns;
         const elev = cleanNumeric(c.elevation);
@@ -506,6 +596,46 @@ const calculateCountryStats = (rawCourseList) => {
         players: country.playersSet.size, 
         cities: country.citiesSet.size,
         avgElevation: country.elevationCount > 0 ? (country.totalElevation / country.elevationCount) : 0
+    }));
+};
+
+const calculateContinentStats = (rawCourseList) => {
+    // Pre-populate all 7 core regions so they always show up in the UI, even with 0 courses
+    const map = {
+        'NORTH AMERICA': { name: 'NORTH AMERICA', flag: '🌎', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'SOUTH AMERICA': { name: 'SOUTH AMERICA', flag: '🌎', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'EUROPE': { name: 'EUROPE', flag: '🌍', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'ASIA': { name: 'ASIA', flag: '🌏', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'AUSTRALIA / OCEANIA': { name: 'AUSTRALIA / OCEANIA', flag: '🌏', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'AFRICA': { name: 'AFRICA', flag: '🌍', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() },
+        'ANTARCTICA': { name: 'ANTARCTICA', flag: '❄️', courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() }
+    };
+    
+    rawCourseList.forEach(c => {
+        const contName = c.continent || 'GLOBAL';
+        const contFlag = c.continentFlag || '🌐';
+        
+        // Failsafe in case a course slips into 'GLOBAL' somehow
+        if (!map[contName]) {
+            map[contName] = { name: contName, flag: contFlag, courses: 0, runs: 0, totalElevation: 0, elevationCount: 0, countriesSet: new Set(), citiesSet: new Set(), playersSet: new Set() };
+        }
+        
+        map[contName].courses++;
+        map[contName].runs += c.totalRuns;
+        const elev = cleanNumeric(c.elevation);
+        if (elev !== null) { map[contName].totalElevation += elev; map[contName].elevationCount++; }
+        map[contName].countriesSet.add(c.country);
+        map[contName].citiesSet.add(c.city);
+        c.athletesM.forEach(a => map[contName].playersSet.add(a[0]));
+        c.athletesF.forEach(a => map[contName].playersSet.add(a[0]));
+    });
+    
+    return Object.values(map).map(cont => ({
+        ...cont,
+        players: cont.playersSet.size,
+        countries: Array.from(cont.countriesSet).filter(cn => cn !== 'UNKNOWN').length,
+        cities: Array.from(cont.citiesSet).filter(cn => cn !== 'UNKNOWN').length,
+        avgElevation: cont.elevationCount > 0 ? (cont.totalElevation / cont.elevationCount) : 0
     }));
 };
 
@@ -533,7 +663,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, cityList, countryList, me
             const fixed = fixCountryEntity(name, (flags[i] || flags[0] || '🏳️').trim());
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-            medalsBase[fixed.name].total++;
+            numPoints: medalsBase[fixed.name].total++;
           });
         });
       });
@@ -584,7 +714,7 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 }
 
                 return (
-                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={c.name} onClick={() => onCourseClick(c)} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all duration-300 cursor-pointer active:scale-[0.99] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
                             <IconCourse />
                             <div className="flex flex-col min-w-0">
@@ -677,10 +807,17 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
 const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, data, type, theme, courses, onCourseClick }) => {
     if (!isOpen || !data) return null;
     const isCity = type === 'city';
+    const isContinent = type === 'continent';
+    
     const stats = isCity ? [
         { l: 'RUNS', v: data.runs, c: 'text-blue-500' },
         { l: 'COURSES', v: data.courses },
         { l: 'AVG ELEVATION', v: data.avgElevation ? `${data.avgElevation.toFixed(0)}m` : '-' },
+        { l: 'PLAYERS', v: data.players }
+    ] : isContinent ? [
+        { l: 'RUNS', v: data.runs, c: 'text-blue-500' },
+        { l: 'COUNTRIES', v: data.countries },
+        { l: 'COURSES', v: data.courses },
         { l: 'PLAYERS', v: data.players }
     ] : [
         { l: 'RUNS', v: data.runs, c: 'text-blue-500' },
@@ -697,7 +834,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
             <div className="flex flex-col min-w-0 justify-center">
                 <h2 className="text-xl sm:text-4xl font-black tracking-tight uppercase truncate leading-none">{data.name}</h2>
                 <div className="text-[10px] sm:text-sm font-black uppercase tracking-[0.2em] mt-1.5 sm:mt-3 truncate">
-                    {type === 'country' ? (
+                    {type === 'continent' || type === 'country' ? (
                         <span className="text-base sm:text-xl leading-none">{data.flag}</span>
                     ) : (
                         formatLocationSubtitle(data.countryName || data.name, data.flag)
@@ -711,7 +848,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header}>
             <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>
-                    {type === 'city' ? 'CITY STATS' : 'COUNTRY STATS'}
+                    {type === 'city' ? 'CITY STATS' : type === 'continent' ? 'CONTINENT STATS' : 'COUNTRY STATS'}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
@@ -888,7 +1025,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                 const meta = athleteMetadata[pKey] || {};
                 const points = genderRecord ? (genderRecord / time) * 100 : 0;
                 return (
-                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                    <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-3">
                             <ASRRankBadge rank={i + 1} theme={theme} />
                             <div className="flex flex-col min-w-0">
@@ -1157,7 +1294,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
                     <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 pr-1">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col ml-0.5">
-                        <span className={`text-xs sm:text-sm font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
+                        <span className={`text-[8px] sm:text-[13px] font-black uppercase leading-tight ${!['cityStats', 'countryStats'].includes(sec.k) ? 'group-hover/item:text-blue-500' : ''} transition-colors`}>{p.name}</span>
                         <span className="text-sm sm:text-xl mt-0.5 leading-none">{p.region || '🏳️'}</span>
                       </div>
                     </div>
@@ -1225,8 +1362,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView }) => (
                     {id:'players',l:'PLAYERS'},
                     {id:'setters',l:'SETTERS'},
                     {id:'courses',l:'COURSES'},
-                    {id:'cities',l:'CITIES'},
-                    {id:'countries',l:'COUNTRIES'}
+                    {id:'map',l:'MAP'}
                 ].map(v => (
                     <button 
                         key={v.id} 
@@ -1258,8 +1394,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
         players: 'PLAYERS',
         setters: 'SETTERS',
         courses: 'COURSES',
-        cities: 'CITIES',
-        countries: 'COUNTRIES',
+        map: 'WORLD MAP',
         hof: 'HALL OF FAME'
     };
 
@@ -1293,20 +1428,6 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                 </div>
 
                 <div className="flex items-center flex-wrap gap-2 sm:gap-3">
-                    {['courses', 'cities', 'countries'].includes(view) && (
-                        <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-                            <a 
-                                href="https://www.google.com/maps/d/u/0/edit?mid=1qOq-qniep6ZG1yo9KdK1LsQ7zyvHyzY&usp=sharing" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="px-3 sm:px-5 py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all bg-blue-600 text-white shadow-lg hover:brightness-110 flex items-center gap-1.5"
-                            >
-                                ASR MAP
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                            </a>
-                        </div>
-                    )}
-
                     {view === 'players' && (
                         <div className={`flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                             <div className="flex">
@@ -1353,7 +1474,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
                 </div>
             )}
             
-            {view !== 'hof' && eventType !== 'open' && (
+            {view !== 'hof' && eventType !== 'open' && view !== 'map' && (
                 <div className="w-full relative group">
                     <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-blue-500`}>
                         <IconSearch size={12} />
@@ -1399,23 +1520,6 @@ const COURSE_COLS = [
     { label: 'PLAYERS', type: 'highlight', key: 'totalAthletes', align: 'right', width: 'w-10 sm:w-28' },
     { label: 'CR (MEN)', type: 'number', key: 'mRecord', decimals: 2, align: 'right', width: 'w-14 sm:w-36' },
     { label: 'CR (WOMEN)', type: 'number', key: 'fRecord', decimals: 2, opacity: false, align: 'right', width: 'w-14 sm:w-36 pr-4 sm:pr-10' }
-];
-
-const CITY_COLS = [
-    { isRank: true },
-    { label: 'CITY', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[120px] sm:min-w-[160px]' },
-    { label: 'PLAYERS', type: 'highlight', key: 'players', align: 'right', width: 'w-10 sm:w-28' },
-    { label: 'RUNS', type: 'number', key: 'runs', opacity: true, align: 'right', width: 'w-10 sm:w-28' },
-    { label: 'COURSES', type: 'number', key: 'courses', align: 'right', width: 'w-14 sm:w-36 pr-4 sm:pr-10' }
-];
-
-const COUNTRY_COLS = [
-    { isRank: true },
-    { label: 'COUNTRY', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[100px] sm:min-w-[160px]' },
-    { label: 'PLAYERS', type: 'highlight', key: 'players', align: 'right', width: 'w-8 sm:w-28' },
-    { label: 'RUNS', type: 'number', key: 'runs', opacity: true, align: 'right', width: 'w-8 sm:w-28' },
-    { label: 'COURSES', type: 'number', key: 'courses', opacity: true, align: 'right', width: 'w-8 sm:w-28' },
-    { label: 'CITIES', type: 'number', key: 'cities', opacity: true, align: 'right', width: 'w-12 sm:w-36 pr-4 sm:pr-10' }
 ];
 
 // --- CUSTOM HOOKS ---
@@ -1509,8 +1613,7 @@ function App() {
         players: 'Players',
         setters: 'Setters',
         courses: 'Courses',
-        cities: 'Cities',
-        countries: 'Countries',
+        map: 'Map',
         hof: 'Hall of Fame'
     };
     document.title = `ASR | ${titleMap[view] || 'Apex Speed Run'}`;
@@ -1609,12 +1712,21 @@ function App() {
       const ctxM = Object.entries((contextM || {})[name] || {});
       const ctxF = Object.entries((contextF || {})[name] || {});
       const meta = cMet[name] || {};
+      
+      const coordsMatch = meta.coordinates ? String(meta.coordinates).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) : null;
+      const parsedCoords = coordsMatch ? [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])] : null;
+
+      const resolvedCountry = meta.country || 'UNKNOWN';
+      const continentData = getContinentData(resolvedCountry);
+
       return {
-        name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️',
+        name, city: meta.city || 'UNKNOWN', country: resolvedCountry, flag: meta.flag || '🏳️',
+        continent: continentData.name, continentFlag: continentData.flag,
         mRecord: athletesMAll[0]?.[1] || null, fRecord: athletesFAll[0]?.[1] || null,
         totalAthletes: new Set([...ctxM.map(a => a[0]), ...ctxF.map(a => a[0])]).size,
         totalRuns: ctxM.length + ctxF.length,
         athletesM: athletesMAll, athletesF: athletesFAll,
+        parsedCoords,
         ...meta
       };
     });
@@ -1636,6 +1748,7 @@ function App() {
     return sorted.map((c, i) => ({ ...c, currentRank: i + 1 }));
   }, [rawCourseList, search, viewSorts.courses]);
 
+  // Extract core setter mathematical data securely without visual dividers
   const settersWithImpact = useMemo(() => {
     return settersData.map(s => {
         const sCourses = rawCourseList.filter(c => (c.setter || "").toLowerCase().includes(s.name.toLowerCase()));
@@ -1643,6 +1756,7 @@ function App() {
     });
   }, [settersData, rawCourseList]);
 
+  // Construct UI list containing dividers for the "SETTERS" view specifically
   const settersList = useMemo(() => {
     const filtered = settersWithImpact.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     if (filtered.length === 0) return [];
@@ -1686,22 +1800,27 @@ function App() {
     return result.map((c, i) => ({ ...c, currentRank: i + 1 }));
   }, [rawCourseList, viewSorts.countries, search]);
 
+  const continentList = useMemo(() => {
+    const base = calculateContinentStats(rawCourseList);
+    const result = base.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+    return result.sort((a, b) => b.courses - a.courses).map((c, i) => ({ ...c, currentRank: i + 1 }));
+  }, [rawCourseList, search]);
+
   const hofStats = useMemo(() => {
+    // We pass settersWithImpact directly to avoid mathematical sorting bugs involving invisible dividers
     return calculateHofStats(data, atPerfs, lbAT, atMet, cityList, countryList, viewSorts.hof, settersWithImpact);
   }, [data, lbAT, cityList, countryList, atMet, atPerfs, viewSorts.hof, settersWithImpact]);
 
   const currentView = useMemo(() => {
-    if (view === 'hof') return null;
+    if (view === 'hof' || view === 'map') return null;
     const isEmpty = eventType === 'open' && openData.length === 0;
     const config = {
       players: { columns: PLAYER_COLS, data: isEmpty ? [] : list, onClick: (p) => openModal('player', p) },
       setters: { columns: SETTERS_COLS, data: isEmpty ? [] : settersList, onClick: (s) => openModal('setter', s) },
-      courses: { columns: COURSE_COLS, data: isEmpty ? [] : courseList, onClick: (c) => openModal('course', c) },
-      cities: { columns: CITY_COLS, data: isEmpty ? [] : cityList, onClick: (c) => openModal('city', c) },
-      countries: { columns: COUNTRY_COLS, data: isEmpty ? [] : countryList, onClick: (c) => openModal('country', c) }
+      courses: { columns: COURSE_COLS, data: isEmpty ? [] : courseList, onClick: (c) => openModal('course', c) }
     }[view];
     return config ? { ...config, sort: viewSorts[view] } : null;
-  }, [view, eventType, viewSorts, list, settersList, courseList, cityList, countryList, openData.length, openModal]);
+  }, [view, eventType, viewSorts, list, settersList, courseList, openData.length, openModal]);
 
   const renderActiveModal = () => {
     if (!activeModal) return null;
@@ -1729,6 +1848,8 @@ function App() {
             return <ASRLocationModal {...props} data={activeModal.data} type='city' courses={rawCourseList} onCourseClick={(c) => openModal('course', c)} />;
         case 'country':
             return <ASRLocationModal {...props} data={activeModal.data} type='country' courses={rawCourseList} onCourseClick={(c) => openModal('course', c)} />;
+        case 'continent':
+            return <ASRLocationModal {...props} data={activeModal.data} type='continent' courses={rawCourseList} onCourseClick={(c) => openModal('course', c)} />;
         default:
             return null;
     }
@@ -1774,6 +1895,8 @@ function App() {
             </div>
         ) : view === 'hof' ? (
             <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p)} onSetterClick={s => openModal('setter', s)} medalSort={viewSorts.hof} setMedalSort={handleSort} />
+        ) : view === 'map' ? (
+            <ASRGlobalMap courses={rawCourseList} continents={continentList} cities={cityList} countries={countryList} theme={theme} onCourseClick={(c) => openModal('course', c)} onCountryClick={(c) => openModal('country', c)} onCityClick={(c) => openModal('city', c)} onContinentClick={(c) => openModal('continent', c)} />
         ) : (
           <div className={`relative border rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden ${theme === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-slate-300'}`}>
             <div className={`absolute top-0 right-0 bottom-0 w-12 sm:hidden pointer-events-none z-10 bg-gradient-to-l to-transparent ${theme === 'dark' ? 'from-[#09090b]' : 'from-white'}`} />
