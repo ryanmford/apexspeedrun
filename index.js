@@ -1,20 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import continents from './continents.json';
-/**
- * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
- * Core Model: Gemini 3 Flash
- * Generation Date: 2026-02-20
- * * UPDATE: Phase 1 (Anti-Fragility & Debounce Optimization) applied.
- * * UPDATE: Phase 2 (Lazy Load Memory Optimization) applied.
- * * UPDATE: Phase 3 (Leaflet Singleton & Stability) applied.
- * * UPDATE: Phase 4 (Typography, Skeletons, & Sanitization) applied.
- * * UPDATE: Phase 5 (Virtualization, Gradient Avatars, & Tooltips) applied.
- * * UPDATE: Phase 6 (Persistence, PWA Tags, & Deep Tooltips) applied.
- * * UPDATE: Phase 7 (Map Clustering & Image Lazy Loading) applied.
- * * UPDATE: Phase 8 (Critical Crash Fixes & Safety Fallbacks) applied.
- * * UPDATE: Phase 9 (Hardcoded Mobile Viewport Injection) applied.
- * * UPDATE: Phase 10 (Map Base Layer Injection & Season Toggling) applied.
- */
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
