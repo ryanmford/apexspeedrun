@@ -1,5 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import continents from './continents.json';
+import { 
+  ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
+  ChevronDown, Sun, Moon, MapPin, Building2, Globe, Instagram, Play 
+} from 'lucide-react';
 
 // --- CUSTOM STYLES ---
 const CustomStyles = () => (
