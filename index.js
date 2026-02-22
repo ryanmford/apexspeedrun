@@ -1,98 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import './styles.css';
 import continents from './continents.json';
 import { 
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
   ChevronDown, Sun, Moon, MapPin, Building2, Globe, Instagram, Play 
 } from 'lucide-react';
-
-// --- CUSTOM STYLES ---
-const CustomStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
-
-    @keyframes subtlePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-    .animate-subtle-pulse { animation: subtlePulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    .glow-gold { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.6)); }
-    .glow-silver { filter: drop-shadow(0 0 8px rgba(161, 161, 170, 0.5)); }
-    .glow-bronze { filter: drop-shadow(0 0 8px rgba(206, 137, 70, 0.6)); }
-    .glow-fire { filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7)); }
-    
-    .scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* Leaflet Overrides */
-    .leaflet-container { font-family: inherit; z-index: 1; background: transparent; }
-    .leaflet-tooltip { font-family: inherit; border-radius: 8px; border: none; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.3); padding: 8px 12px; }
-    .dark-tooltip { background: #121214; color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); }
-    .light-tooltip { background: #ffffff; color: #0f172a; border: 1px solid rgba(0,0,0,0.1); }
-    .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 10px -1px rgba(0,0,0,0.2) !important; border-radius: 12px !important; overflow: hidden; }
-    .leaflet-control-zoom a { color: inherit !important; display: flex !important; align-items: center; justify-content: center; width: 36px !important; height: 36px !important; transition: all 0.2s; }
-    .dark-zoom .leaflet-control-zoom a { background-color: #121214 !important; color: #f1f5f9 !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
-    .dark-zoom .leaflet-control-zoom a:hover { background-color: #27272a !important; }
-    .light-zoom .leaflet-control-zoom a { background-color: #ffffff !important; color: #0f172a !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; }
-    .light-zoom .leaflet-control-zoom a:hover { background-color: #f1f5f9 !important; }
-    
-    /* Cluster Styles */
-    .asr-cluster { border-radius: 50%; border: 3px solid; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .dark-zoom .asr-cluster { background-color: rgba(37, 99, 235, 0.9); border-color: rgba(255, 255, 255, 0.1); color: white; }
-    .light-zoom .asr-cluster { background-color: rgba(37, 99, 235, 0.9); border-color: rgba(255, 255, 255, 0.8); color: white; }
-
-    .leaflet-interactive { transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease, fill 0.2s ease, stroke 0.2s ease; }
-
-    * { 
-      -webkit-tap-highlight-color: transparent;
-      -webkit-font-smoothing: antialiased;
-      box-sizing: border-box;
-    }
-    
-    html, body { 
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      text-rendering: optimizeLegibility; 
-      width: 100%; 
-      margin: 0; 
-      padding: 0; 
-      overflow-x: hidden;
-      overflow-y: auto;
-      min-height: 100%;
-    }
-
-    .font-mono {
-      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace !important;
-    }
-
-    .data-table, .hof-table { 
-      table-layout: auto !important; 
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .data-table td, .data-table th, .hof-table td, .hof-table th {
-      vertical-align: middle;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    .data-table th, .hof-table th {
-      white-space: nowrap !important;
-    }
-
-    .num-col, .flag-col { 
-      white-space: nowrap !important; 
-    }
-
-    .hof-table th, .hof-table td, .data-table th, .data-table td { 
-      padding: 1rem 0.35rem; 
-    }
-    @media (min-width: 640px) {
-      .hof-table th, .hof-table td, .data-table th, .data-table td { padding: 1.5rem 1rem; }
-    }
-  `}</style>
-);
 
 // --- ICONS ---
 const IconSpeed = ({ size = 24, className = "" }) => <ChevronsRight size={size} strokeWidth={2.5} className={`overflow-visible shrink-0 ${className}`} style={{ transform: 'skewX(-18deg)' }} />;
@@ -2583,7 +2495,6 @@ function App() {
 
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-[#cbd5e1] text-slate-900'}`}>
-      <CustomStyles />
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       
       {renderActiveModal()}
