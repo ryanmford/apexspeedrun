@@ -95,58 +95,20 @@ const CustomStyles = () => (
 );
 
 // --- ICONS ---
-const IconSpeed = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'skewX(-18deg)' }} className="overflow-visible shrink-0">
-    <path d="M3 19l6-7-6-7" opacity="0.2" /><path d="M9 19l6-7-6-7" opacity="0.5" /><path d="M15 19l6-7-6-7" />
-  </svg>
-);
-const IconSearch = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-current shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
-const IconX = ({ size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
-const IconCornerUpLeft = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-    <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
-  </svg>
-);
-const IconCornerUpRight = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-    <polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>
-  </svg>
-);
-const IconArrow = ({ direction }) => <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-500 shrink-0 ${direction === 'ascending' ? 'rotate-180' : ''}`}><path d="M7 13l5 5 5-5M7 6l5 5 5-5" /></svg>;
-const IconSun = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v20M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2"/><path d="M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
-const IconMoon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
-const IconCourse = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
-  </svg>
-);
-const IconMapPin = ({ size = 20, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-  </svg>
-);
-const IconCity = ({ size = 20 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
-    </svg>
-);
-const IconGlobe = ({ size = 20 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-        <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
-    </svg>
-);
-const IconInstagram = ({ size = 20, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-  </svg>
-);
-const IconVideoPlay = ({ size = 16, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`}>
-    <polygon points="5 3 19 12 5 21 5 3" />
-  </svg>
-);
+const IconSpeed = ({ size = 24, className = "" }) => <ChevronsRight size={size} strokeWidth={2.5} className={`overflow-visible shrink-0 ${className}`} style={{ transform: 'skewX(-18deg)' }} />;
+const IconSearch = ({ size = 16, className = "" }) => <Search size={size} strokeWidth={2.5} className={`text-current shrink-0 ${className}`} />;
+const IconX = ({ size = 20, className = "" }) => <X size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconCornerUpLeft = ({ size = 20, className = "" }) => <CornerUpLeft size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconCornerUpRight = ({ size = 20, className = "" }) => <CornerUpRight size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconArrow = ({ direction }) => <ChevronDown size={16} strokeWidth={3} className={`transition-transform duration-500 shrink-0 ${direction === 'ascending' ? 'rotate-180' : ''}`} />;
+const IconSun = () => <Sun size={14} strokeWidth={2.5} className="shrink-0" />;
+const IconMoon = () => <Moon size={14} strokeWidth={2.5} className="shrink-0" />;
+const IconCourse = ({ size = 20, className = "" }) => <MapPin size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconMapPin = ({ size = 20, className = "" }) => <MapPin size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconCity = ({ size = 20, className = "" }) => <Building2 size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconGlobe = ({ size = 20, className = "" }) => <Globe size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+const IconInstagram = ({ size = 20, className = "" }) => <Instagram size={size} strokeWidth={2} className={`shrink-0 ${className}`} />;
+const IconVideoPlay = ({ size = 16, className = "" }) => <Play size={size} strokeWidth={2} className={`shrink-0 fill-current ${className}`} />;
 
 // --- UI COMPONENTS & UTILS ---
 const ASRTooltip = ({ text, children, direction = 'top', align = 'center' }) => {
