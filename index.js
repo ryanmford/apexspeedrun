@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-
+import continents from './continents.json';
 /**
  * APEX SPEED RUN (ASR) - OFFICIAL DASHBOARD
  * Core Model: Gemini 3 Flash
@@ -395,19 +395,18 @@ const normalizeCountryName = (name) => {
 
 const getContinentData = (country) => {
     const c = normalizeCountryName(country);
-    const eu = ['UK', 'NETHERLANDS', 'CZECHIA', 'SPAIN', 'FRANCE', 'GERMANY', 'ITALY', 'SWITZERLAND', 'AUSTRIA', 'SWEDEN', 'NORWAY', 'DENMARK', 'FINLAND', 'BELGIUM', 'POLAND', 'PORTUGAL', 'IRELAND', 'RUSSIA', 'GREECE', 'CROATIA', 'SERBIA', 'ROMANIA', 'BULGARIA', 'HUNGARY', 'SLOVAKIA', 'SLOVENIA', 'ICELAND', 'LITHUANIA', 'LATVIA', 'ESTONIA', 'UKRAINE', 'BELARUS', 'LUXEMBOURG', 'MALTA', 'CYPRUS', 'ANDORRA', 'MONACO', 'LIECHTENSTEIN', 'SAN MARINO', 'VATICAN CITY'];
-    const na = ['USA', 'CANADA', 'MEXICO', 'PUERTO RICO', 'COSTA RICA', 'CUBA', 'PANAMA', 'GUATEMALA', 'BELIZE', 'HONDURAS', 'EL SALVADOR', 'NICARAGUA', 'JAMAICA', 'BAHAMAS', 'HAITI', 'DOMINICAN REPUBLIC', 'TRINIDAD AND TOBAGO', 'BARBADOS', 'CURACAO', 'ARUBA', 'CAYMAN ISLANDS', 'BERMUDA', 'GREENLAND'];
-    const sa = ['BRAZIL', 'ARGENTINA', 'CHILE', 'COLOMBIA', 'PERU', 'ECUADOR', 'VENEZUELA', 'BOLIVIA', 'PARAGUAY', 'URUGUAY', 'GUYANA', 'SURINAME', 'FRENCH GUIANA'];
-    const as = ['KOREA', 'JAPAN', 'CHINA', 'TAIWAN', 'MACAU', 'SINGAPORE', 'INDIA', 'MALAYSIA', 'THAILAND', 'VIETNAM', 'PHILIPPINES', 'INDONESIA', 'UAE', 'SAUDI ARABIA', 'ISRAEL', 'TURKEY', 'IRAN', 'IRAQ', 'SYRIA', 'JORDAN', 'LEBANON', 'OMAN', 'YEMEN', 'QATAR', 'KUWAIT', 'BAHRAIN', 'PAKISTAN', 'AFGHANISTAN', 'KAZAKHSTAN', 'UZBEKISTAN', 'TURKMENISTAN', 'KYRGYZSTAN', 'TAJIKISTAN', 'MONGOLIA', 'NEPAL', 'BHUTAN', 'BANGLADESH', 'SRI LANKA', 'MYANMAR', 'CAMBODIA', 'LAOS', 'BRUNEI', 'HONG KONG'];
-    const oc = ['AUSTRALIA', 'NEW ZEALAND', 'FIJI', 'PAPUA NEW GUINEA', 'SOLOMON ISLANDS', 'VANUATU', 'SAMOA', 'KIRIBATI', 'TONGA', 'MICRONESIA', 'MARSHALL ISLANDS', 'PALAU', 'NAURU', 'TUVALU', 'GUAM'];
-    const af = ['SOUTH AFRICA', 'EGYPT', 'MOROCCO', 'KENYA', 'NIGERIA', 'ALGERIA', 'TUNISIA', 'LIBYA', 'SUDAN', 'ETHIOPIA', 'TANZANIA', 'UGANDA', 'RWANDA', 'GHANA', 'SENEGAL', 'COTE D IVOIRE', 'CAMEROON', 'MALI', 'MADAGASCAR', 'ANGOLA', 'MOZAMBIQUE', 'ZAMBIA', 'ZIMBABWE', 'BOTSWANA', 'NAMIBIA'];
+    const regionMap = {
+        'eu': { name: 'EUROPE', flag: '🌍' },
+        'na': { name: 'NORTH AMERICA', flag: '🌎' },
+        'sa': { name: 'SOUTH AMERICA', flag: '🌎' },
+        'as': { name: 'ASIA', flag: '🌏' },
+        'oc': { name: 'AUSTRALIA / OCEANIA', flag: '🌏' },
+        'af': { name: 'AFRICA', flag: '🌍' }
+    };
 
-    if (eu.includes(c)) return { name: 'EUROPE', flag: '🌍' };
-    if (na.includes(c)) return { name: 'NORTH AMERICA', flag: '🌎' };
-    if (sa.includes(c)) return { name: 'SOUTH AMERICA', flag: '🌎' };
-    if (as.includes(c)) return { name: 'ASIA', flag: '🌏' };
-    if (oc.includes(c)) return { name: 'AUSTRALIA / OCEANIA', flag: '🌏' };
-    if (af.includes(c)) return { name: 'AFRICA', flag: '🌍' };
+    for (const [regionCode, countries] of Object.entries(continents)) {
+        if (countries.includes(c)) return regionMap[regionCode];
+    }
     return { name: 'GLOBAL', flag: '🌐' };
 };
 
