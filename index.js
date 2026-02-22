@@ -422,6 +422,7 @@ const processRankingData = (csv, gender) => {
   const cIdx = findIdx(['🪙', 'contribution']);
   const fireIdx = findIdx(['🔥', 'fire']);
   const igIdx = findIdx(['ig', 'instagram', 'social']);
+  const avgIdx = findIdx(['avg time', 'average', 'avg']);
 
   return lines.slice(hIdx + 1).map((line, i) => {
     const vals = parseLine(line); 
@@ -444,7 +445,8 @@ const processRankingData = (csv, gender) => {
       rating: cleanNumeric(vals[ratingIdx]) || 0, runs: Math.floor(cleanNumeric(vals[runIdx]) || 0), 
       wins: Math.floor(cleanNumeric(vals[winIdx]) || 0), pts: cleanNumeric(vals[ptsIdx]) || 0, 
       sets: Math.floor(cleanNumeric(vals[setIdx]) || 0), 
-      contributionScore: cleanNumeric(vals[cIdx]) || 0, totalFireCount: fireIdx !== -1 ? Math.floor(cleanNumeric(vals[fireIdx]) || 0) : 0
+      contributionScore: cleanNumeric(vals[cIdx]) || 0, totalFireCount: fireIdx !== -1 ? Math.floor(cleanNumeric(vals[fireIdx]) || 0) : 0,
+      avgTime: cleanNumeric(vals[avgIdx] !== -1 ? vals[avgIdx] : vals[14]) || 0
     };
   }).filter(p => p !== null);
 };
@@ -658,7 +660,8 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       region: athleteMetadata[pKey]?.region || '🏳️',
       allTimeRank: athleteMetadata[pKey]?.allTimeRank || 9999,
       countryName: athleteMetadata[pKey]?.countryName || "",
-      igHandle: athleteMetadata[pKey]?.igHandle || ""
+      igHandle: athleteMetadata[pKey]?.igHandle || "",
+      avgTime: athleteMetadata[pKey]?.avgTime || 0
     };
   });
   
@@ -829,9 +832,21 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                 return (
                     <div key={c.name} onClick={() => onCourseClick(c)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3 pr-4 min-w-0">
-                            <IconCourse />
+                            {c.coordinates ? (
+                                <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className={`p-2 rounded-full transition-all hover:bg-blue-500/10 hover:text-blue-500 ${theme === 'dark' ? 'text-white/40' : 'text-slate-400'}`}
+                                >
+                                    <IconCourse />
+                                </a>
+                            ) : (
+                                <IconCourse className="opacity-40" />
+                            )}
                             <div className="flex flex-col min-w-0">
-                                <span className="text-xs sm:text-base font-black uppercase whitespace-normal break-words transition-colors group-hover:text-blue-500">{c.name}</span>
+                                <span className={`text-xs sm:text-base font-mono font-black uppercase whitespace-normal break-words transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.name}</span>
                                 <div className="text-[10px] sm:text-xs font-black uppercase flex items-center gap-1 mt-0.5">
                                     <span className="opacity-40 truncate">{locText}</span>
                                     <span className="opacity-100 shrink-0 text-[10px] sm:text-xs">{c.flag}</span>
@@ -845,13 +860,13 @@ const ASRProfileCourseList = ({ courses, theme, onCourseClick, filterKey, filter
                             </div>
                             <div className="flex flex-col items-end font-mono tabular-nums leading-tight">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] sm:text-[10px] font-black opacity-40">M:</span>
+                                    <span className="text-[10px] sm:text-xs font-black opacity-40">M:</span>
                                     <span className={`text-xs sm:text-sm font-bold ${timeColor}`}>
                                         {c.mRecord !== null ? c.mRecord.toFixed(2) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] sm:text-[10px] font-black opacity-40">W:</span>
+                                    <span className="text-[10px] sm:text-xs font-black opacity-40">W:</span>
                                     <span className={`text-xs sm:text-sm font-bold ${timeColor}`}>
                                         {c.fRecord !== null ? c.fRecord.toFixed(2) : '-'}
                                     </span>
@@ -990,7 +1005,7 @@ const ASRLocationModal = ({ isOpen, onClose, onBack, onForward, canGoForward, da
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
-                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                             <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
                             <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                         </div>
@@ -1060,25 +1075,31 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
     );
 
     const renderPlayerContent = () => {
-        const courseData = [...(playerPerformances[pKey] || [])].sort((a, b) => {
+        const courseDataRaw = [...(playerPerformances[pKey] || [])];
+        const courseData = courseDataRaw.map(cd => {
+          const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
+          return { ...cd, coordinates: matched?.coordinates, flag: matched?.flag };
+        }).sort((a, b) => {
             const aIsRecord = a.rank === 1; const bIsRecord = b.rank === 1;
             if (aIsRecord && !bIsRecord) return -1;
             if (!aIsRecord && bIsRecord) return 1;
             if (aIsRecord && bIsRecord) return a.num - b.num;
             return b.points - a.points;
         });
+
         const getFires = (t, g) => g === 'M' ? (t < 7 ? 3 : t < 8 ? 2 : t < 9 ? 1 : 0) : (t < 9 ? 3 : t < 10 ? 2 : t < 11 ? 1 : 0);
         const totalFires = courseData.reduce((acc, c) => acc + getFires(c.num, identity.gender), 0);
+        
         const playerStats = [
             { l: 'RATING', v: (identity.rating || 0).toFixed(2), c: 'text-blue-500' }, 
             { l: 'RUNS', v: identity.runs || 0 }, 
             { l: 'POINTS', v: (identity.pts || 0).toFixed(2) }, 
-            { l: '🪙', v: identity.contributionScore || 0, g: 'glow-gold' }, 
-            { l: 'WIN %', v: ((identity.wins / (identity.runs || 1)) * 100).toFixed(2) }, 
+            { l: 'WIN %', v: ((identity.wins / (identity.runs || 1)) * 100).toFixed(1) + '%' }, 
             { l: 'WINS', v: identity.wins || 0 }, 
-            { l: '🔥', v: totalFires, g: 'glow-fire' }
+            { l: 'AVG TIME', v: (identity.avgTime || 0).toFixed(2), tip: 'Average finish time across all courses run.' },
+            { l: '🪙', v: identity.contributionScore || 0, g: 'glow-gold', tip: 'Coin bonus for runs, sets, & wins.' }, 
+            { l: '🔥', v: totalFires, g: 'glow-fire', tip: 'Fire bonus for course breaker runs.' }
         ];
-        const tooltipMap = { '🔥': "Fire bonus for course breaker runs.", '🪙': "Coin bonus for runs, sets, & wins." };
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1086,11 +1107,11 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                     {playerStats.map((s, i) => {
                         const isEmoji = s.l === '🪙' || s.l === '🔥';
                         return (
-                            <div key={i} className={`flex flex-col border p-2 sm:p-5 rounded-xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                            <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                                 <span className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] mb-1 sm:mb-2 flex items-center`}>
                                     <span className={`${isEmoji ? 'opacity-100' : 'opacity-50'} flex items-center gap-1.5`}>
-                                        {tooltipMap[s.l] ? (
-                                            <ASRTooltip text={tooltipMap[s.l]} direction="bottom" align={i % 2 === 0 ? 'left' : 'right'}>
+                                        {s.tip ? (
+                                            <ASRTooltip text={s.tip} direction="bottom" align={i % 2 === 0 ? 'left' : 'right'}>
                                                 <span className="cursor-help border-b border-dashed border-current">{isEmoji ? '' : s.l}</span>
                                             </ASRTooltip>
                                         ) : (!isEmoji && s.l)}
@@ -1105,12 +1126,28 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 mb-3 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSES RUN</h3>
                 <div className="grid grid-cols-1 gap-2">
                     {courseData.map((c, i) => (
-                        <div key={i} onClick={() => { const target = allCourses.find(x => x.name === c.label); if(target) openModal('course', target); }} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                            <div className="flex flex-col min-w-0 pr-3">
-                                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{c.label}</span>
-                                <div className="flex items-center gap-1 mt-0.5 flex-wrap h-4">
-                                    {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
-                                    {getFires(c.num, identity.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, identity.gender)} />}
+                        <div key={i} onClick={() => { const target = allCourses.find(x => x.name.toUpperCase() === c.label.toUpperCase()); if(target) openModal('course', target); }} className={`group flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                            <div className="flex items-center gap-3 pr-3 min-w-0">
+                                {c.coordinates ? (
+                                    <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        className={`p-2 rounded-full transition-all hover:bg-blue-500/10 hover:text-blue-500 ${theme === 'dark' ? 'text-white/40' : 'text-slate-400'}`}
+                                    >
+                                        <IconCourse />
+                                    </a>
+                                ) : (
+                                    <IconCourse className="opacity-40" />
+                                )}
+                                <div className="flex flex-col min-w-0">
+                                    <span className={`text-xs sm:text-base font-mono font-black uppercase whitespace-normal break-words transition-colors group-hover:text-blue-500 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.label}</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap h-4">
+                                        {c.flag && <span className="text-[10px] sm:text-xs opacity-80">{c.flag}</span>}
+                                        {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
+                                        {getFires(c.num, identity.gender) > 0 && <ASRPerformanceBadge type="fire" count={getFires(c.num, identity.gender)} />}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4 shrink-0">
@@ -1147,11 +1184,11 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-8">
                     {setterStatsGrid.map((s, i) => (
-                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 flex items-center">
+                        <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 sm:mb-2 opacity-50 flex items-center">
                                 {s.tip ? <ASRTooltip text={s.tip} direction="bottom" align={i % 2 === 0 ? 'left' : 'right'}><span className="cursor-help border-b border-dashed border-current">{s.l}</span></ASRTooltip> : s.l}
                             </span>
-                            <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
+                            <span className={`text-xs sm:text-xl font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1306,7 +1343,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                 <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>COURSE STATS</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
-                        <div key={i} className={`flex flex-col border p-2.5 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
+                        <div key={i} className={`flex flex-col border p-3 sm:p-5 rounded-xl ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300/50 shadow-sm'}`}>
                             <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 opacity-50 whitespace-nowrap">{s.l}</span>
                             <span className={`text-xs sm:text-base font-mono font-black num-col ${s.c || ''}`}>{s.v}</span>
                         </div>
@@ -1782,28 +1819,34 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, medalSort, 
 };
 
 const ASRNavBar = ({ theme, setTheme, view, setView }) => {
-    // Merged Map and Courses into one "MAP" item, positioned first.
     const navItems = [{id:'map',l:'MAP'}, {id:'players',l:'PLAYERS'}, {id:'setters',l:'SETTERS'}];
     return (
-        <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-20 flex items-center justify-between px-2 sm:px-8 gap-2 sm:gap-6 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
-            <div className="flex items-center gap-1.5 shrink-0">
-                <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse flex-shrink-0`}><IconSpeed /></div>
-                <span className="font-black tracking-tighter text-xs sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap">
-                    ASR <span className="hidden xs:inline">APEX SPEED RUN</span>
+        <nav className={`fixed top-0 w-full backdrop-blur-xl border-b z-50 h-14 sm:h-20 flex items-center justify-between px-4 sm:px-8 lg:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-[#cbd5e1]/85 border-slate-400/30'}`}>
+            {/* Left Section: Logo - flex-shrink-0 ensures it doesn't compress Nav Items */}
+            <div className="flex items-center gap-2 shrink-0">
+                <div className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'} animate-pulse`}><IconSpeed /></div>
+                <span className="font-black tracking-tighter text-xs sm:text-2xl uppercase italic leading-none transition-all whitespace-nowrap hidden xs:block">
+                    ASR <span className="hidden sm:inline">APEX SPEED RUN</span>
                 </span>
             </div>
-            <div className="flex-1 flex justify-center min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-hide py-1 px-1 w-full sm:w-auto justify-start sm:justify-center">
+
+            {/* Center Section: Navigation Buttons - flex-grow and justify-center spreads them out */}
+            <div className="flex-1 flex justify-center items-center px-4 overflow-visible">
+                <div className="flex items-center gap-1.5 sm:gap-4 md:gap-8 w-full justify-center">
                     {navItems.map(v => (
-                        <button key={v.id} onClick={() => setView(v.id)} className={`shrink-0 border px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap select-none ${view === v.id ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' : (theme === 'dark' ? 'border-white/10 text-slate-400 hover:border-white/30 hover:text-white' : 'border-slate-400/30 text-slate-500 hover:border-slate-400 hover:text-slate-700 bg-white/20')}`}>
+                        <button key={v.id} onClick={() => setView(v.id)} className={`flex-1 sm:flex-none border px-2 sm:px-6 md:px-8 py-1.5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap select-none ${view === v.id ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-105' : (theme === 'dark' ? 'border-white/10 text-slate-400 hover:border-white/30 hover:text-white' : 'border-slate-400/30 text-slate-500 hover:border-slate-400 hover:text-slate-700 bg-white/20')}`}>
                             {v.l}
                         </button>
                     ))}
                 </div>
             </div>
-            <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
-                {theme === 'dark' ? <IconSun /> : <IconMoon />}
-            </button>
+
+            {/* Right Section: Theme Toggle - flex-shrink-0 ensures it doesn't compress Nav Items */}
+            <div className="shrink-0">
+                <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center border rounded-full transition-all ${theme === 'dark' ? 'bg-black/40 border-white/10 text-slate-400 hover:text-white' : 'bg-slate-300/50 border-slate-400/20 text-slate-600 hover:text-black'}`}>
+                    {theme === 'dark' ? <IconSun /> : <IconMoon />}
+                </button>
+            </div>
         </nav>
     );
 };
@@ -1875,7 +1918,7 @@ const PLAYER_COLS = [
     { isRank: true },
     { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-auto px-2 py-4 sm:py-5 min-w-[120px] sm:min-w-[160px]' },
     { label: 'RATING', type: 'highlight', key: 'rating', decimals: 2, align: 'right', width: 'w-16 sm:w-36' },
-    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-12 sm:w-28 pr-4 sm:pr-10' }
+    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-12 sm:w-24 pr-4 sm:pr-10' }
 ];
 
 const SETTERS_COLS = [
