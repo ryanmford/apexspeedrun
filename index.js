@@ -5,11 +5,6 @@ import {
   Compass, Info, CheckCircle2, ChevronRight, Navigation, MessageSquare, ShieldCheck
 } from 'lucide-react';
 
-/**
- * ASR (Apex Speed Run) Platform
- * Comprehensive leaderboard and mapping tool for the parkour community.
- */
-
 // --- UTILITIES & HELPERS ---
 
 const normalizeName = (n) => n ? String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').trim() : "";
@@ -1958,7 +1953,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, se
             {view !== 'hof' && view !== 'map' && (
                 <div className="w-full relative group">
                     <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-slate-600' : 'text-slate-400'} ${focusIcon}`}><IconSearch size={14} /></div>
-                    <input type="text" aria-label="Search" placeholder="Search athletes or countries..." value={search} onChange={e => setSearch(e.target.value)} className={`rounded-[1.5rem] pl-12 pr-10 py-4 w-full text-xs sm:text-sm font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] shadow-xl' : 'bg-white border-slate-300 text-slate-900 shadow-md'} ${focusBorder}`} />
+                    <input type="text" aria-label="Search" placeholder="" value={search} onChange={e => setSearch(e.target.value)} className={`rounded-[1.5rem] pl-12 pr-10 py-4 w-full text-xs sm:text-sm font-medium outline-none transition-all border ${theme === 'dark' ? 'bg-white/[0.03] border-white/5 text-white focus:bg-white/[0.07] shadow-xl' : 'bg-white border-slate-300 text-slate-900 shadow-md'} ${focusBorder}`} />
                 </div>
             )}
         </header>
@@ -1976,9 +1971,9 @@ const PLAYER_COLS = [
 
 const COURSE_COLS = [
     { isRank: true },
-    { label: 'TRACK', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[120px] sm:min-w-[180px]' },
+    { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-auto px-2 py-4 sm:py-5 min-w-[120px] sm:min-w-[180px]' },
     { label: 'PLAYERS', type: 'highlight', key: 'totalAthletes', align: 'right', width: 'w-10 sm:w-28' },
-    { label: 'CR TIMES', type: 'records', key: 'mRecord', align: 'right', width: 'w-16 sm:w-44 pr-4 sm:pr-10' }
+    { label: 'RECORDS', type: 'records', key: 'mRecord', align: 'right', width: 'w-16 sm:w-44 pr-4 sm:pr-10' }
 ];
 
 export default function App() {
