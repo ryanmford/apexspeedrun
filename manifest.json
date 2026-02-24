@@ -13,5 +13,3 @@
   "theme_color": "#09090b",
   "background_color": "#09090b"
 }
-
-Once you have `index.html`, `manifest.json`, `favicon.ico`, and `asr.jpg` all in your main GitHub directory, the icons will work perfectly on all devices.
