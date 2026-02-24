@@ -1476,8 +1476,8 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:gap-8 mb-6">
-                <ASRRankList title="MEN'S ALL-TIME TOP 10" athletes={course.allTimeAthletesM} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
-                <ASRRankList title="WOMEN'S ALL-TIME TOP 10" athletes={course.allTimeAthletesF} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
+                <ASRRankList title="TOP 10 MEN" athletes={course.allTimeAthletesM} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
+                <ASRRankList title="TOP 10 WOMEN" athletes={course.allTimeAthletesF} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
             </div>
 
             <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
