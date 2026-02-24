@@ -1,0 +1,17 @@
+{
+  "short_name": "ASR",
+  "name": "Apex Speed Run",
+  "icons": [
+    {
+      "src": "asr.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#09090b",
+  "background_color": "#09090b"
+}
+
+Once you have `index.html`, `manifest.json`, `favicon.ico`, and `asr.jpg` all in your main GitHub directory, the icons will work perfectly on all devices.
