@@ -86,6 +86,11 @@ const useDebounce = (value, delay) => {
     return debouncedValue;
 };
 
+const isQualifiedAthlete = (p) => {
+    if (!p) return false;
+    return p.gender === 'M' ? (p.runs >= 4) : (p.runs >= 2);
+};
+
 // --- DATA CONSTANTS ---
 
 const continents = {
@@ -112,6 +117,20 @@ const getContinentData = (country) => {
         if (countriesArr.includes(c)) return regionMap[regionCode];
     }
     return { name: 'GLOBAL', flag: '🌐' };
+};
+
+const getFireCountForRun = (time, gender) => {
+  if (time === null || time === undefined) return 0;
+  if (gender === 'M') {
+    if (time < 7) return 3;
+    if (time < 8) return 2;
+    if (time < 9) return 1;
+  } else {
+    if (time < 9) return 3;
+    if (time < 10) return 2;
+    if (time < 11) return 1;
+  }
+  return 0;
 };
 
 // --- HOOKS ---
@@ -176,6 +195,7 @@ const CustomStyles = () => (
       color: #2563eb;
       box-shadow: inset 0 0 15px rgba(37, 99, 235, 0.15), 0 0 10px rgba(37, 99, 235, 0.1);
       transition: all 0.2s ease-in-out;
+      opacity: 1 !important;
     }
     .btn-blue-gradient:hover {
       background: rgba(37, 99, 235, 0.1);
@@ -234,7 +254,7 @@ const CustomStyles = () => (
     
     .stat-card-tooltip {
       position: absolute;
-      bottom: 100%;
+      bottom: 110%;
       left: 50%;
       transform: translateX(-50%);
       margin-bottom: 8px;
@@ -248,7 +268,7 @@ const CustomStyles = () => (
       pointer-events: none;
       opacity: 0;
       transition: all 0.2s ease-out;
-      z-index: 50;
+      z-index: 100;
       width: 200px;
       text-align: center;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
@@ -278,7 +298,6 @@ const CustomStyles = () => (
       background-size: 10px 100%;
     }
 
-    /* FIX: SAFE AREA UTILITIES */
     .p-safe-top { padding-top: env(safe-area-inset-top, 0px); }
     .m-safe-top { margin-top: env(safe-area-inset-top, 0px); }
   `}</style>
@@ -296,6 +315,12 @@ const IconSun = () => <Sun size={14} strokeWidth={2.5} className="shrink-0" />;
 const IconMoon = () => <Moon size={14} strokeWidth={2.5} className="shrink-0" />;
 const IconCourse = ({ size = 20, className = "" }) => <MapPin size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
 const IconMapPin = ({ size = 20, className = "" }) => <MapPin size={size} strokeWidth={2.5} className={`shrink-0 ${className}`} />;
+
+const ASRSectionHeading = ({ children, theme, className = "" }) => (
+    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] px-1 sm:px-2 mb-3 opacity-60 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'} ${className}`}>
+        {children}
+    </h3>
+);
 
 const IconVideoPlay = ({ size = 16, className = "" }) => (
   <Play 
@@ -377,7 +402,7 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
 const ASRPerformanceBadge = ({ type, count = 1 }) => {
     const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
     const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-blue" };
-    return <span className={`inline-flex items-center gap-1 text-xs select-none shrink-0 ${glows[type]}`}>
+    return <span className={`inline-flex items-center gap-0.5 text-xs select-none shrink-0 ${glows[type]}`}>
         {Array.from({ length: count }).map((_, i) => <span key={i}>{badges[type]}</span>)}
     </span>;
 };
@@ -530,7 +555,6 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-300 cursor-pointer" onClick={onClose}>
       <div className={`${theme === 'dark' ? 'bg-[#0a0a0b] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-2xl scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col cursor-default max-h-[90vh]`} onClick={e => e.stopPropagation()}>
-        {/* REFACTORED HEADER: USES FLEX FLOW TO PREVENT OVERLAP */}
         <div className={`shrink-0 flex flex-col p-4 sm:p-10 gap-6 sm:gap-8 bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-400/40'} to-transparent p-safe-top`}>
           <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -823,14 +847,21 @@ const useASRData = () => {
           const res = {};
           Object.keys(source).forEach(pKey => {
             const pGender = athleteMetadata[pKey]?.gender || 'M';
+            let fireTotal = 0;
             res[pKey] = Object.entries(source[pKey]).map(([normL, data]) => {
               const boardValues = Object.values((allTimeCourseLeaderboards[pGender] || {})[normL] || {});
               const record = boardValues.length > 0 ? Math.min(...boardValues) : data.num;
               const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
               const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
               const rank = sorted.findIndex(e => e[0] === pKey) + 1;
-              return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl };
+              const fires = getFireCountForRun(data.num, pGender);
+              fireTotal += fires;
+              return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl, fireCount: fires };
             }).sort((a, b) => a.label.localeCompare(b.label));
+            
+            if (athleteMetadata[pKey]) {
+              athleteMetadata[pKey].totalFireCount = fireTotal;
+            }
           });
           return res;
         };
@@ -847,6 +878,7 @@ const useASRData = () => {
           const pGender = athleteMetadata[pKey]?.gender || 'M';
           const perfs = result.openPerformances[pKey] || [];
           const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
+          const totalFires = perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0);
           return {
             id: `open-${pKey}`, name: athleteDisplayNameMap[pKey] || pKey, pKey, gender: pGender,
             rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, runs: perfs.length,
@@ -857,7 +889,8 @@ const useASRData = () => {
             countryName: athleteMetadata[pKey]?.countryName || "",
             igHandle: athleteMetadata[pKey]?.igHandle || "",
             avgTime: athleteMetadata[pKey]?.avgTime || 0,
-            contributionScore: athleteMetadata[pKey]?.contributionScore || 0
+            contributionScore: athleteMetadata[pKey]?.contributionScore || 0,
+            totalFireCount: totalFires
           };
         });
 
@@ -943,11 +976,12 @@ const calculateContinentStats = (rawCourseList) => {
 
 const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImpact) => {
     if (!data.length) return null;
-    const qualifiedAthletes = data.filter(p => (p.gender === 'M' && p.runs >= 4) || (p.gender === 'F' && p.runs >= 2)).map(p => { 
+    const qualifiedAthletes = data.filter(p => isQualifiedAthlete(p)).map(p => { 
         const performances = atPerfs[p.pKey] || []; 
+        const calculatedFires = performances.reduce((sum, run) => sum + (run.fireCount || 0), 0);
         return { 
             ...p, 
-            totalFireCount: performances.length,
+            totalFireCount: calculatedFires,
             winPercentage: p.runs > 0 ? (p.wins / p.runs) * 100 : 0
         }; 
     });
@@ -1055,7 +1089,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
     const [activeTab, setActiveTab] = useState('continents');
     const [isLocating, setIsLocating] = useState(false);
 
-    // Initial script loading
     useEffect(() => {
         const loadLeaflet = async () => {
           if (!window.L) {
@@ -1090,7 +1123,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         loadLeaflet();
     }, []);
 
-    // Resize handling
     useEffect(() => {
         const resizeObserver = new ResizeObserver(() => {
             if (mapRef.current) mapRef.current.invalidateSize();
@@ -1118,7 +1150,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         return [...data].sort((a, b) => b.courses - a.courses);
     }, [activeTab, cities, countries, conts]);
 
-    // Map Lifecycle
     useEffect(() => {
         if (!isLoaded || !window.L || !mapContainerRef.current) return;
 
@@ -1164,7 +1195,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         };
     }, [isLoaded, eventType]);
 
-    // Themes
     useEffect(() => {
         if (!isLoaded || !window.L || !mapRef.current) return;
         if (tileLayerRef.current) mapRef.current.removeLayer(tileLayerRef.current);
@@ -1182,7 +1212,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         ).addTo(mapRef.current);
     }, [theme, isLoaded]);
 
-    // Data Pins
     useEffect(() => {
         if (!isLoaded || !window.L || !mapRef.current || !dataLayersRef.current || !clusterGroupRef.current) return;
 
@@ -1290,9 +1319,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border backdrop-blur-xl shadow-2xl ${isPanelOpen ? 'scale-100 opacity-100 flex-1 sm:max-h-[60vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/90 border-white/10 text-white' : 'bg-white/95 border-slate-300 text-slate-900'}`}>
                     <div className={`flex items-center p-1.5 border-b shrink-0 gap-1 ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
-                        <button onClick={() => setActiveTab('continents')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'continents' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>CONTINENTS</button>
-                        <button onClick={() => setActiveTab('countries')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'countries' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>COUNTRIES</button>
-                        <button onClick={() => setActiveTab('cities')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'cities' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-40 hover:opacity-100'}`}>CITIES</button>
+                        <button onClick={() => setActiveTab('continents')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'continents' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-100'}`}>CONTINENTS</button>
+                        <button onClick={() => setActiveTab('countries')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'countries' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-100'}`}>COUNTRIES</button>
+                        <button onClick={() => setActiveTab('cities')} className={`flex-1 py-2 text-[9px] sm:text-[11px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'cities' ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200/80 text-slate-900 shadow-sm') : 'opacity-100'}`}>CITIES</button>
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide flex-1">
                         {displayData.slice(0, 25).map((c, i) => (
@@ -1335,8 +1364,8 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     const accentColor = 'text-blue-600';
 
     return (
-        <div className="space-y-2 sm:space-y-3">
-            <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{title}</h3>
+        <div className="space-y-1">
+            <ASRSectionHeading theme={theme}>{title}</ASRSectionHeading>
             <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
                 {athletes.slice(0, 10).map(([pKey, time, videoUrl], i) => {
                     const meta = athleteMetadata[pKey] || {};
@@ -1457,8 +1486,8 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                 <ASRRankList title="TOP 10 WOMEN" athletes={course.allTimeAthletesF} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
             </div>
 
-            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
-                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 opacity-60`}>COURSE STATS</h3>
+            <div className="space-y-1 mt-4 sm:mt-6">
+                <ASRSectionHeading theme={theme}>COURSE STATS</ASRSectionHeading>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                     {stats.map((s, i) => (
                         <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} />
@@ -1467,8 +1496,8 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             </div>
             
             {(course.leadSetters || course.assistantSetters) && (
-                <div className="space-y-2 sm:space-y-3 mt-6 sm:mt-8">
-                    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 opacity-60`}>COURSE SETTERS</h3>
+                <div className="space-y-1 mt-6 sm:mt-8">
+                    <ASRSectionHeading theme={theme}>COURSE SETTERS</ASRSectionHeading>
                     <div className="space-y-2">
                         {course.leadSetters && (
                             <div className={`p-3 sm:p-4 rounded-xl sm:rounded-3xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-300/50 shadow-sm'} text-blue-600`}>
@@ -1559,6 +1588,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             return b.points - a.points;
         });
 
+        const totalFires = courseData.reduce((sum, run) => sum + (run.fireCount || 0), 0);
+
         const playerStats = [
             { l: 'RATING', v: (identity.rating || 0).toFixed(2), c: accentColor }, 
             { l: 'POINTS', v: (identity.pts || 0).toFixed(2) }, 
@@ -1568,7 +1599,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
             { l: 'COUNTRIES', v: new Set(courseData.map(c => allCourses.find(x => x.name.toUpperCase() === c.label.toUpperCase())?.country).filter(Boolean)).size || 0 },
             { l: 'AVG TIME', v: (identity.avgTime || 0).toFixed(2) },
-            { l: '🔥', v: courseData.length, g: 'glow-blue', t: 'Verified Runs Completed' }
+            { l: '🔥', v: totalFires, g: 'glow-blue', t: 'Fire awards based on speed thresholds' }
         ];
 
         return (
@@ -1578,7 +1609,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} glowClass={s.g} tooltip={s.t} />
                     ))}
                 </div>
-                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 mb-3 opacity-60`}>VERIFIED RUNS</h3>
+                <ASRSectionHeading theme={theme}>VERIFIED RUNS</ASRSectionHeading>
                 <div className="grid grid-cols-1 gap-2">
                     {courseData.map((c, i) => {
                         const target = allCourses.find(x => x.name.toUpperCase() === c.label.toUpperCase());
@@ -1607,7 +1638,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                                           <span className="text-[10px] sm:text-xs opacity-100 shrink-0 ml-1">{c.flag || '🏳️'}</span>
                                           <div className="flex items-center gap-1.5 ml-1.5 shrink-0">
                                             {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
-                                            <ASRPerformanceBadge type="fire" count={1} />
+                                            {c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}
                                           </div>
                                       </div>
                                   </div>
@@ -1661,7 +1692,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} glowClass={s.g} tooltip={s.t} />
                     ))}
                 </div>
-                <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 mb-3 opacity-60`}>VERIFIED SETS</h3>
+                <ASRSectionHeading theme={theme}>VERIFIED SETS</ASRSectionHeading>
                 {setterCourses.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2">
                         {setterCourses.map((c, i) => (
@@ -1707,11 +1738,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={jumpToHistory}>
             {isBoth && (
                 <div className={`flex p-1 rounded-xl sm:rounded-2xl mb-6 border w-fit mx-auto sm:mx-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
-                    <button onClick={() => setActiveRole('player')} className={`px-4 py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeRole === 'player' ? 'active active-btn' : 'opacity-50 hover:opacity-100'}`}>PLAYER STATS</button>
-                    <button onClick={() => setActiveRole('setter')} className={`px-4 py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeRole === 'setter' ? 'active active-btn' : 'opacity-50 hover:opacity-100'}`}>SETTER STATS</button>
-                    <style>{`
-                        .active-btn { background: #2563eb; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-                    `}</style>
+                    <button onClick={() => setActiveRole('player')} className={`px-4 py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeRole === 'player' ? 'bg-blue-600 text-white' : 'opacity-100 hover:opacity-100'}`}>PLAYER STATS</button>
+                    <button onClick={() => setActiveRole('setter')} className={`px-4 py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeRole === 'setter' ? 'bg-blue-600 text-white' : 'opacity-100 hover:opacity-100'}`}>SETTER STATS</button>
                 </div>
             )}
             {activeRole === 'player' ? renderPlayerContent() : renderSetterContent()}
@@ -1731,11 +1759,12 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
         (region.type === 'continent' && c.continent === region.name)
     ).sort((a, b) => (b.totalRuns || 0) - (a.totalRuns || 0));
 
-    const regionalPlayers = allPlayers.filter(p => 
-        (region.type === 'city' && p.city === region.name) ||
-        (region.type === 'country' && p.countryName === region.name) ||
-        (region.type === 'continent' && getContinentData(p.countryName).name === region.name)
-    ).sort((a,b) => b.rating - a.rating);
+    const regionalPlayers = allPlayers.filter(p => {
+        const inRegion = (region.type === 'city' && p.city === region.name) ||
+                        (region.type === 'country' && p.countryName === region.name) ||
+                        (region.type === 'continent' && getContinentData(p.countryName).name === region.name);
+        return inRegion && isQualifiedAthlete(p);
+    }).sort((a, b) => (b.rating - a.rating) || (b.runs - a.runs));
 
     const Header = (
         <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full pr-2">
@@ -1753,7 +1782,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
 
     const stats = [
         { l: 'COURSES', v: region.courses || regionalCourses.length },
-        { l: 'PLAYERS', v: region.players || regionalPlayers.length },
+        { l: 'RANKED PLAYERS', v: regionalPlayers.length },
         { l: 'TOTAL RUNS', v: region.runs || regionalCourses.reduce((sum, c) => sum + (c.totalRuns || 0), 0) }
     ];
 
@@ -1767,28 +1796,32 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
 
             <div className="space-y-8">
                 <div>
-                    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 mb-3 opacity-60`}>TOP RANKED LOCAL PLAYERS</h3>
-                    <div className="grid grid-cols-1 gap-2">
-                        {regionalPlayers.slice(0, 5).map((p, i) => (
-                            <div key={p.pKey || i} onClick={() => openModal('player', p)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
-                                <div className="flex items-center gap-3 pr-3 min-w-0">
-                                    <ASRRankBadge rank={i + 1} theme={theme} />
-                                    <div className="flex flex-col min-w-0">
-                                        <span className={`text-xs sm:text-[15px] font-black uppercase transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:${accentColor}`}>{p.name}</span>
-                                        <span className="text-[10px] sm:text-xs uppercase font-black opacity-40">{p.region || '🏳️'}</span>
+                    <ASRSectionHeading theme={theme}>TOP RANKED LOCAL PLAYERS</ASRSectionHeading>
+                    {regionalPlayers.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-2">
+                            {regionalPlayers.slice(0, 10).map((p, i) => (
+                                <div key={p.pKey || i} onClick={() => openModal('player', p)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
+                                    <div className="flex items-center gap-3 pr-3 min-w-0">
+                                        <ASRRankBadge rank={i + 1} theme={theme} />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className={`text-xs sm:text-[15px] font-black uppercase transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:${accentColor}`}>{p.name}</span>
+                                            <span className="text-[10px] sm:text-xs uppercase font-black opacity-40">{p.region || '🏳️'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end shrink-0">
+                                        <span className={`text-xs sm:text-sm font-mono font-black ${accentColor}`}>{p.rating.toFixed(2)}</span>
+                                        <span className="text-[9px] uppercase font-black opacity-30">{p.runs} RUNS</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end shrink-0">
-                                    <span className={`text-xs sm:text-sm font-mono font-black ${accentColor}`}>{p.rating.toFixed(2)}</span>
-                                    <span className="text-[9px] uppercase font-black opacity-30">RATING</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-4 opacity-50 text-[10px] italic">No ranked local players met the verification threshold.</div>
+                    )}
                 </div>
 
                 <div>
-                    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest px-1 sm:px-2 mb-3 opacity-60`}>REGIONAL COURSES</h3>
+                    <ASRSectionHeading theme={theme}>REGIONAL COURSES</ASRSectionHeading>
                     <div className="grid grid-cols-1 gap-2">
                         {regionalCourses.map((c, i) => (
                             <div key={i} onClick={() => openModal('course', c)} className={`group flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
@@ -1841,15 +1874,20 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
           { l: 'MOST RUNS', k: 'runs' },
           { l: 'HIGHEST WIN %', k: 'winPercentage' },
           { l: 'MOST COURSE RECORDS', k: 'wins' },
-          { l: 'MOST 🪙', k: 'contributionScore' },
-          { l: 'MOST 🔥', k: 'totalFireCount' },
-          { l: 'MOST IMPACT', k: 'impact' },
+          { l: 'MOST 🪙', k: 'contributionScore', t: 'Awarded for contributions to the ASR community' },
+          { l: 'MOST 🔥', k: 'totalFireCount', t: 'Based on sub-9/8/7 (M) and sub-11/10/9 (W) times' },
+          { l: 'MOST IMPACT', k: 'impact', t: 'Total runs completed by others on courses you have set' },
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec) => {
-          const hasTooltip = ['totalFireCount', 'contributionScore', 'impact'].includes(sec.k);
+          const hasTooltip = !!sec.t;
           return (
             <div key={sec.k} className={`relative rounded-2xl sm:rounded-3xl border flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'} ${hasTooltip ? 'stat-card-container' : ''}`}>
               <div className={`p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between rounded-t-2xl sm:rounded-t-3xl`}>
+                  {hasTooltip && (
+                    <div className={`stat-card-tooltip ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
+                      {sec.t}
+                    </div>
+                  )}
                   <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 flex-wrap">
                       {sec.l.split(' ').map((word, wi) => (
                           <span key={wi} className={word === '🔥' || word === '🪙' ? 'text-blue-600' : 'opacity-60'}>{word}</span>
@@ -1857,7 +1895,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                       {hasTooltip && <HelpCircle size={10} className="opacity-40" />}
                   </h4>
               </div>
-              <div className="rounded-b-2xl sm:rounded-b-3xl overflow-hidden">
+              <div className="flex-1">
                   <div className={`divide-y ${theme === 'dark' ? 'divide-white/[0.03]' : 'divide-slate-100'} flex-1`}>
                     {stats.topStats[sec.k].map((p, i) => (
                       <div key={`${sec.k}-${i}-${p.name}`} className={`group flex items-center justify-between p-3 sm:p-4 hover:bg-white/[0.03] transition-colors gap-2 cursor-pointer active:scale-[0.98]`} onClick={() => {
@@ -1881,7 +1919,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         })}
       </div>
       <div className={`relative rounded-3xl border overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-slate-300 shadow-sm'}`}>
-        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit shrink-0"><h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest opacity-60">WORLDWIDE MEDAL COUNT</h3></div>
+        <div className="p-4 sm:p-6 border-b border-inherit bg-inherit shrink-0">
+            <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest opacity-60">WORLDWIDE MEDAL COUNT</h3>
+        </div>
         <div className="overflow-auto scrollbar-hide max-h-[60vh] relative w-full">
           <table className="min-w-full relative">
             <thead className={`sticky top-0 z-20 backdrop-blur-xl shadow-sm ${theme === 'dark' ? 'bg-[#121214]/95 text-slate-400' : 'bg-white/95 text-slate-500'}`}>
@@ -2051,7 +2091,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro, eve
             <div className="flex-1 flex justify-center items-center px-4">
                 <div className="flex items-center gap-2 sm:gap-6 w-full justify-center">
                     {navItems.map(v => (
-                        <button key={v.id} onClick={() => setView(v.id)} className={`flex-1 sm:flex-none px-3 sm:px-10 py-1.5 sm:py-3 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${view === v.id ? 'btn-blue-gradient active' : 'btn-blue-gradient opacity-60'}`}>
+                        <button key={v.id} onClick={() => setView(v.id)} className={`flex-1 sm:flex-none px-3 sm:px-10 py-1.5 sm:py-3 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${view === v.id ? 'btn-blue-gradient active' : 'btn-blue-gradient'}`}>
                             {v.l}
                         </button>
                     ))}
@@ -2070,7 +2110,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro, eve
     );
 };
 
-const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, theme, onOpenIntro, showIntro }) => {
+const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, theme, onOpenIntro, showIntro, lastNonHofView }) => {
     const titles = { players: 'PLAYERS', map: 'MAP', hof: 'HALL OF FAME' };
     const accentText = 'text-blue-600';
 
@@ -2089,16 +2129,16 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, th
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                     <div className="flex flex-wrap gap-0.5">
-                        <button onClick={() => { setEventType('open'); if(view === 'hof') setView('map'); }} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-50'}`}>ASR OPEN</button>
-                        <button onClick={() => { setEventType('all-time'); if(view === 'hof') setView('map'); }} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-50'}`}>ALL-TIME</button>
-                        <button onClick={() => setView('hof')} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view === 'hof' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-50'}`}>HOF</button>
+                        <button onClick={() => { setEventType('open'); if(view === 'hof') setView(lastNonHofView); }} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'open' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-100'}`}>ASR OPEN</button>
+                        <button onClick={() => { setEventType('all-time'); if(view === 'hof') setView(lastNonHofView); }} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view !== 'hof' && eventType === 'all-time' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-100'}`}>ALL-TIME</button>
+                        <button onClick={() => setView('hof')} className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${view === 'hof' ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-100'}`}>HOF</button>
                     </div>
                 </div>
                 {view === 'players' && (
                     <div className={`flex items-center p-1 rounded-2xl border w-fit h-fit shrink-0 ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-slate-300/50 border-slate-400/20'}`}>
                         <div className="flex">
                             {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                                <button key={g.id} onClick={() => setGen(g.id)} className={`px-6 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-50'}`}>{g.l}</button>
+                                <button key={g.id} onClick={() => setGen(g.id)} className={`px-6 py-2.5 rounded-xl text-[10px] sm:text-sm font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active' : 'btn-blue-gradient border-transparent opacity-100'}`}>{g.l}</button>
                             ))}
                         </div>
                     </div>
@@ -2162,6 +2202,7 @@ export default function App() {
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
   const [view, setView] = useState('map'); 
+  const [lastNonHofView, setLastNonHofView] = useState('map');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
@@ -2171,6 +2212,12 @@ export default function App() {
 
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = view === 'hof' || eventType === 'all-time';
+
+  useEffect(() => {
+    if (view !== 'hof') {
+      setLastNonHofView(view);
+    }
+  }, [view]);
 
   const openModal = useCallback((type, data, roleOverride = null) => {
     setModalHistory(prev => {
@@ -2192,12 +2239,10 @@ export default function App() {
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
   const canGoForward = historyIndex < modalHistory.length - 1;
 
-  // --- FIX: ONCE AND FOR ALL MODAL SCROLL LOCK ---
   useEffect(() => {
     const isModalActive = activeModal !== null || showIntro;
     if (isModalActive) {
       document.body.style.overflow = 'hidden';
-      // Prevent layout shift by adding padding for scrollbar
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     } else {
@@ -2242,8 +2287,7 @@ export default function App() {
     const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (p.countryName || "").toLowerCase().includes(debouncedSearch.toLowerCase())));
     if (filtered.length === 0) return [];
 
-    const isQual = (p) => p.gender === 'M' ? p.runs >= 4 : (p.gender === 'F' ? p.runs >= 2 : false);
-    let qual = filtered.filter(isQual), unranked = filtered.filter(p => !isQual(p));
+    let qual = filtered.filter(isQualifiedAthlete), unranked = filtered.filter(p => !isQualifiedAthlete(p));
     const sort = viewSorts.players;
     const dir = sort.direction === 'ascending' ? 1 : -1;
     
@@ -2380,6 +2424,7 @@ export default function App() {
         theme={theme} 
         onOpenIntro={() => setShowIntro(true)}
         showIntro={showIntro}
+        lastNonHofView={lastNonHofView}
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
