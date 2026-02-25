@@ -6,6 +6,10 @@ import {
   Video, HelpCircle, Building2, Map as MapIcon
 } from 'lucide-react';
 
+// --- CONSTANTS ---
+const SNAPSHOT_KEY = 'asr_data_vault_v1';
+const REFRESH_INTERVAL = 300000; // 5 mins
+
 // --- UTILITIES & HELPERS ---
 
 const normalizeName = (n) => n ? String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').trim() : "";
@@ -19,7 +23,6 @@ const normalizeCountryName = (name) => {
         'UNITED STATES': 'USA',
         'US': 'USA',
         'UNITED KINGDOM': 'UK',
-        'UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND': 'UK',
         'GREAT BRITAIN': 'UK',
         'ENGLAND': 'UK',
         'SCOTLAND': 'UK',
@@ -41,7 +44,7 @@ const cleanNumeric = (v) => {
   const clean = String(v).replace(/,/g, '').replace(/[^\d.-]/g, '').trim();
   if (clean === "") return null;
   const num = parseFloat(clean);
-  return (isNaN(num) || num < 0) ? null : num;
+  return (isNaN(num)) ? null : num;
 };
 
 const parseLine = (line = '') => {
@@ -75,7 +78,7 @@ const robustSort = (a, b, key, dir) => {
     return aStr.localeCompare(bStr) * dir;
 };
 
-const escapeHTML = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+const escapeHTML = (str) => str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : "";
 
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -131,19 +134,6 @@ const getFireCountForRun = (time, gender) => {
     if (time < 11) return 1;
   }
   return 0;
-};
-
-// --- HOOKS ---
-
-const useGeoJSON = () => {
-    const [data, setData] = useState(null);
-    useEffect(() => {
-        fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
-            .then(res => res.json())
-            .then(setData)
-            .catch(err => console.error("Failed to load map borders", err));
-    }, []);
-    return data;
 };
 
 // --- STYLES ---
@@ -241,6 +231,7 @@ const CustomStyles = () => (
       padding: 8px 12px !important;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
       font-family: inherit !important;
+      z-index: 1000 !important;
     }
     .light-tooltip {
       background: white !important;
@@ -250,6 +241,7 @@ const CustomStyles = () => (
       padding: 8px 12px !important;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
       font-family: inherit !important;
+      z-index: 1000 !important;
     }
     
     .stat-card-tooltip {
@@ -300,6 +292,11 @@ const CustomStyles = () => (
 
     .p-safe-top { padding-top: env(safe-area-inset-top, 0px); }
     .m-safe-top { margin-top: env(safe-area-inset-top, 0px); }
+
+    /* Fix for Leaflet tile lines */
+    .leaflet-tile-container img {
+      outline: 1px solid transparent;
+    }
   `}</style>
 );
 
@@ -610,7 +607,16 @@ const useASRData = () => {
   });
 
   const fetchData = useCallback(async () => {
-    const cacheBucket = Math.floor(Date.now() / 300000); 
+    // 1. Snapshot Recovery
+    try {
+        const cached = localStorage.getItem(SNAPSHOT_KEY);
+        if (cached) {
+            const parsedCache = JSON.parse(cached);
+            setState(prev => ({ ...prev, ...parsedCache, isLoading: false }));
+        }
+    } catch (e) { console.warn("Cache fail-safe triggered."); }
+
+    const cacheBucket = Math.floor(Date.now() / REFRESH_INTERVAL); 
     const getCsv = (q) => encodeURI(`https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`);
 
     const safeFetch = async (url) => {
@@ -660,13 +666,15 @@ const useASRData = () => {
         return lines.slice(hIdx + 1).map((line, i) => {
           const vals = parseLine(line); 
           const pName = (vals[nameIdx] || "").trim();
-          if (pName.length < 2) return null;
+          if (pName.length < 2) return null; 
           const rawCountry = countryNameIdx !== -1 ? vals[countryNameIdx]?.trim() : "";
           const rawFlag = flagEmojiIdx !== -1 ? (vals[flagEmojiIdx]?.trim() || "🏳️") : "🏳️";
           const fixed = fixCountryEntity(rawCountry, rawFlag);
           
           let rawIg = igIdx !== -1 ? (vals[igIdx] || "") : "";
           rawIg = rawIg.replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
+
+          const searchKey = `${pName} ${fixed.name} ${rawIg}`.toLowerCase();
 
           return { 
             id: `${gender}-${normalizeName(pName)}-${i}`, 
@@ -678,7 +686,8 @@ const useASRData = () => {
             wins: Math.floor(cleanNumeric(vals[winIdx]) || 0), pts: cleanNumeric(vals[ptsIdx]) || 0, 
             sets: Math.floor(cleanNumeric(vals[setIdx]) || 0), 
             contributionScore: cleanNumeric(vals[cIdx]) || 0, totalFireCount: fireIdx !== -1 ? Math.floor(cleanNumeric(vals[fireIdx]) || 0) : 0,
-            avgTime: cleanNumeric(avgIdx !== -1 ? vals[avgIdx] : vals[14]) || 0
+            avgTime: cleanNumeric(avgIdx !== -1 ? vals[avgIdx] : vals[14]) || 0,
+            searchKey
           };
         }).filter(p => p !== null);
       };
@@ -737,7 +746,8 @@ const useASRData = () => {
                       leadSetters,
                       assistantSetters,
                       demoVideo: demoIdx !== -1 ? (vals[demoIdx] || "").trim() : "",
-                      coordinates
+                      coordinates,
+                      searchKey: `${course} ${vals[cityIdx]} ${fixed.name}`.toLowerCase()
                   };
               }
           });
@@ -815,7 +825,7 @@ const useASRData = () => {
           
           const pGender = athleteMetadata[pKey]?.gender || ((genderIdx !== -1 && vals[genderIdx] || "").toUpperCase().startsWith('F') ? 'F' : 'M');
           if (!athleteMetadata[pKey]) {
-              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '' };
+              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
           }
           
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
@@ -879,18 +889,20 @@ const useASRData = () => {
           const perfs = result.openPerformances[pKey] || [];
           const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
           const totalFires = perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0);
+          const meta = athleteMetadata[pKey];
           return {
             id: `open-${pKey}`, name: athleteDisplayNameMap[pKey] || pKey, pKey, gender: pGender,
             rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, runs: perfs.length,
             wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
             sets: openAthleteSetCount[pKey] || 0,
-            region: athleteMetadata[pKey]?.region || '🏳️',
-            allTimeRank: athleteMetadata[pKey]?.allTimeRank || 9999,
-            countryName: athleteMetadata[pKey]?.countryName || "",
-            igHandle: athleteMetadata[pKey]?.igHandle || "",
-            avgTime: athleteMetadata[pKey]?.avgTime || 0,
-            contributionScore: athleteMetadata[pKey]?.contributionScore || 0,
-            totalFireCount: totalFires
+            region: meta?.region || '🏳️',
+            allTimeRank: meta?.allTimeRank || 9999,
+            countryName: meta?.countryName || "",
+            igHandle: meta?.igHandle || "",
+            avgTime: meta?.avgTime || 0,
+            contributionScore: meta?.contributionScore || 0,
+            totalFireCount: totalFires,
+            searchKey: meta?.searchKey || pKey.toLowerCase()
           };
         });
 
@@ -908,7 +920,7 @@ const useASRData = () => {
       const settersF = processSettersData(rSettersF);
       const allSetters = [...settersM, ...settersF];
       
-      setState({
+      const nextState = {
         data: [...pM, ...pF],
         openData: processed.openRankings,
         atPerfs: processed.allTimePerformances,
@@ -924,7 +936,11 @@ const useASRData = () => {
         isLoading: false,
         hasError: hasTotalError,
         hasPartialError
-      });
+      };
+
+      setState(nextState);
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextState));
+
     } catch(e) { 
         setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
     }
@@ -988,7 +1004,9 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
     
     const medalsBase = {};
     const processMedals = (lb) => {
+      if (!lb) return;
       Object.entries(lb).forEach(([courseName, athletes]) => {
+        if (!athletes) return;
         const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
         sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
           const athlete = atMet[pKey] || {};
@@ -1078,17 +1096,16 @@ const CountdownTimer = ({ targetDate, theme }) => {
 };
 
 const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, eventType, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const geoData = useGeoJSON();
+    const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
-    const tileLayerRef = useRef(null);
-    const dataLayersRef = useRef(null);
     const clusterGroupRef = useRef(null);
+    const tileLayerRef = useRef(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('continents');
     const [isLocating, setIsLocating] = useState(false);
 
+    // Initial script loading
     useEffect(() => {
         const loadLeaflet = async () => {
           if (!window.L) {
@@ -1112,24 +1129,125 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
 
                 const clusterScript = document.createElement('script');
                 clusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-                clusterScript.onload = () => setIsLoaded(true);
+                clusterScript.onload = () => setIsScriptsLoaded(true);
                 document.head.appendChild(clusterScript);
               };
               document.head.appendChild(script);
           } else {
-              setIsLoaded(true);
+              setIsScriptsLoaded(true);
           }
         };
         loadLeaflet();
     }, []);
 
+    // Create Map and Stable Layers
     useEffect(() => {
-        const resizeObserver = new ResizeObserver(() => {
-            if (mapRef.current) mapRef.current.invalidateSize();
+        if (!isScriptsLoaded || !window.L || !mapContainerRef.current || mapRef.current) return;
+
+        const map = window.L.map(mapContainerRef.current, {
+            zoomControl: false,
+            minZoom: 2,
+            maxZoom: 18,
+            maxBounds: [[-90, -180], [90, 180]],
+            maxBoundsViscosity: 1.0,
+            worldCopyJump: true,
+            preferCanvas: true 
+        }).setView([20, 0], 2);
+        
+        window.L.control.zoom({ position: 'bottomright' }).addTo(map);
+        map.createPane('asr-pins').style.zIndex = 650;
+
+        // Initialize Tile Layer with correct theme URL immediately
+        const initialUrl = theme === 'dark' 
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        tileLayerRef.current = window.L.tileLayer(initialUrl, {
+            attribution: '&copy; OSM &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        if (window.L.markerClusterGroup) {
+            clusterGroupRef.current = window.L.markerClusterGroup({
+                chunkedLoading: true,
+                maxClusterRadius: 50,
+                showCoverageOnHover: false,
+                spiderfyOnMaxZoom: true,
+                iconCreateFunction: (cluster) => {
+                    const count = cluster.getChildCount();
+                    return window.L.divIcon({ 
+                        html: `<div class="flex items-center justify-center w-full h-full font-black text-xs sm:text-sm drop-shadow-md">${count}</div>`,
+                        className: 'asr-cluster', 
+                        iconSize: window.L.point(36, 36) 
+                    });
+                }
+            });
+            map.addLayer(clusterGroupRef.current);
+        }
+        
+        mapRef.current = map;
+        setTimeout(() => map.invalidateSize(), 500);
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+        };
+    }, [isScriptsLoaded]);
+
+    // Handle container resizing
+    useEffect(() => {
+        if (mapRef.current && mapContainerRef.current) {
+            const resizeObserver = new ResizeObserver(() => {
+                mapRef.current?.invalidateSize();
+            });
+            resizeObserver.observe(mapContainerRef.current);
+            return () => resizeObserver.disconnect();
+        }
+    }, [isScriptsLoaded]);
+
+    // React to theme changes
+    useEffect(() => {
+        if (!mapRef.current || !tileLayerRef.current) return;
+        const url = theme === 'dark' 
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        tileLayerRef.current.setUrl(url);
+    }, [theme]);
+
+    // Render Markers
+    useEffect(() => {
+        if (!mapRef.current || !clusterGroupRef.current || !window.L) return;
+
+        clusterGroupRef.current.clearLayers();
+        const markers = courses.filter(c => c.parsedCoords && Array.isArray(c.parsedCoords) && isFinite(c.parsedCoords[0]) && isFinite(c.parsedCoords[1])).map(c => {
+            const marker = window.L.circleMarker(c.parsedCoords, {
+                pane: 'asr-pins',
+                radius: 6,
+                fillColor: '#2563eb',
+                color: theme === 'dark' ? '#ffffff' : '#ffffff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.95
+            });
+
+            marker.bindTooltip(`
+                <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${escapeHTML(c.city !== 'UNKNOWN' ? c.city : c.country)} <span>${escapeHTML(c.flag)}</span></div>
+                <div class="text-xs sm:text-sm font-black uppercase">${escapeHTML(c.name)}</div>
+            `, { 
+                className: theme === 'dark' ? 'dark-tooltip' : 'light-tooltip',
+                direction: 'top',
+                offset: [0, -10]
+            });
+
+            marker.on('click', () => onCourseClick && onCourseClick(c));
+            return marker;
         });
-        if (mapContainerRef.current) resizeObserver.observe(mapContainerRef.current);
-        return () => resizeObserver.disconnect();
-    }, []);
+
+        clusterGroupRef.current.addLayers(markers);
+    }, [courses, theme, onCourseClick]);
 
     const handleFindMe = () => {
       if (!mapRef.current || !navigator.geolocation) return;
@@ -1145,140 +1263,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
       );
     };
 
-    const displayData = useMemo(() => {
-        const data = activeTab === 'cities' ? cities : activeTab === 'countries' ? countries : conts;
-        return [...data].sort((a, b) => b.courses - a.courses);
-    }, [activeTab, cities, countries, conts]);
+    const displayData = activeTab === 'cities' ? cities : (activeTab === 'countries' ? countries : conts);
 
-    useEffect(() => {
-        if (!isLoaded || !window.L || !mapContainerRef.current) return;
-
-        if (!mapRef.current) {
-            const map = window.L.map(mapContainerRef.current, {
-                zoomControl: false,
-                minZoom: 2,
-                maxZoom: 18,
-                maxBounds: [[-90, -180], [90, 180]],
-                maxBoundsViscosity: 1.0,
-                worldCopyJump: false
-            }).setView([20, 0], 2);
-            
-            window.L.control.zoom({ position: 'bottomright' }).addTo(map);
-            map.createPane('asr-pins').style.zIndex = 650;
-            dataLayersRef.current = window.L.layerGroup().addTo(map);
-
-            clusterGroupRef.current = window.L.markerClusterGroup({
-                chunkedLoading: true,
-                maxClusterRadius: 40,
-                showCoverageOnHover: false,
-                spiderfyOnMaxZoom: true,
-                iconCreateFunction: function(cluster) {
-                    const count = cluster.getChildCount();
-                    return window.L.divIcon({ 
-                        html: `<div class="flex items-center justify-center w-full h-full font-black text-xs sm:text-sm drop-shadow-md">${count}</div>`,
-                        className: 'asr-cluster', 
-                        iconSize: window.L.point(36, 36) 
-                    });
-                }
-            });
-            map.addLayer(clusterGroupRef.current);
-            mapRef.current = map;
-            
-            setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 250);
-        }
-
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
-    }, [isLoaded, eventType]);
-
-    useEffect(() => {
-        if (!isLoaded || !window.L || !mapRef.current) return;
-        if (tileLayerRef.current) mapRef.current.removeLayer(tileLayerRef.current);
-
-        tileLayerRef.current = window.L.tileLayer(
-            theme === 'dark' 
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            {
-                attribution: '&copy; OSM &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20,
-                noWrap: true
-            }
-        ).addTo(mapRef.current);
-    }, [theme, isLoaded]);
-
-    useEffect(() => {
-        if (!isLoaded || !window.L || !mapRef.current || !dataLayersRef.current || !clusterGroupRef.current) return;
-
-        const layerGroup = dataLayersRef.current;
-        layerGroup.clearLayers(); 
-        clusterGroupRef.current.clearLayers();
-
-        let geoJsonLayer;
-        if (geoData) {
-            geoJsonLayer = window.L.geoJSON(geoData, {
-                style: { fillColor: 'transparent', color: 'transparent', weight: 1 },
-                onEachFeature: (feature, layer) => {
-                    const props = feature.properties || {};
-                    const possibleGeoNames = [props.ADMIN, props.name, props.SOVEREIGNT, props.BRK_NAME, props.NAME, props.FORMAL_EN].filter(Boolean);
-                    let countryData = null;
-                    for (let gName of possibleGeoNames) {
-                        const normalizedGeo = normalizeCountryName(gName);
-                        countryData = countries.find(c => normalizeCountryName(c.name) === normalizedGeo);
-                        if (countryData) break;
-                    }
-
-                    if (countryData) {
-                        layer.on({
-                            mouseover: (e) => {
-                                const l = e.target;
-                                const highlightColor = '#2563eb';
-                                l.setStyle({ fillColor: highlightColor, fillOpacity: 0.15, color: highlightColor, opacity: 0.6, weight: 2 });
-                            },
-                            mouseout: (e) => { if (geoJsonLayer) geoJsonLayer.resetStyle(e.target); },
-                            click: () => { if (onCountryClick) onCountryClick(countryData); }
-                        });
-                    }
-                }
-            }).addTo(layerGroup);
-        }
-
-        const markers = [];
-        courses.forEach(c => {
-            if (c.parsedCoords) {
-                const pinColor = '#2563eb';
-                const marker = window.L.circleMarker(c.parsedCoords, {
-                    pane: 'asr-pins',
-                    radius: 5,
-                    fillColor: pinColor,
-                    color: theme === 'dark' ? '#09090b' : '#ffffff',
-                    weight: 1.5,
-                    opacity: 1,
-                    fillOpacity: 0.9
-                });
-
-                marker.bindTooltip(`
-                    <div class="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-60 flex items-center gap-1">${escapeHTML(c.city !== 'UNKNOWN' ? c.city : c.country)} <span>${escapeHTML(c.flag)}</span></div>
-                    <div class="text-xs sm:text-sm font-black uppercase">${escapeHTML(c.name)}</div>
-                `, { 
-                    className: theme === 'dark' ? 'dark-tooltip' : 'light-tooltip',
-                    direction: 'top',
-                    offset: [0, -10]
-                });
-
-                marker.on('click', () => onCourseClick && onCourseClick(c));
-                markers.push(marker);
-            }
-        });
-        clusterGroupRef.current.addLayers(markers);
-    }, [courses, geoData, countries, theme, isLoaded, onCourseClick, onCountryClick, eventType]);
-
-    if (!isLoaded) {
+    if (!isScriptsLoaded) {
         return (
             <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border shadow-xl ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
                 <div className="animate-spin opacity-50 mb-4"><IconSpeed className="text-blue-600" /></div>
@@ -1482,8 +1469,8 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:gap-8 mb-6">
-                <ASRRankList title="TOP 10 MEN" athletes={course.allTimeAthletesM} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
-                <ASRRankList title="TOP 10 WOMEN" athletes={course.allTimeAthletesF} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
+                <ASRRankList title="TOP 10 MEN" athletes={course.allTimeAthletesM || []} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
+                <ASRRankList title="TOP 10 WOMEN" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} isAllTime={true} />
             </div>
 
             <div className="space-y-1 mt-4 sm:mt-6">
@@ -1881,7 +1868,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ].map((sec) => {
           const hasTooltip = !!sec.t;
           return (
-            <div key={sec.k} className={`relative rounded-2xl sm:rounded-3xl border flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-slate-300 shadow-sm'} ${hasTooltip ? 'stat-card-container' : ''}`}>
+            <div key={sec.k} className={`relative rounded-2xl sm:rounded-3xl border flex flex-col ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-300 shadow-sm'} ${hasTooltip ? 'stat-card-container' : ''}`}>
               <div className={`p-3 sm:p-4 border-b border-inherit bg-inherit flex items-center justify-between rounded-t-2xl sm:rounded-t-3xl`}>
                   {hasTooltip && (
                     <div className={`stat-card-tooltip ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
@@ -2284,7 +2271,8 @@ export default function App() {
         }));
     }
 
-    const filtered = src.filter(p => p.gender === gen && (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (p.countryName || "").toLowerCase().includes(debouncedSearch.toLowerCase())));
+    const term = debouncedSearch.toLowerCase();
+    const filtered = (src || []).filter(p => p && p.gender === gen && (p.searchKey || "").includes(term));
     if (filtered.length === 0) return [];
 
     let qual = filtered.filter(isQualifiedAthlete), unranked = filtered.filter(p => !isQualifiedAthlete(p));
@@ -2303,7 +2291,7 @@ export default function App() {
   }, [debouncedSearch, viewSorts.players, gen, isAllTimeContext, data, openData, view, isLoading]);
 
   const rawCourseList = useMemo(() => {
-    const allSetCourses = Object.keys(cMet);
+    const allSetCourses = Object.keys(cMet || {});
     const courseNames = Array.from(new Set([...allSetCourses, ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     if (courseNames.length === 0) return [];
     
@@ -2342,7 +2330,8 @@ export default function App() {
   }, [lbAT, isAllTimeContext, cMet, atRawBest]);
 
   const courseList = useMemo(() => {
-    const filtered = rawCourseList.filter(c => c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.city.toLowerCase().includes(debouncedSearch.toLowerCase()));
+    const term = debouncedSearch.toLowerCase();
+    const filtered = (rawCourseList || []).filter(c => c && (c.searchKey || "").includes(term));
     const sort = viewSorts.courses;
     const dir = sort.direction === 'ascending' ? 1 : -1;
     filtered.sort((a, b) => { 
@@ -2356,7 +2345,7 @@ export default function App() {
   }, [rawCourseList, debouncedSearch, viewSorts.courses]);
 
   const settersWithImpact = useMemo(() => {
-    return settersData.map(s => {
+    return (settersData || []).map(s => {
         const sNameLower = s.name.toLowerCase();
         const sCourses = rawCourseList.filter(c => (c.setter || "").toLowerCase().includes(sNameLower));
         return { 
@@ -2371,7 +2360,7 @@ export default function App() {
   const continentList = useMemo(() => calculateContinentStats(rawCourseList), [rawCourseList]);
 
   const hofStats = useMemo(() => {
-    if (view !== 'hof') return null; 
+    if (view !== 'hof' || !data || data.length === 0) return null; 
     return calculateHofStats(data, atPerfs, lbAT, atMet, viewSorts.hof, settersWithImpact);
   }, [data, lbAT, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
 
@@ -2393,7 +2382,7 @@ export default function App() {
             return <ASRProfileModal 
                       {...modalProps} 
                       identity={{ ...athleteData, setterData }} 
-                      initialRole={activeRoleOverride || activeModal.type} 
+                      initialRole={activeModal.roleOverride || activeModal.type} 
                       playerPerformances={isAllTimeContext ? atPerfs : opPerfs}
                       openModal={openModal}
                    />;
@@ -2403,8 +2392,6 @@ export default function App() {
         default: return null;
     }
   };
-
-  const activeRoleOverride = activeModal?.roleOverride;
 
   return (
     <div className={`min-h-screen min-h-[100dvh] transition-colors duration-500 font-sans pb-24 select-none flex flex-col antialiased ${theme === 'dark' ? 'bg-[#09090b] text-slate-200' : 'bg-white text-slate-900'}`}>
@@ -2428,7 +2415,7 @@ export default function App() {
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-8 flex-grow w-full relative">
-        {isLoading ? (
+        {isLoading && data.length === 0 ? (
             <div className={`relative border rounded-[2rem] overflow-hidden h-96 animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`} />
         ) : hasError && data.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 sm:py-32 space-y-6">
