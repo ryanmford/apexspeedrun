@@ -160,6 +160,7 @@ const CustomStyles = () => (
       align-items: center;
       justify-content: center;
       box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+      cursor: pointer;
     }
 
     .asr-cluster-blue {
@@ -568,7 +569,7 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
                           {breadcrumbs.map((b, i) => (
                               <React.Fragment key={i}>
                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(i); }}
+                                      onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(index); }}
                                       disabled={i === breadcrumbs.length - 1}
                                       className={`transition-colors outline-none whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'opacity-100' : 'opacity-50 cursor-pointer hover:opacity-100 active:opacity-75'}`}
                                   >
@@ -955,7 +956,7 @@ const useASRData = () => {
 const calculateCityStats = (rawCourseList) => {
     const cityMap = {};
     rawCourseList.forEach(c => {
-        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, continent: c.continent, courses: 0, runs: 0, playersSet: new Set() };
+        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
         cityMap[c.city].courses++;
         cityMap[c.city].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => cityMap[c.city].playersSet.add(a[0]));
@@ -968,7 +969,7 @@ const calculateCountryStats = (rawCourseList) => {
     const countryMap = {};
     rawCourseList.forEach(c => {
         const fixed = fixCountryEntity(c.country, c.flag);
-        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, continent: c.continent, courses: 0, runs: 0, playersSet: new Set() };
+        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
         countryMap[fixed.name].courses++;
         countryMap[fixed.name].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
@@ -981,7 +982,7 @@ const calculateContinentStats = (rawCourseList) => {
     const map = {};
     rawCourseList.forEach(c => {
         const contName = c.continent || 'GLOBAL';
-        if (!map[contName]) map[contName] = { name: contName, flag: c.continentFlag || '🌐', courses: 0, runs: 0, playersSet: new Set() };
+        if (!map[contName]) map[contName] = { name: contName, flag: c.continentFlag || '🌐', courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
         map[contName].courses++;
         map[contName].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => map[contName].playersSet.add(a[0]));
@@ -1076,7 +1077,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
                 { label: 'Hours', value: timeLeft.hours },
                 { label: 'Mins', value: timeLeft.minutes },
                 { label: 'Secs', value: timeLeft.seconds },
-            ].map((unit, idx, arr) => (
+            ].map((unit, index, arr) => (
                 <React.Fragment key={unit.label}>
                   <div className="flex flex-col items-center flex-1">
                       <span className={`text-3xl xs:text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter tabular-nums ${textColor}`}>
@@ -1086,7 +1087,7 @@ const CountdownTimer = ({ targetDate, theme }) => {
                           {unit.label}
                       </span>
                   </div>
-                  {idx < arr.length - 1 && (
+                  {index < arr.length - 1 && (
                     <div className={`text-2xl sm:text-4xl font-black mb-4 opacity-20 ${textColor}`}>:</div>
                   )}
                 </React.Fragment>
@@ -1157,7 +1158,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
         map.createPane('asr-pins').style.zIndex = 650;
 
-        // Initialize Tile Layer with correct theme URL immediately
         const initialUrl = theme === 'dark' 
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
             : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
@@ -1174,6 +1174,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 maxClusterRadius: 50,
                 showCoverageOnHover: false,
                 spiderfyOnMaxZoom: true,
+                zoomToBoundsOnClick: true,
                 iconCreateFunction: (cluster) => {
                     const count = cluster.getChildCount();
                     return window.L.divIcon({ 
@@ -1187,7 +1188,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         }
         
         mapRef.current = map;
-        setTimeout(() => map.invalidateSize(), 500);
+        
+        // Immediate size validation to prevent rendering artifacts
+        setTimeout(() => map.invalidateSize(), 100);
 
         return () => {
             if (mapRef.current) {
@@ -1208,6 +1211,22 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         }
     }, [isScriptsLoaded]);
 
+    // Fit bounds on initial data load
+    const hasInitialFit = useRef(false);
+    useEffect(() => {
+        if (!mapRef.current || courses.length === 0 || hasInitialFit.current) return;
+        
+        const validCoords = courses
+            .filter(c => c.parsedCoords)
+            .map(c => c.parsedCoords);
+            
+        if (validCoords.length > 0) {
+            const bounds = window.L.latLngBounds(validCoords);
+            mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+            hasInitialFit.current = true;
+        }
+    }, [courses, isScriptsLoaded]);
+
     // React to theme changes
     useEffect(() => {
         if (!mapRef.current || !tileLayerRef.current) return;
@@ -1217,20 +1236,21 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         tileLayerRef.current.setUrl(url);
     }, [theme]);
 
-    // Render Markers
+    // Render Markers - Ensure this runs as soon as mapRef.current and courses are available
     useEffect(() => {
-        if (!mapRef.current || !clusterGroupRef.current || !window.L) return;
+        if (!mapRef.current || !clusterGroupRef.current || !window.L || courses.length === 0) return;
 
         clusterGroupRef.current.clearLayers();
         const markers = courses.filter(c => c.parsedCoords && Array.isArray(c.parsedCoords) && isFinite(c.parsedCoords[0]) && isFinite(c.parsedCoords[1])).map(c => {
             const marker = window.L.circleMarker(c.parsedCoords, {
                 pane: 'asr-pins',
-                radius: 6,
+                radius: 7,
                 fillColor: '#2563eb',
-                color: theme === 'dark' ? '#ffffff' : '#ffffff',
+                color: '#ffffff',
                 weight: 2,
                 opacity: 1,
-                fillOpacity: 0.95
+                fillOpacity: 1,
+                interactive: true
             });
 
             marker.bindTooltip(`
@@ -1242,12 +1262,20 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 offset: [0, -10]
             });
 
-            marker.on('click', () => onCourseClick && onCourseClick(c));
+            marker.on('click', (e) => {
+              window.L.DomEvent.stopPropagation(e);
+              // Industry Best Practice: Smooth Jump Zoom
+              mapRef.current.flyTo(c.parsedCoords, 14, { duration: 1.2, easeLinearity: 0.25 });
+              if (onCourseClick) onCourseClick(c);
+            });
+            
             return marker;
         });
 
         clusterGroupRef.current.addLayers(markers);
-    }, [courses, theme, onCourseClick]);
+        // Force a final refresh for the markers
+        mapRef.current.invalidateSize();
+    }, [courses, theme, onCourseClick, isScriptsLoaded]);
 
     const handleFindMe = () => {
       if (!mapRef.current || !navigator.geolocation) return;
@@ -1255,12 +1283,17 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          mapRef.current.flyTo([latitude, longitude], 12, { duration: 2 });
+          mapRef.current.flyTo([latitude, longitude], 12, { duration: 1.5 });
           setIsLocating(false);
         },
         () => setIsLocating(false),
         { enableHighAccuracy: true }
       );
+    };
+
+    const jumpToLocation = (item) => {
+      if (!mapRef.current || !item.coords) return;
+      mapRef.current.flyTo(item.coords, activeTab === 'cities' ? 12 : 5, { duration: 1.5 });
     };
 
     const displayData = activeTab === 'cities' ? cities : (activeTab === 'countries' ? countries : conts);
@@ -1312,15 +1345,25 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide flex-1">
                         {displayData.slice(0, 25).map((c, i) => (
-                            <div key={i} onClick={() => { if(activeTab === 'cities') onCityClick(c); else if(activeTab === 'countries') onCountryClick(c); else onContinentClick(c); }} className={`cursor-pointer flex items-center justify-between p-2.5 rounded-xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
+                            <div key={i} 
+                                 onClick={() => { 
+                                     jumpToLocation(c);
+                                     if(activeTab === 'cities') onCityClick(c); 
+                                     else if(activeTab === 'countries') onCountryClick(c); 
+                                     else onContinentClick(c); 
+                                 }} 
+                                 className={`group cursor-pointer flex items-center justify-between p-2.5 rounded-xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
                                 <div className="flex items-center gap-3 min-w-0 pr-2">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
-                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight truncate leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.name}</span>
+                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight truncate leading-tight transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>{c.name}</span>
                                         <span className="text-xs sm:text-sm mt-0.5">{c.flag}</span>
                                     </div>
                                 </div>
-                                <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
+                                <div className="flex flex-col items-end">
+                                  <span className={`text-[9px] font-black opacity-30`}>COURSES</span>
+                                  <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -1335,12 +1378,12 @@ const SetterDisplay = ({ text, onSetterClick }) => {
     const names = text.split(/,|&| and /i).map(n => n.trim()).filter(Boolean);
     return (
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {names.map((n, idx) => (
-                <React.Fragment key={idx}>
+            {names.map((n, index) => (
+                <React.Fragment key={index}>
                     <span 
                         onClick={() => onSetterClick && onSetterClick(n)} 
                         className={onSetterClick ? "cursor-pointer hover:text-current transition-colors underline decoration-current/30 underline-offset-4" : ""}
-                    >{n}</span>{idx < names.length - 1 && <span className="opacity-40">,</span>}
+                    >{n}</span>{index < names.length - 1 && <span className="opacity-40">,</span>}
                 </React.Fragment>
             ))}
         </div>
@@ -1876,10 +1919,10 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                     </div>
                   )}
                   <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 flex-wrap">
-                      {sec.l.split(' ').map((word, wi) => (
-                          <span key={wi} className={word === '🔥' || word === '🪙' ? 'text-blue-600' : 'opacity-60'}>{word}</span>
-                      ))}
-                      {hasTooltip && <HelpCircle size={10} className="opacity-40" />}
+                    {sec.l.split(' ').map((word, wi) => (
+                        <span key={wi} className={word === '🔥' || word === '🪙' ? 'text-blue-600' : 'opacity-60'}>{word}</span>
+                    ))}
+                    {hasTooltip && <HelpCircle size={10} className="opacity-40" />}
                   </h4>
               </div>
               <div className="flex-1">
@@ -2366,6 +2409,11 @@ export default function App() {
 
   const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
 
+  const handleCourseClick = useCallback((c) => openModal('course', c), [openModal]);
+  const handleCountryClick = useCallback((c) => openModal('region', { ...c, type: 'country' }), [openModal]);
+  const handleCityClick = useCallback((c) => openModal('region', { ...c, type: 'city' }), [openModal]);
+  const handleContinentClick = useCallback((c) => openModal('region', { ...c, type: 'continent' }), [openModal]);
+
   const renderActiveModal = () => {
     if (!activeModal) return null;
     const modalProps = { 
@@ -2435,10 +2483,10 @@ export default function App() {
                   countries={countryList} 
                   theme={theme} 
                   eventType={eventType} 
-                  onCourseClick={(c) => openModal('course', c)} 
-                  onCountryClick={(c) => openModal('region', { ...c, type: 'country' })} 
-                  onCityClick={(c) => openModal('region', { ...c, type: 'city' })} 
-                  onContinentClick={(c) => openModal('region', { ...c, type: 'continent' })} 
+                  onCourseClick={handleCourseClick} 
+                  onCountryClick={handleCountryClick} 
+                  onCityClick={handleCityClick} 
+                  onContinentClick={handleContinentClick} 
                 />
             )}
 
