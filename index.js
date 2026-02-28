@@ -250,6 +250,16 @@ const CustomStyles = () => (
     .dark .border-subtle {
       border-color: rgba(255,255,255,0.08);
     }
+
+    /* PWA SAFE AREAS FIX */
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+    }
   `}</style>
 );
 
@@ -490,7 +500,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
               </div>
               <div className="flex flex-col">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Partnership Opportunity</span>
-                <span className="text-[13px] font-black uppercase tracking-tighter group-hover:text-blue-600 transition-colors">Support the ASR project by adopting a course.</span>
+                <span className="text-[13px] font-black uppercase tracking-tighter group-hover:text-blue-600 transition-colors">Adopt a course & support the project.</span>
               </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-current text-[9px] font-black uppercase tracking-widest opacity-30 group-hover:opacity-100 group-hover:text-blue-500 group-hover:border-blue-500 transition-all">
@@ -1897,7 +1907,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-12">
+                {/* Fixed laptop layout grid from squishing into one row */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
                     {setterStatsGrid.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} tooltip={s.t} />
                     ))}
@@ -2337,14 +2348,15 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro }) =
     const navItems = [{id:'map',l:'MAP'}, {id:'players',l:'PLAYERS'}];
     return (
         <nav className={`fixed top-0 w-full backdrop-blur-2xl border-b z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-slate-200/85 border-slate-400/30'} h-auto min-h-[4.5rem] sm:min-h-[6.5rem]`}>
-            <div className="group flex items-center gap-3 shrink-0 cursor-default py-3">
+            {/* Added padding top for safe area */}
+            <div className="group flex items-center gap-3 shrink-0 cursor-default py-3 pt-[env(safe-area-inset-top)] sm:pt-3">
                 <div className={`text-slate-400 group-hover:text-blue-600 animate-pulse`}><IconSpeed size={28} /></div>
                 <span className="font-black tracking-tighter text-sm sm:text-2xl uppercase italic leading-none whitespace-nowrap hidden xs:block">
                     ASR <span className="hidden sm:inline">APEX SPEED RUN</span>
                 </span>
             </div>
 
-            <div className="flex-1 flex justify-center items-center px-4">
+            <div className="flex-1 flex justify-center items-center px-4 pt-[env(safe-area-inset-top)] sm:pt-0">
                 <div className="flex items-center gap-2 sm:gap-6 w-full justify-center">
                     {navItems.map(v => (
                         <button key={v.id} onClick={() => setView(v.id)} className={`flex-1 sm:flex-none px-4 sm:px-12 py-2.5 sm:py-4 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 whitespace-nowrap ${view === v.id ? 'btn-blue-gradient active' : 'btn-blue-gradient'}`}>
@@ -2357,7 +2369,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro }) =
                 </div>
             </div>
 
-            <div className="shrink-0 flex items-center gap-2">
+            <div className="shrink-0 flex items-center gap-2 pt-[env(safe-area-inset-top)] sm:pt-0">
                 <button aria-label="Toggle Theme" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className={`w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center border rounded-2xl transition-all border-subtle ${theme === 'dark' ? 'bg-black/40 text-slate-400 hover:text-white' : 'bg-slate-300/50 text-slate-600 hover:text-black'}`}>
                     {theme === 'dark' ? <IconSun /> : <IconMoon />}
                 </button>
@@ -2460,9 +2472,11 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = view === 'hof' || eventType === 'all-time';
 
+  // Ensure landing page search is always empty on view/event changes
   useEffect(() => {
+    setSearch('');
     if (view !== 'hof') setLastNonHofView(view);
-  }, [view]);
+  }, [view, eventType, gen]);
 
   const openModal = useCallback((type, data, roleOverride = null) => {
     setModalHistory(prev => {
@@ -2513,7 +2527,7 @@ export default function App() {
     const finalQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true }));
     const finalUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }));
     if (finalQual.length > 0 && finalUnranked.length > 0) {
-        return [...finalQual, { isDivider: true, label: "INCOMPLETE VERIFICATION" }, ...finalUnranked];
+        return [...finalQual, { isDivider: true, label: "UNRANKED" }, ...finalUnranked];
     }
     return [...finalQual, ...finalUnranked];
   }, [debouncedSearch, viewSorts.players, gen, isAllTimeContext, data, openData, view]);
