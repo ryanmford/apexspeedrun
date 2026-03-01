@@ -153,16 +153,25 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
+    /* UPDATED: Minimalist Cluster Bubble */
     .asr-cluster {
-      background: #2563eb;
-      border: 2px solid white;
+      background: rgba(37, 99, 235, 0.15) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 2px solid #2563eb !important;
       border-radius: 50%;
-      color: white;
+      color: #2563eb !important;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       cursor: pointer;
+      font-weight: 900 !important;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      transition: all 0.2s ease;
+    }
+    .asr-cluster:hover {
+      background: rgba(37, 99, 235, 0.25) !important;
+      transform: scale(1.1);
     }
 
     .btn-blue-gradient {
@@ -232,12 +241,22 @@ const CustomStyles = () => (
     }
 
     .leaflet-popup-content-wrapper {
-        border-radius: 1.25rem !important;
+        border-radius: 1.5rem !important;
         padding: 0 !important;
         overflow: hidden !important;
+        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3) !important;
+        backdrop-filter: blur(12px) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+    }
+    .dark .leaflet-popup-content-wrapper {
+        background: rgba(15, 23, 42, 0.9) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     .leaflet-popup-content {
         margin: 0 !important;
+    }
+    .leaflet-popup-tip {
+        display: none !important;
     }
     
     .shadow-premium {
@@ -522,50 +541,6 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       );
     }
     return null;
-};
-
-const ASRActionHub = ({ theme }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  const actions = [
-    { icon: <Users size={18} />, label: 'Community (Skool)', desc: 'Join the discussion', link: SKOOL_LINK },
-    { icon: <ShoppingBag size={18} />, label: 'Apex Shop', desc: 'Get the official gear', link: SKOOL_LINK },
-    { icon: <MessageSquare size={18} />, label: 'Contact Support', desc: 'Need help?', link: SKOOL_LINK },
-  ];
-
-  return (
-    <div className="fixed bottom-6 right-6 z-[200]">
-      {isOpen && (
-        <div className={`absolute bottom-full right-0 mb-4 w-72 p-2 rounded-[2.5rem] border backdrop-blur-3xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-black/90 border-white/10' : 'bg-white/95 border-slate-200'}`}>
-          <div className="p-4 border-b border-current/5 mb-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Apex Action Center</div>
-          </div>
-          <div className="flex flex-col gap-1">
-            {actions.map((act, i) => (
-              <a 
-                key={i} 
-                href={act.link} 
-                target="_blank" 
-                className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-              >
-                <div className="p-2 bg-blue-600/10 text-blue-600 rounded-xl">{act.icon}</div>
-                <div>
-                  <div className="text-xs font-black uppercase tracking-tight">{act.label}</div>
-                  <div className="text-[9px] font-bold opacity-40 uppercase">{act.desc}</div>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95 btn-blue-gradient active ${isOpen ? 'rotate-90' : ''}`}
-      >
-        {isOpen ? <X size={24} /> : <Sparkles size={24} />}
-      </button>
-    </div>
-  );
 };
 
 const ASRInlineValueCard = ({ theme, type }) => {
@@ -1294,42 +1269,58 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
     const [activeTab, setActiveTab] = useState('continents');
     const [isLocating, setIsLocating] = useState(false);
 
+    // Robust Script Loader
     useEffect(() => {
-        const loadLeaflet = async () => {
-          if (!window.L) {
-              const link = document.createElement('link');
-              link.rel = 'stylesheet';
-              link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-              document.head.appendChild(link);
-              
-              const script = document.createElement('script');
-              script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-              script.onload = () => {
-                const clusterCss = document.createElement('link');
-                clusterCss.rel = 'stylesheet';
-                clusterCss.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
-                document.head.appendChild(clusterCss);
-                
-                const clusterDefaultCss = document.createElement('link');
-                clusterDefaultCss.rel = 'stylesheet';
-                clusterDefaultCss.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
-                document.head.appendChild(clusterDefaultCss);
-
-                const clusterScript = document.createElement('script');
-                clusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-                clusterScript.onload = () => setIsScriptsLoaded(true);
-                document.head.appendChild(clusterScript);
-              };
-              document.head.appendChild(script);
-          } else {
-              setIsScriptsLoaded(true);
-          }
+        const injectScript = (url, id) => {
+            if (document.getElementById(id)) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.id = id;
+                script.src = url;
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error(`Script load error for ${url}`));
+                document.head.appendChild(script);
+            });
         };
-        loadLeaflet();
+
+        const injectCSS = (url, id) => {
+            if (document.getElementById(id)) return;
+            const link = document.createElement('link');
+            link.id = id;
+            link.rel = 'stylesheet';
+            link.href = url;
+            document.head.appendChild(link);
+        };
+
+        const loadAll = async () => {
+            try {
+                // Load base Leaflet
+                injectCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'leaflet-css');
+                await injectScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 'leaflet-js');
+                
+                // Load Cluster Plugin (only after base Leaflet is ready)
+                injectCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css', 'cluster-css');
+                injectCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', 'cluster-default-css');
+                await injectScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', 'cluster-js');
+                
+                setIsScriptsLoaded(true);
+            } catch (err) {
+                console.error("Map scripts failed to load", err);
+            }
+        };
+
+        loadAll();
     }, []);
 
+    // Initialize Map Instance
     useEffect(() => {
-        if (!isScriptsLoaded || !window.L || !mapContainerRef.current || mapRef.current) return;
+        if (!isScriptsLoaded || !window.L || !mapContainerRef.current) return;
+        
+        if (mapRef.current) {
+            mapRef.current.remove();
+            mapRef.current = null;
+        }
 
         const map = window.L.map(mapContainerRef.current, {
             zoomControl: false,
@@ -1363,9 +1354,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 iconCreateFunction: (cluster) => {
                     const count = cluster.getChildCount();
                     return window.L.divIcon({ 
-                        html: `<div class="flex items-center justify-center w-full h-full font-black text-xs sm:text-sm drop-shadow-md">${count}</div>`,
+                        html: `<div class="flex items-center justify-center w-full h-full">${count}</div>`,
                         className: 'asr-cluster', 
-                        iconSize: window.L.point(36, 36) 
+                        iconSize: window.L.point(40, 40) 
                     });
                 }
             });
@@ -1373,28 +1364,41 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         }
         
         mapRef.current = map;
-        setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 100);
+        
+        const timer = setTimeout(() => {
+            if (mapRef.current) mapRef.current.invalidateSize();
+        }, 300);
 
         return () => {
+            clearTimeout(timer);
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
             }
         };
-    }, [isScriptsLoaded, theme]);
+    }, [isScriptsLoaded]);
 
     useEffect(() => {
-        if (!mapRef.current || !clusterGroupRef.current || !courses.length) return;
+        if (!mapRef.current || !tileLayerRef.current) return;
+        const newUrl = theme === 'dark' 
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        tileLayerRef.current.setUrl(newUrl);
+    }, [theme]);
+
+    useEffect(() => {
+        if (!mapRef.current || !clusterGroupRef.current || !courses.length || !window.L) return;
         
         clusterGroupRef.current.clearLayers();
         
         courses.forEach(c => {
             if (!c.parsedCoords) return;
             
+            // UPDATED: Individual Marker Pin matches the "FIND COURSE" button style
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
                     html: `
-                      <div class="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white shadow-xl transform transition-transform hover:scale-110">
+                      <div class="w-8 h-8 rounded-full bg-blue-600/10 border-2 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-sm transform transition-all duration-300 hover:scale-125 hover:bg-blue-600 hover:text-white group">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                           <circle cx="12" cy="10" r="3"></circle>
@@ -1409,10 +1413,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             });
 
             const popupContent = `
-                <div class="p-4 min-w-[140px]">
-                    <div class="font-black text-xs uppercase mb-1 text-slate-900">${c.name}</div>
-                    <div class="text-[10px] font-bold opacity-60 uppercase text-slate-500">${c.city} ${c.flag}</div>
-                    <button class="mt-3 w-full py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">VIEW COURSE</button>
+                <div class="p-4 min-w-[140px] flex flex-col items-center text-center">
+                    <div class="font-black text-xs uppercase mb-1 text-slate-900 dark:text-white tracking-tighter">${c.name}</div>
+                    <div class="text-[9px] font-black opacity-60 uppercase tracking-widest text-slate-500 dark:text-slate-400">${c.city} ${c.flag}</div>
                 </div>
             `;
 
@@ -1463,7 +1466,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40]">
               <button 
                 onClick={handleFindMe}
-                className={`flex items-center gap-2 px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all bg-blue-600 border-2 border-blue-600 text-white shadow-xl hover:bg-blue-700 hover:scale-105 active:scale-95`}
+                className={`flex items-center gap-2 px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all bg-transparent border-2 border-blue-600 text-blue-600 dark:text-white shadow-xl hover:bg-blue-600/10 hover:scale-105 active:scale-95 backdrop-blur-sm`}
               >
                 <Navigation size={14} className={isLocating ? 'animate-spin' : ''} />
                 Find Courses Near Me
@@ -1762,7 +1765,6 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
     const pKey = identity.pKey || normalizeName(identity.name);
     const hasPlayer = !!playerPerformances[pKey];
-    const hasSetter = allCourses.some(c => (c.setter || "").toLowerCase().includes(identity.name.toLowerCase()));
     
     const Header = (
         <div className="flex items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left">
@@ -1907,7 +1909,6 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                {/* Fixed laptop layout grid from squishing into one row */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
                     {setterStatsGrid.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} tooltip={s.t} />
@@ -2348,7 +2349,6 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro }) =
     const navItems = [{id:'map',l:'MAP'}, {id:'players',l:'PLAYERS'}];
     return (
         <nav className={`fixed top-0 w-full backdrop-blur-2xl border-b z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#09090b]/90 border-white/5' : 'bg-slate-200/85 border-slate-400/30'} h-auto min-h-[4.5rem] sm:min-h-[6.5rem]`}>
-            {/* Added padding top for safe area */}
             <div className="group flex items-center gap-3 shrink-0 cursor-default py-3 pt-[env(safe-area-inset-top)] sm:pt-3">
                 <div className={`text-slate-400 group-hover:text-blue-600 animate-pulse`}><IconSpeed size={28} /></div>
                 <span className="font-black tracking-tighter text-sm sm:text-2xl uppercase italic leading-none whitespace-nowrap hidden xs:block">
@@ -2380,7 +2380,6 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, showIntro }) =
 
 const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, theme, onOpenIntro, showIntro, lastNonHofView }) => {
     const titles = { players: 'PLAYERS', map: 'MAP', hof: 'HALL OF FAME' };
-    const accentText = 'text-blue-600';
 
     return (
         <header className={`pt-32 sm:pt-48 pb-8 sm:pb-16 px-4 sm:px-12 max-w-7xl mx-auto w-full flex flex-col gap-8 sm:gap-16`}>
@@ -2472,7 +2471,6 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = view === 'hof' || eventType === 'all-time';
 
-  // Ensure landing page search is always empty on view/event changes
   useEffect(() => {
     setSearch('');
     if (view !== 'hof') setLastNonHofView(view);
@@ -2678,7 +2676,7 @@ export default function App() {
             
             <div className={`relative border border-subtle rounded-[3rem] sm:rounded-[4rem] shadow-premium overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/20' : 'bg-white'}`}>
               <div className="overflow-auto scrollbar-hide max-h-[75vh] relative w-full">
-                {(view === 'map' ? courseList.length : list.length) > 0 ? (
+                {((view === 'map' ? courseList.length : list.length) > 0) ? (
                   <ASRDataTable 
                       theme={theme}
                       columns={view === 'map' ? COURSE_COLS : PLAYER_COLS}
@@ -2687,6 +2685,14 @@ export default function App() {
                       data={view === 'map' ? courseList : list}
                       onRowClick={(item) => openModal(view === 'map' ? 'course' : 'player', item)}
                   />
+                ) : debouncedSearch ? (
+                  <div className="flex flex-col items-center justify-center py-32 text-center">
+                    <div className="p-8 rounded-full bg-blue-600/10 text-blue-600 mb-8">
+                      <Search size={48} strokeWidth={2.5} />
+                    </div>
+                    <h3 className="text-sm sm:text-lg font-black uppercase tracking-[0.3em] opacity-40">NO RESULTS FOUND</h3>
+                    <p className="text-[10px] sm:text-xs font-bold uppercase opacity-20 mt-2 tracking-widest">TRY REFINING YOUR SEARCH KEYWORDS</p>
+                  </div>
                 ) : (
                   <div className={`flex flex-col items-center justify-center py-32 text-center opacity-20`}>
                       <IconSpeed className="text-blue-600 mb-16 scale-[3.5]" />
@@ -2699,7 +2705,6 @@ export default function App() {
         )}
       </main>
 
-      <ASRActionHub theme={theme} />
       <footer className="mt-32 text-center pb-20 opacity-20 font-black uppercase tracking-[0.5em] text-[10px] sm:text-xs">© 2026 APEX SPEED RUN</footer>
     </div>
   );
