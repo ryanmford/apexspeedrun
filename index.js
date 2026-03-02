@@ -392,19 +392,19 @@ const ASRPerformanceBadge = ({ type, count = 1 }) => {
 
 const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon }) => {
   return (
-    <div className={`stat-card-container relative flex flex-col border p-3.5 sm:p-5 rounded-3xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'} ${tooltip ? 'cursor-help' : ''}`}>
+    <div className={`stat-card-container relative flex flex-col border p-3 sm:p-5 rounded-3xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'} ${tooltip ? 'cursor-help' : ''}`}>
         {tooltip && (
           <div className={`stat-card-tooltip ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
             {tooltip}
           </div>
         )}
-        <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5 opacity-40 whitespace-nowrap overflow-hidden`}>
+        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5 opacity-40 whitespace-nowrap overflow-hidden shrink-0`}>
             {label}
-            {tooltip && <HelpCircle size={10} className="opacity-40" />}
+            {tooltip && <HelpCircle size={9} className="opacity-40" />}
         </span>
-        <div className="flex items-baseline gap-2 min-w-0">
-          {icon && <span className="text-sm shrink-0">{icon}</span>}
-          <span className={`text-xs sm:text-xl font-mono font-black num-col truncate ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0 min-w-0">
+          {icon && <span className="text-xs sm:text-sm shrink-0 mb-0.5">{icon}</span>}
+          <span className={`text-[11px] sm:text-[18px] lg:text-[20px] font-mono font-black num-col leading-tight break-all ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
         </div>
     </div>
   );
@@ -951,7 +951,6 @@ const useASRData = () => {
         const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
         if (lines.length < 1) return result;
         
-        // ASR OPEN DATES: MARCH 2nd to MAY 31st
         const OPEN_START = new Date('2026-03-02T00:00:00Z');
         const OPEN_END = new Date('2026-05-31T23:59:59Z');
 
@@ -1457,24 +1456,24 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide flex-1">
                         {displayData.slice(0, 25).map((c, i) => (
                             <div key={i} 
-                                 onClick={() => { 
-                                     jumpToLocation(c);
-                                     if(activeTab === 'cities') onCityClick(c); 
-                                     else if(activeTab === 'countries') onCountryClick(c); 
-                                     else onContinentClick(c); 
-                                 }} 
-                                 className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
-                                <div className="flex items-center gap-3 min-w-0 pr-2">
+                                   onClick={() => { 
+                                      jumpToLocation(c);
+                                      if(activeTab === 'cities') onCityClick(c); 
+                                      else if(activeTab === 'countries') onCountryClick(c); 
+                                      else onContinentClick(c); 
+                                   }} 
+                                   className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
+                                 <div className="flex items-center gap-3 min-w-0 pr-2">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
                                         <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words leading-tight transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>{c.name}</span>
                                         <span className="text-xs sm:text-sm mt-0.5">{c.flag}</span>
                                     </div>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                  <span className={`text-[9px] font-black opacity-30`}>COURSES</span>
-                                  <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
-                                </div>
+                                 </div>
+                                 <div className="flex flex-col items-end">
+                                   <span className={`text-[9px] font-black opacity-30`}>COURSES</span>
+                                   <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
+                                 </div>
                             </div>
                         ))}
                     </div>
@@ -1777,7 +1776,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             { l: 'POINTS', v: (identity.pts || 0).toFixed(2) }, 
             { l: 'RUNS', v: identity.runs || 0 }, 
             { l: 'WINS', v: identity.wins || 0 }, 
-            { l: 'WIN %', v: ((identity.wins / (identity.runs || 1)) * 100).toFixed(1) + '%' }, 
+            { l: 'WIN %', v: ((identity.wins / (identity.runs || 1)) * 100).toFixed(2) + '%' }, 
             { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
             { l: 'COUNTRIES', v: countriesSet.size || 0 },
             { l: '🔥', v: totalFires, g: 'glow-blue', t: 'Fire awards based on speed thresholds' }
@@ -1810,18 +1809,20 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                                     <MapPin size={20} strokeWidth={2.5} />
                                   </div>
                                   <div className="flex flex-col min-w-0">
-                                      <span 
-                                          className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
-                                      >
-                                          {c.label}
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span 
+                                            className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
+                                        >
+                                            {c.label}
+                                        </span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
+                                          {c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}
+                                        </div>
+                                      </div>
                                       <div className="flex items-center gap-1 mt-1.5">
                                           <span className="text-[10px] sm:text-xs font-black uppercase opacity-40 whitespace-normal break-words text-inherit">{c.city || 'Unknown'}</span>
                                           <span className="text-[10px] sm:text-sm opacity-100 shrink-0 ml-1">{c.flag || '🏳️'}</span>
-                                          <div className="flex items-center gap-1.5 ml-1.5 shrink-0">
-                                            {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
-                                            {c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}
-                                          </div>
                                       </div>
                                   </div>
                               </div>
@@ -2032,7 +2033,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
                                     <div className="flex flex-col min-w-0">
                                         <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors group-hover:text-blue-600 text-inherit`}>{c.name}</span>
                                         <div className="flex items-center gap-1 mt-1">
-                                            <span className="text-[10px] sm:text-xs font-black opacity-40 whitespace-normal break-words text-inherit">{c.city || ''}</span>
+                                            <span className="text-[10px] sm:text-xs font-black uppercase opacity-40 whitespace-normal break-words text-inherit">{c.city || ''}</span>
                                             <span className="text-[10px] sm:text-xs ml-1">{c.flag || '🏳️'}</span>
                                         </div>
                                     </div>
@@ -2099,7 +2100,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                             <span className="text-sm sm:text-xl mt-1 leading-none">{p.region || '🏳️'}</span>
                           </div>
                         </div>
-                        <span className={`font-mono font-black ${highlightColor} text-xs sm:text-sm shrink-0 tabular-nums`}>{sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (sec.k === 'winPercentage' ? (p.winPercentage || 0).toFixed(1)+'%' : p[sec.k])}</span>
+                        <span className={`font-mono font-black ${highlightColor} text-xs sm:text-sm shrink-0 tabular-nums`}>{sec.k === 'rating' ? (p.rating || 0).toFixed(2) : (sec.k === 'winPercentage' ? (p.winPercentage || 0).toFixed(2)+'%' : p[sec.k])}</span>
                       </div>
                     ))}
                   </div>
@@ -2370,13 +2371,12 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, th
                 )}
             </div>
 
-            {/* Redesigned ASR OPEN Pill: Unified with Map Buttons Style */}
             {eventType === 'open' && view !== 'hof' && (
                 <div className="w-full animate-in fade-in slide-in-from-top-4 duration-700">
                     <div className={`inline-flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 rounded-[1.5rem] sm:rounded-full border shadow-xl backdrop-blur-xl ${theme === 'dark' ? 'bg-black/80 border-white/10 text-slate-200' : 'bg-white/90 border-slate-300 text-slate-800'}`}>
                         <div className="flex items-center gap-2.5">
                             <span className="text-blue-500 animate-pulse text-lg leading-none shrink-0">●</span>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit">THE ASR OPEN IS LIVE</span>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit">THE 2026 ASR OPEN IS LIVE</span>
                         </div>
                         
                         <div className="flex items-center gap-2.5">
@@ -2388,7 +2388,7 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, th
                             <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
                                 <Trophy size={11} strokeWidth={3} />
                             </div>
-                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit opacity-80">QUALIFIER EVENT</span>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit opacity-80">QUALIFY FOR THE PARKOUR EARTH WORLD CHAMPIONSHIPS</span>
                         </div>
                     </div>
                 </div>
