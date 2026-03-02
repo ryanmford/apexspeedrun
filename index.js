@@ -392,19 +392,19 @@ const ASRPerformanceBadge = ({ type, count = 1 }) => {
 
 const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon }) => {
   return (
-    <div className={`stat-card-container relative flex flex-col border p-4 sm:p-5 rounded-3xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'} ${tooltip ? 'cursor-help' : ''}`}>
+    <div className={`stat-card-container relative flex flex-col border p-3.5 sm:p-5 rounded-3xl transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'} ${tooltip ? 'cursor-help' : ''}`}>
         {tooltip && (
           <div className={`stat-card-tooltip ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
             {tooltip}
           </div>
         )}
-        <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2 flex items-center gap-1.5 opacity-40`}>
+        <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5 opacity-40 whitespace-nowrap overflow-hidden`}>
             {label}
             {tooltip && <HelpCircle size={10} className="opacity-40" />}
         </span>
-        <div className="flex items-baseline gap-2">
-          {icon && <span className="text-sm">{icon}</span>}
-          <span className={`text-sm sm:text-xl font-mono font-black num-col ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
+        <div className="flex items-baseline gap-2 min-w-0">
+          {icon && <span className="text-sm shrink-0">{icon}</span>}
+          <span className={`text-xs sm:text-xl font-mono font-black num-col truncate ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
         </div>
     </div>
   );
@@ -519,17 +519,17 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       }
       
       return (
-        <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-6 py-4 rounded-3xl border transition-all duration-300 hover:scale-[1.005] group ${theme === 'dark' ? 'border-white/10 bg-white/5 hover:border-blue-500/50 hover:bg-white/[0.08]' : 'border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:bg-slate-50'}`}>
-            <div className="flex items-center gap-4">
-              <div className={`p-2.5 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-slate-800 text-slate-500 group-hover:text-blue-400' : 'bg-slate-100 text-slate-500 group-hover:text-blue-600'}`}>
+        <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 rounded-3xl border transition-all duration-300 hover:scale-[1.005] group ${theme === 'dark' ? 'border-white/10 bg-white/5 hover:border-emerald-500/50 hover:bg-white/[0.08]' : 'border-slate-200 bg-white shadow-sm hover:border-emerald-200 hover:bg-slate-50'}`}>
+            <div className="flex items-center gap-3 sm:gap-4 flex-1">
+              <div className={`p-2.5 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-slate-800 text-slate-500 group-hover:text-emerald-400' : 'bg-slate-100 text-slate-500 group-hover:text-emerald-600'}`}>
                 <Building2 size={18} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Partnership Opportunity</span>
-                <span className="text-[13px] font-black uppercase tracking-tighter group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Adopt a course & support the project.</span>
+                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Partnership Opportunity</span>
+                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-tighter group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">ADOPT THIS COURSE & SUPPORT THE PROJECT</span>
               </div>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/50 text-blue-400 group-hover:bg-blue-600 group-hover:text-white' : 'border-blue-600 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
+            <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${theme === 'dark' ? 'border-emerald-500/50 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white' : 'border-emerald-600 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'}`}>
               GET IN TOUCH
             </div>
         </a>
@@ -641,17 +641,17 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
         
         {step > 0 && (
-          <button onClick={prevStep} className="absolute top-8 left-8 p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" title="Go Back">
+          <button onClick={prevStep} className="absolute top-8 left-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" title="Go Back">
             <IconCornerUpLeft size={24} />
           </button>
         )}
 
-        <button onClick={onClose} className="absolute top-8 right-8 p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20">
+        <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20">
           <IconX size={24} />
         </button>
         
-        <div className="flex flex-col items-start text-left space-y-10 relative z-10">
-          <div className={`p-7 rounded-[2.5rem] textured-surface bg-blue-500/10 animate-subtle-pulse`}>
+        <div className="flex flex-col items-center sm:items-start text-center sm:text-left space-y-10 relative z-10 pt-12 sm:pt-0">
+          <div className={`p-7 rounded-[2.5rem] textured-surface bg-blue-500/10 animate-subtle-pulse mx-auto sm:mx-0`}>
             {React.cloneElement(steps[step].icon, { className: "relative z-10" })}
           </div>
           
@@ -670,21 +670,21 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
             ))}
           </div>
 
-          <div className="w-full flex flex-col items-start gap-4">
+          <div className="w-full flex flex-col items-center sm:items-start gap-4">
             <div className="flex gap-4 w-full">
               {steps[step].action ? (
                 <a 
                   href={SKOOL_LINK} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm"
+                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-xl"
                 >
                   {steps[step].action} <CornerUpRight size={20} />
                 </a>
               ) : (
                 <button 
                   onClick={nextStep} 
-                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 text-xs sm:text-sm"
+                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 text-xs sm:text-sm shadow-xl"
                 >
                   Next <ChevronRight size={20} />
                 </button>
@@ -715,19 +715,19 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-black/85 animate-in fade-in duration-300" onClick={onClose}>
       <div className={`${theme === 'dark' ? 'bg-[#0a0a0b] border-white/10 text-slate-100' : 'bg-[#f1f5f9] border-slate-400/40 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-2xl scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col max-h-[92vh]`} onClick={e => e.stopPropagation()}>
-        <div className={`shrink-0 flex flex-col p-6 sm:p-8 lg:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-400/40'} to-transparent`}>
-          <div className="flex items-start justify-between gap-4">
+        <div className={`shrink-0 flex flex-col p-6 sm:p-8 lg:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-400/40'} to-transparent relative`}>
+          <div className="flex items-start justify-between gap-4 z-10">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <button aria-label="Go Back" onClick={onBack} className={`group p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0`} title="Go Back">
+                  <button aria-label="Go Back" onClick={onBack} className={`group p-2.5 sm:p-3 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0`} title="Go Back">
                       <IconCornerUpLeft size={16} className={`text-slate-200 group-hover:text-white transition-colors`} />
                   </button>
                   {canGoForward && (
-                      <button aria-label="Go Forward" onClick={onForward} className={`group p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0`} title="Go Forward">
+                      <button aria-label="Go Forward" onClick={onForward} className={`group p-2.5 sm:p-3 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0`} title="Go Forward">
                           <IconCornerUpRight size={16} className={`text-slate-200 group-hover:text-white transition-colors`} />
                       </button>
                   )}
                   {breadcrumbs && breadcrumbs.length > 0 && (
-                      <div className={`ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2 rounded-full border shadow-lg shrink min-w-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white/60 border-slate-200 text-slate-900'}`}>
+                      <div className={`ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2.5 rounded-full border shadow-lg shrink min-w-0 ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white/60 border-slate-200 text-slate-900'}`}>
                           {breadcrumbs.map((b, i) => (
                               <React.Fragment key={i}>
                                   <button 
@@ -743,11 +743,11 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
                       </div>
                   )}
               </div>
-              <button aria-label="Close Modal" onClick={onClose} className="p-2.5 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0" title="Close">
+              <button aria-label="Close Modal" onClick={onClose} className="p-2.5 sm:p-3 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all shrink-0" title="Close">
                   <IconX size={16} />
               </button>
           </div>
-          <div className="w-full">
+          <div className="w-full pt-1 sm:pt-0">
             {header}
           </div>
         </div>
@@ -1607,28 +1607,28 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
 
     const Header = (
         <div className="flex flex-col gap-6 w-full text-left">
-            <div className="flex items-center gap-5 min-w-0 w-full">
+            <div className="flex items-center gap-4 sm:gap-5 min-w-0 w-full">
                 <div className={`w-16 h-16 sm:w-24 sm:h-24 rounded-[1.5rem] border shadow-md shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'} `}>
                   <FallbackAvatar name={course.name} sizeCls="text-xl sm:text-3xl" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
-                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight uppercase whitespace-normal break-words leading-tight mb-2 text-inherit">{course.name}</h2>
+                    <h2 style={{ textWrap: 'balance' }} className="text-lg sm:text-3xl lg:text-4xl font-black tracking-tight uppercase break-normal leading-tight mb-2 text-inherit">{course.name}</h2>
                     <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest min-w-0 opacity-60 text-inherit">
                         {formatLocationSubtitle(course.country, course.flag, locStr ? locStr + ', ' : '')}
                     </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-3 shrink-0">
                   <a 
                       href={course.demoVideo || "#"} 
                       target={course.demoVideo ? "_blank" : "_self"} 
                       rel="noopener noreferrer" 
-                      className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 shadow-sm ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/30 text-slate-400/50 grayscale opacity-60 pointer-events-none'}`}
+                      className={`w-[110px] flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 shadow-sm ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/30 text-slate-400/50 grayscale opacity-60 pointer-events-none'}`}
                   >
                       <Play size={10} className="fill-current" />
                       RULES
                   </a>
                   {course.coordinates && (
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 shadow-sm`}>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} target="_blank" rel="noopener noreferrer" className={`w-[110px] flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 shadow-sm`}>
                           <MapPin size={10} />
                           MAP
                       </a>
@@ -1731,7 +1731,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <div className="flex items-center gap-3 sm:gap-4 mb-1.5 sm:mb-2 min-w-0 flex-wrap sm:flex-nowrap">
-                    <h2 className="text-xl sm:text-4xl lg:text-5xl font-black tracking-tight whitespace-normal break-words leading-tight uppercase text-inherit">{identity.name}</h2>
+                    <h2 style={{ textWrap: 'balance' }} className="text-xl sm:text-4xl lg:text-5xl font-black tracking-tight break-normal uppercase leading-tight text-inherit">{identity.name}</h2>
                     {identity.igHandle && (
                         <a href={`https://instagram.com/${identity.igHandle}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className={`w-fit shrink-0 flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all hover:-translate-y-0.5 shadow-sm border ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-900 border-slate-200'}`} title={`@${identity.igHandle} on Instagram`}>
                             <div className="text-[#E1306C]"><Instagram size={14} /></div>
@@ -1785,7 +1785,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-12">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 mb-12">
                     {playerStats.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} glowClass={s.g} tooltip={s.t} />
                     ))}
@@ -1811,7 +1811,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                                   </div>
                                   <div className="flex flex-col min-w-0">
                                       <span 
-                                          className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
+                                          className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
                                       >
                                           {c.label}
                                       </span>
@@ -1867,7 +1867,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-12">
                     {setterStatsGrid.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} tooltip={s.t} />
                     ))}
@@ -1892,7 +1892,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                                   </div>
                                   <div className="flex flex-col min-w-0">
                                       <span 
-                                          className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
+                                          className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} hover:text-blue-600 leading-none`}
                                       >
                                           {c.name}
                                       </span>
@@ -1978,7 +1978,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
               <FallbackAvatar name={region.name} initialsOverride={region.name === 'GLOBAL' ? 'GL' : ''} />
             </div>
             <div className="flex flex-col min-w-0 justify-center">
-                <h2 className="text-xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase whitespace-normal break-words leading-tight text-inherit">{region.name}</h2>
+                <h2 style={{ textWrap: 'balance' }} className="text-xl sm:text-4xl lg:text-5xl font-black break-normal tracking-tight uppercase leading-tight text-inherit">{region.name}</h2>
                 <div className="text-2xl sm:text-3xl mt-2">{region.flag}</div>
             </div>
         </div>
@@ -2007,7 +2007,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
                                     <div className="flex items-center gap-3 pr-3 min-w-0">
                                         <ASRRankBadge rank={i + 1} theme={theme} />
                                         <div className="flex flex-col min-w-0">
-                                            <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words transition-colors group-hover:${accentColor} text-inherit`}>{p.name}</span>
+                                            <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors group-hover:${accentColor} text-inherit`}>{p.name}</span>
                                             <span className="text-[10px] sm:text-xs uppercase font-black opacity-40 text-inherit">{p.region || '🏳️'}</span>
                                         </div>
                                     </div>
@@ -2030,7 +2030,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
                             <div key={i} onClick={() => openModal('course', c)} className={`group flex items-center justify-between p-4 rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                                 <div className="flex items-center gap-3 pr-3 min-w-0">
                                     <div className="flex flex-col min-w-0">
-                                        <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words transition-colors group-hover:text-blue-600 text-inherit`}>{c.name}</span>
+                                        <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal transition-colors group-hover:text-blue-600 text-inherit`}>{c.name}</span>
                                         <div className="flex items-center gap-1 mt-1">
                                             <span className="text-[10px] sm:text-xs font-black opacity-40 whitespace-normal break-words text-inherit">{c.city || ''}</span>
                                             <span className="text-[10px] sm:text-xs ml-1">{c.flag || '🏳️'}</span>
@@ -2095,7 +2095,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                         <div className="flex items-center gap-3 min-w-0 pr-1">
                           <ASRRankBadge rank={i + 1} theme={theme} />
                           <div className="flex flex-col">
-                            <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors text-inherit`}>{p.name}</span>
+                            <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-normal group-hover:text-blue-600 transition-colors text-inherit`}>{p.name}</span>
                             <span className="text-sm sm:text-xl mt-1 leading-none">{p.region || '🏳️'}</span>
                           </div>
                         </div>
@@ -2131,7 +2131,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   <td className="pl-6 sm:pl-10 py-5 sm:py-8"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="px-4 py-5 sm:py-8">
                     <div className="flex flex-col">
-                      <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-words ${tColor} group-hover:text-blue-600 transition-colors`}>{c.name}</span>
+                      <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-normal ${tColor} group-hover:text-blue-600 transition-colors`}>{c.name}</span>
                       <span className="text-base sm:text-2xl mt-1.5">{c.flag}</span>
                     </div>
                   </td>
@@ -2228,7 +2228,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
             const city = item.city && item.city !== 'UNKNOWN' ? item.city : null;
             return (
                 <div className="flex flex-col min-w-0 text-left text-inherit">
-                  <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-words transition-colors group-hover:${accentColor}`}>{val}</span>
+                  <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-normal transition-colors group-hover:${accentColor}`}>{val}</span>
                   <div className="flex items-center gap-1 mt-1">
                       {city && <span className="text-[10px] sm:text-xs font-black uppercase opacity-40 whitespace-normal break-words">{city}</span>}
                       <span className="text-[10px] sm:text-sm leading-none opacity-100">{sub || '🏳️'}</span>
@@ -2370,26 +2370,25 @@ const ASRControlBar = ({ view, setView, eventType, setEventType, gen, setGen, th
                 )}
             </div>
 
+            {/* Redesigned ASR OPEN Pill: Unified with Map Buttons Style */}
             {eventType === 'open' && view !== 'hof' && (
                 <div className="w-full animate-in fade-in slide-in-from-top-4 duration-700">
-                    <div className={`flex flex-col sm:flex-row items-center gap-6 px-8 py-5 rounded-full border shadow-xl backdrop-blur-xl ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-                        <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-emerald-500 animate-pulse text-lg leading-none">●</span>
-                            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-inherit">THE ASR OPEN IS LIVE</span>
+                    <div className={`inline-flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 rounded-[1.5rem] sm:rounded-full border shadow-xl backdrop-blur-xl ${theme === 'dark' ? 'bg-black/80 border-white/10 text-slate-200' : 'bg-white/90 border-slate-300 text-slate-800'}`}>
+                        <div className="flex items-center gap-2.5">
+                            <span className="text-blue-500 animate-pulse text-lg leading-none shrink-0">●</span>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit">THE ASR OPEN IS LIVE</span>
                         </div>
                         
-                        <div className={`hidden sm:block h-4 w-px ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
-                        
-                        <div className="flex items-center gap-2">
-                            <Timer size={14} className="opacity-60 text-inherit" />
-                            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-inherit">SUBMISSIONS DUE MAY 31</span>
+                        <div className="flex items-center gap-2.5">
+                            <Timer size={14} className="text-blue-600 shrink-0" />
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit opacity-80">SUBMISSIONS DUE MAY 31</span>
                         </div>
 
-                        <div className={`hidden sm:block h-4 w-px ml-auto ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
-
-                        <div className="flex items-center gap-3 sm:ml-0">
-                            <Trophy size={14} className="text-amber-500" />
-                            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-inherit">PKE WORLD CHAMPIONSHIPS QUALIFIER</span>
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
+                                <Trophy size={11} strokeWidth={3} />
+                            </div>
+                            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-inherit opacity-80">QUALIFIER EVENT</span>
                         </div>
                     </div>
                 </div>
