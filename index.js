@@ -1470,7 +1470,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                                       else if(activeTab === 'countries') onCountryClick(c); 
                                       else onContinentClick(c); 
                                    }} 
-                                   className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'} ios-clip-fix`}>
+                                   className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
                                  <div className="flex items-center gap-3 min-w-0 pr-2">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
@@ -1537,7 +1537,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     const meta = athleteMetadata[pKey] || {};
                     const points = genderRecord ? (genderRecord / time) * 100 : 0;
                     return (
-                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`group flex items-center justify-between p-4 rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'} ios-clip-fix`}>
+                        <div key={pKey} onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })} className={`group flex items-center justify-between p-4 rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-300/50 shadow-sm hover:bg-slate-50'}`}>
                             <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
                                 <ASRRankBadge rank={i + 1} theme={theme} />
                                 <div className="flex flex-col min-w-0">
@@ -1694,7 +1694,7 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {course.leadSetters && (
                             <div className={`p-6 rounded-3xl border flex flex-col justify-center ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-300/50 shadow-sm'} group ios-clip-fix`}>
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-2">Lead Setter</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-2">Leads</span>
                                 <div className={`text-sm sm:text-base font-mono font-black text-blue-600`}>
                                     <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                                 </div>
@@ -2136,7 +2136,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
-                <tr key={`medal-row-${c.name}`} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit ios-clip-fix">
+                <tr key={`medal-row-${c.name}`} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
                   <td className="pl-6 sm:pl-10 py-5 sm:py-8"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="px-4 py-5 sm:py-8">
                     <div className="flex flex-col">
@@ -2230,14 +2230,16 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
 
     const renderCell = (col, item) => {
         const val = item[col.key];
+        const textColor = theme === 'dark' ? 'text-slate-200' : 'text-slate-900';
+
         if (col.isRank) return <ASRRankBadge rank={item.currentRank} theme={theme} />;
         
         if (col.type === 'profile') {
             const sub = col.subKey ? item[col.subKey] : null;
             const city = item.city && item.city !== 'UNKNOWN' ? item.city : null;
             return (
-                <div className="flex flex-col min-w-0 text-left text-inherit">
-                  <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-normal transition-colors group-hover:${accentColor}`}>{val}</span>
+                <div className="flex flex-col min-w-0 text-left">
+                  <span className={`text-xs sm:text-[15px] font-black uppercase block whitespace-normal break-normal transition-colors group-hover:${accentColor} ${textColor}`}>{val}</span>
                   <div className="flex items-center gap-1 mt-1">
                       {city && <span className="text-[10px] sm:text-xs font-black uppercase opacity-40 whitespace-normal break-words">{city}</span>}
                       <span className="text-[10px] sm:text-sm leading-none opacity-100">{sub || '🏳️'}</span>
@@ -2248,15 +2250,15 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
         
         if (col.type === 'number' || col.type === 'highlight') {
             const display = (val === null || val === undefined) ? '-' : (typeof val === 'number' && col.decimals !== undefined ? val.toFixed(col.decimals) : val);
-            const colorClass = col.type === 'highlight' ? `${accentColor} font-black` : (col.opacity ? 'opacity-60' : '');
-            return <span className={`font-mono font-bold text-xs sm:text-[15px] tabular-nums num-col ${colorClass} text-inherit`}>{display}</span>;
+            const colorClass = col.type === 'highlight' ? `${accentColor} font-black` : (col.opacity ? 'opacity-60' : textColor);
+            return <span className={`font-mono font-bold text-xs sm:text-[15px] tabular-nums num-col ${colorClass}`}>{display}</span>;
         }
 
         if (col.type === 'records') {
             return <ASRRecordsBlock mRecord={item.mRecord} fRecord={item.fRecord} theme={theme} />;
         }
         
-        return <span className="text-xs sm:text-[15px] font-bold text-inherit">{val}</span>;
+        return <span className={`text-xs sm:text-[15px] font-bold ${textColor}`}>{val}</span>;
     };
 
     return (
@@ -2295,7 +2297,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                       );
                     }
                     return (
-                        <tr key={item.id || item.name} onClick={() => onRowClick && onRowClick(item)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ios-clip-fix ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${item.isQualified === false ? 'opacity-40' : ''}`}>
+                        <tr key={item.id || item.name} onClick={() => onRowClick && onRowClick(item)} className={`group transition-all duration-300 cursor-pointer active:scale-[0.99] origin-center ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-50'} ${item.isQualified === false ? 'opacity-40' : ''}`}>
                             {columns.map((col, i) => (
                                 <td key={i} className={`${col.isRank ? 'pl-6 sm:pl-10 py-4 sm:py-10' : (col.cellClass || `px-2 py-4 sm:py-10 ${col.align === 'right' ? 'text-right' : 'text-left'}`)}`}>
                                     {renderCell(col, item)}
@@ -2614,7 +2616,7 @@ export default function App() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full">
         {isLoading && data.length === 0 ? (
-            <div className={`border border-subtle rounded-[3.5rem] h-96 animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} ios-clip-fix`} />
+            <div className={`border border-subtle rounded-[3.5rem] h-96 animate-pulse ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`} />
         ) : hasError && data.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24">
                 <IconX size={48} className="text-blue-600 mb-6 opacity-40" />
@@ -2643,7 +2645,7 @@ export default function App() {
 
             <ASRSearchInput search={search} setSearch={setSearch} theme={theme} view={view} />
             
-            <div className={`relative border border-subtle rounded-[3rem] sm:rounded-[4rem] shadow-premium overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/20' : 'bg-white'} ios-clip-fix`}>
+            <div className={`relative border border-subtle rounded-[3rem] sm:rounded-[4rem] shadow-premium overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/20' : 'bg-white'}`}>
               <div className="overflow-auto scrollbar-hide max-h-[75vh] relative w-full">
                 {((view === 'map' ? courseList.length : list.length) > 0) ? (
                   <ASRDataTable 
