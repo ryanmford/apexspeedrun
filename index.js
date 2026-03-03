@@ -887,9 +887,10 @@ const useASRData = () => {
                   const coordinates = coordsIdx !== -1 ? (vals[coordsIdx] || "").trim() : "";
                   const stateProv = stateIdx !== -1 ? (vals[stateIdx] || "").trim().toUpperCase() : "";
 
+                  // STRICT CHANGE: Only check Column AG (index 32) for the Open status.
+                  // We remove the date-based logic as requested.
                   const valAG = String(vals[32] || "").toUpperCase().trim();
-                  const valDate = dateIdx !== -1 ? String(vals[dateIdx] || "").toUpperCase().trim() : "";
-                  const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN') || valDate.includes('2026');
+                  const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
 
                   map[course] = { 
                       is2026, 
