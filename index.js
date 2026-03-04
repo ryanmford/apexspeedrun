@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v12'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v13'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -189,7 +189,7 @@ const CustomStyles = () => (
     }
 
     .asr-cluster {
-      background: rgba(37, 99, 235, 0.15) !important;
+      background: rgba(37, 99, 235, 0.2) !important;
       backdrop-filter: blur(8px) !important;
       border: 3px solid #2563eb !important;
       border-radius: 50%;
@@ -205,17 +205,20 @@ const CustomStyles = () => (
       pointer-events: auto !important;
       z-index: 500 !important;
     }
-    .asr-cluster:hover {
-      transform: scale(1.05);
-    }
 
     #asr-map-container {
-      touch-action: auto !important;
+      touch-action: pan-x pan-y !important;
+    }
+
+    /* Target the marker container specifically for touch */
+    .leaflet-marker-icon.asr-marker-outer {
+        cursor: pointer !important;
+        pointer-events: auto !important;
     }
 
     .asr-marker-container {
       cursor: pointer !important;
-      pointer-events: auto !important;
+      pointer-events: none; /* Children should not steal events from Leaflet's marker handler */
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -621,7 +624,6 @@ const ASRPromotionBanner = ({ type, theme }) => {
 const ASRPatronPill = ({ course, theme, compact = false }) => {
     const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
     
-    // Prestige Gold Theme Colors - Synced with Medal Rank 1 Gold (amber-500)
     const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/10 to-amber-900/40' : 'bg-gradient-to-br from-amber-50 to-amber-100';
     const goldBorder = theme === 'dark' ? 'border-amber-500/50' : 'border-amber-500/60';
     const goldTextPrimary = theme === 'dark' ? 'text-amber-500' : 'text-amber-700';
@@ -629,7 +631,6 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     const goldIconBg = 'bg-amber-500';
     const goldIconText = 'text-white';
 
-    // Faded Adopt Style
     const fadedBg = theme === 'dark' ? 'bg-slate-800/20' : 'bg-slate-100/80';
     const fadedBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-300';
     const fadedTextPrimary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
@@ -1433,7 +1434,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
             preferCanvas: true,
-            tap: false, 
+            // Removed tap: false as it often breaks interaction in modern mobile browsers
             dragging: true,
             touchZoom: true,
             bounceAtZoomLimits: true
@@ -1453,7 +1454,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         if (window.L.markerClusterGroup) {
             clusterGroupRef.current = window.L.markerClusterGroup({
                 chunkedLoading: true,
-                maxClusterRadius: 45,
+                maxClusterRadius: 40,
                 showCoverageOnHover: false,
                 spiderfyOnMaxZoom: true,
                 zoomToBoundsOnClick: true,
@@ -1462,7 +1463,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                     return window.L.divIcon({ 
                         html: `<div class="flex items-center justify-center w-full h-full">${count}</div>`,
                         className: 'asr-cluster', 
-                        iconSize: window.L.point(38, 38) 
+                        iconSize: window.L.point(40, 40) 
                     });
                 }
             });
@@ -1499,10 +1500,11 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         courses.forEach(c => {
             if (!c.parsedCoords) return;
             
+            // Simplified marker container for better event bubbling
             const el = document.createElement('div');
-            el.className = "asr-marker-container w-9 h-9 rounded-full bg-blue-600/10 border-3 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix";
+            el.className = "asr-marker-container w-10 h-10 rounded-full bg-blue-600/15 border-[3px] border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix";
             el.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
@@ -1512,13 +1514,14 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 icon: window.L.divIcon({
                     html: el,
                     className: 'asr-marker-outer',
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18],
-                    popupAnchor: [0, -18]
+                    iconSize: [44, 44], // Slightly larger hit area
+                    iconAnchor: [22, 22],
+                    popupAnchor: [0, -22]
                 })
             });
 
-            window.L.DomEvent.on(el, 'click touchend', (e) => {
+            // Use Leaflet's built-in click handler which normalizes touch/mouse
+            marker.on('click', (e) => {
                 window.L.DomEvent.stopPropagation(e);
                 onCourseClick('course', c);
             });
@@ -1530,7 +1533,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 </div>
             `;
 
-            marker.bindPopup(popupContent, { closeButton: false });
+            marker.bindPopup(popupContent, { closeButton: false, offset: [0, -10] });
             clusterGroupRef.current.addLayer(marker);
         });
     }, [courses, isScriptsLoaded, onCourseClick]);
