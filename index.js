@@ -175,7 +175,7 @@ const CustomStyles = () => (
     }
     .animate-subtle-pulse { animation: subtle-pulse 3s infinite ease-in-out; }
     
-    .glow-gold { text-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+    .glow-gold { text-shadow: 0 0 12px rgba(212, 175, 55, 0.7); }
     .glow-blue { text-shadow: 0 0 15px rgba(37, 99, 235, 0.7); }
     
     .num-col { font-variant-numeric: tabular-nums; }
@@ -189,7 +189,7 @@ const CustomStyles = () => (
     }
 
     .asr-cluster {
-      background: rgba(37, 99, 235, 0.2) !important;
+      background: rgba(37, 99, 235, 0.25) !important;
       backdrop-filter: blur(8px) !important;
       border: 3px solid #2563eb !important;
       border-radius: 50%;
@@ -200,25 +200,43 @@ const CustomStyles = () => (
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       cursor: pointer;
       font-weight: 900 !important;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       transition: transform 0.1s ease;
       pointer-events: auto !important;
       z-index: 500 !important;
     }
 
+    /* Fix for mobile scroll/drag and click issues */
     #asr-map-container {
       touch-action: pan-x pan-y !important;
+      cursor: grab;
+    }
+    #asr-map-container:active {
+      cursor: grabbing;
     }
 
-    /* Target the marker container specifically for touch */
-    .leaflet-marker-icon.asr-marker-outer {
+    .leaflet-container {
+        touch-action: pan-x pan-y !important;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .leaflet-marker-icon, 
+    .leaflet-marker-shadow, 
+    .leaflet-popup, 
+    .leaflet-pane > svg path, 
+    .leaflet-tile-container {
+        pointer-events: auto !important;
+    }
+
+    .asr-marker-outer {
         cursor: pointer !important;
         pointer-events: auto !important;
+        z-index: 1000 !important;
     }
 
     .asr-marker-container {
       cursor: pointer !important;
-      pointer-events: none; /* Children should not steal events from Leaflet's marker handler */
+      pointer-events: none; /* Inner icon doesn't block marker interaction */
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -295,12 +313,16 @@ const CustomStyles = () => (
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.4) !important;
         backdrop-filter: blur(12px) !important;
         background: rgba(255, 255, 255, 0.98) !important;
+        pointer-events: auto !important;
     }
     .dark .leaflet-popup-content-wrapper {
         background: rgba(10, 10, 12, 0.95) !important;
         border: 2px solid rgba(255, 255, 255, 0.15) !important;
     }
-    .leaflet-popup-content { margin: 0 !important; }
+    .leaflet-popup-content { 
+      margin: 0 !important; 
+      pointer-events: auto !important;
+    }
     .leaflet-popup-tip { display: none !important; }
     
     .shadow-premium { box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15); }
@@ -310,6 +332,7 @@ const CustomStyles = () => (
     :root {
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --prestige-gold: #D4AF37;
     }
     
     html, body {
@@ -319,11 +342,6 @@ const CustomStyles = () => (
       padding: 0;
       overflow-x: hidden;
       background: #000;
-    }
-
-    body {
-      padding-top: 0;
-      padding-bottom: 0;
     }
 
     .animate-spin-slow { animation: spin 8s linear infinite; }
@@ -624,11 +642,12 @@ const ASRPromotionBanner = ({ type, theme }) => {
 const ASRPatronPill = ({ course, theme, compact = false }) => {
     const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
     
-    const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/10 to-amber-900/40' : 'bg-gradient-to-br from-amber-50 to-amber-100';
-    const goldBorder = theme === 'dark' ? 'border-amber-500/50' : 'border-amber-500/60';
-    const goldTextPrimary = theme === 'dark' ? 'text-amber-500' : 'text-amber-700';
-    const goldTextSecondary = theme === 'dark' ? 'text-amber-500/60' : 'text-amber-600/70';
-    const goldIconBg = 'bg-amber-500';
+    // Prestige Gold Theme - #D4AF37
+    const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-[#D4AF37]/15 to-[#D4AF37]/5' : 'bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/5';
+    const goldBorder = theme === 'dark' ? 'border-[#D4AF37]/50' : 'border-[#D4AF37]/60';
+    const goldTextPrimary = theme === 'dark' ? 'text-[#D4AF37]' : 'text-[#A68928]';
+    const goldTextSecondary = theme === 'dark' ? 'text-[#D4AF37]/60' : 'text-[#A68928]/70';
+    const goldIconBg = 'bg-[#D4AF37]';
     const goldIconText = 'text-white';
 
     const fadedBg = theme === 'dark' ? 'bg-slate-800/20' : 'bg-slate-100/80';
@@ -641,9 +660,9 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
         return (
           <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
               <div className="relative">
-                <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform`}>JB</div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-400 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center shadow-sm">
-                   <ShieldCheck size={10} className="text-amber-900" />
+                <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(212,175,55,0.4)] group-hover:rotate-12 transition-transform`}>JB</div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#D4AF37] border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center shadow-sm">
+                   <ShieldCheck size={10} className="text-white" />
                 </div>
               </div>
               <div className="flex flex-col flex-1 text-left">
@@ -657,15 +676,15 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       return (
         <a href={`mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
-              <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-slate-700/50 text-slate-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
+              <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-slate-700/50 text-slate-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-[#D4AF37]`}>
                 <Building2 size={16} />
               </div>
               <div className="flex flex-col text-left">
                 <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Course Partnership Available</span>
-                <span className={`text-[10px] sm:text-[12px] font-black uppercase tracking-tighter ${fadedTextPrimary} group-hover:text-amber-500 transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
+                <span className={`text-[10px] sm:text-[12px] font-black uppercase tracking-tighter ${fadedTextPrimary} group-hover:text-[#D4AF37] transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
-            <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-white/10 text-slate-500 group-hover:border-amber-500 group-hover:text-amber-500' : 'border-slate-300 text-slate-400 group-hover:border-amber-500 group-hover:text-amber-600'} whitespace-nowrap`}>
+            <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-white/10 text-slate-500 group-hover:border-[#D4AF37] group-hover:text-[#D4AF37]' : 'border-slate-300 text-slate-400 group-hover:border-[#D4AF37] group-hover:text-[#D4AF37]'} whitespace-nowrap`}>
               ENQUIRE
             </div>
         </a>
@@ -675,7 +694,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     if (isMillennium) {
       return (
           <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
-              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)]`}>JB</div>
+              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(212,175,55,0.3)]`}>JB</div>
               <div className="flex flex-col text-left">
                   <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsor</span>
                   <span className={`text-[10px] font-black uppercase tracking-tight ${goldTextPrimary}`}>Juicebox.money</span>
@@ -1434,7 +1453,8 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
             preferCanvas: true,
-            // Removed tap: false as it often breaks interaction in modern mobile browsers
+            // Re-enabling explicit tap support for mobile Safari
+            tap: true, 
             dragging: true,
             touchZoom: true,
             bounceAtZoomLimits: true
@@ -1500,31 +1520,35 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         courses.forEach(c => {
             if (!c.parsedCoords) return;
             
-            // Simplified marker container for better event bubbling
-            const el = document.createElement('div');
-            el.className = "asr-marker-container w-10 h-10 rounded-full bg-blue-600/15 border-[3px] border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix";
-            el.innerHTML = `
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-            `;
-
+            // Re-structured marker for better interaction capture
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
-                    html: el,
+                    html: `
+                        <div class="asr-marker-container w-10 h-10 rounded-full bg-blue-600/15 border-[3px] border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                        </div>
+                    `,
                     className: 'asr-marker-outer',
-                    iconSize: [44, 44], // Slightly larger hit area
+                    iconSize: [44, 44],
                     iconAnchor: [22, 22],
                     popupAnchor: [0, -22]
                 })
             });
 
-            // Use Leaflet's built-in click handler which normalizes touch/mouse
-            marker.on('click', (e) => {
-                window.L.DomEvent.stopPropagation(e);
+            const handleInteract = (e) => {
+                if (window.L.DomEvent) {
+                  window.L.DomEvent.stopPropagation(e);
+                  window.L.DomEvent.preventDefault(e);
+                }
                 onCourseClick('course', c);
-            });
+            };
+
+            // Use multiple event listeners to catch mobile interaction nuances
+            marker.on('click', handleInteract);
+            marker.on('touchend', handleInteract);
 
             const popupContent = `
                 <div class="p-4 min-w-[140px] flex flex-col items-center text-center">
