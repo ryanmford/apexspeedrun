@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v10'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v11'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -224,6 +224,7 @@ const CustomStyles = () => (
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       transition: transform 0.1s ease;
       pointer-events: auto !important;
+      z-index: 500 !important;
     }
     .asr-cluster:hover {
       transform: scale(1.05);
@@ -337,6 +338,12 @@ const CustomStyles = () => (
     @keyframes spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
+    }
+
+    /* Fixed mobile interaction on map markers */
+    .asr-marker-container {
+      cursor: pointer !important;
+      pointer-events: auto !important;
     }
   `}</style>
 );
@@ -572,21 +579,21 @@ const ASRPromotionBanner = ({ type, theme }) => {
   const configs = {
     setter: {
       title: "COURSE SETTER CERTIFICATION",
-      subtitle: "Become a certified course setter.",
+      subtitle: "Become an Apex certified speed parkour course setter.",
       icon: <GraduationCap className="text-white" size={24} />,
       link: SKOOL_LINK,
-      btnText: "GET CERTIFIED"
+      btnText: "GET STARTED"
     },
     coach: {
-      title: "SPEED PARKOUR COACHING",
-      subtitle: "Study speed parkour and get certified.",
+      title: "SPEED PARKOUR COACHING CERTIFICATION",
+      subtitle: "Become an Apex certified speed parkour specialist.",
       icon: <ShieldCheck className="text-white" size={24} />,
       link: SKOOL_LINK,
       btnText: "GET STARTED"
     },
     masterclass: {
         title: "VERIFY YOUR RUN",
-        subtitle: "Get your runs verified in our community app.",
+        subtitle: "Get your runs verified for free in the Apex Skool app.",
         icon: <Zap className="text-white" size={24} />,
         link: SKOOL_LINK,
         btnText: "GET VERIFIED"
@@ -631,45 +638,52 @@ const ASRPromotionBanner = ({ type, theme }) => {
 const ASRPatronPill = ({ course, theme, compact = false }) => {
     const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
     
-    // Prestige Gold Theme Colors - Enhanced for readability
-    const goldBg = theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50';
-    const goldBorder = theme === 'dark' ? 'border-amber-500/40' : 'border-amber-400';
-    const goldTextPrimary = theme === 'dark' ? 'text-amber-400' : 'text-slate-900';
-    const goldTextSecondary = theme === 'dark' ? 'text-amber-400/80' : 'text-slate-600';
+    // Prestige Gold Theme Colors - Enhanced for Active Sponsorship
+    const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/20 to-amber-900/40' : 'bg-gradient-to-br from-amber-50 to-amber-200';
+    const goldBorder = theme === 'dark' ? 'border-amber-500/60' : 'border-amber-400';
+    const goldTextPrimary = theme === 'dark' ? 'text-amber-400' : 'text-amber-900';
+    const goldTextSecondary = theme === 'dark' ? 'text-amber-400/80' : 'text-amber-800/80';
     const goldIconBg = 'bg-amber-500';
     const goldIconText = 'text-white';
+
+    // Faded Adopt Style - Updated to Amber/Gold highlights on hover
+    const fadedBg = theme === 'dark' ? 'bg-slate-800/20' : 'bg-slate-100/80';
+    const fadedBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-300';
+    const fadedTextPrimary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
+    const fadedTextSecondary = theme === 'dark' ? 'text-slate-500' : 'text-slate-400';
 
     if (!compact) {
       if (isMillennium) {
         return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-5 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[88px]`}>
+          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
               <div className="relative">
-                <div className={`w-10 h-10 rounded-full ${goldIconBg} flex items-center justify-center text-[12px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform`}>JB</div>
+                <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.5)] group-hover:rotate-12 transition-transform`}>JB</div>
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-400 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center shadow-sm">
-                   <ShieldCheck size={9} className="text-amber-900" />
+                   <ShieldCheck size={10} className="text-amber-900" />
                 </div>
               </div>
               <div className="flex flex-col flex-1 text-left">
-                  <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.25em] ${goldTextSecondary} opacity-90 leading-none`}>THIS COURSE IS SPONSORED BY</span>
-                  <span className={`text-[13px] sm:text-[15px] font-black uppercase tracking-tighter ${goldTextPrimary} mt-1`}>Juicebox.money | Fund Your Thing</span>
+                  <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.25em] ${goldTextSecondary} opacity-90 leading-none`}>OFFICIAL SPONSOR</span>
+                  <span className={`text-[12px] sm:text-[14px] font-black uppercase tracking-tighter ${goldTextPrimary} mt-0.5`}>Juicebox.money | Fund Your Thing</span>
               </div>
           </a>
         );
       }
       
+      // Faded "Adopt A Course" state - now with GOLD hover highlights
       return (
-        <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-5 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${goldBg} ${goldBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[88px]`}>
+        <a href={`mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
-              <div className={`p-2.5 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-white/60 text-amber-600 shadow-sm'}`}>
-                <Building2 size={18} />
+              <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-slate-700/50 text-slate-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
+                <Building2 size={16} />
               </div>
               <div className="flex flex-col text-left">
-                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] ${goldTextSecondary}`}>Partnership Opportunity</span>
-                <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tighter ${goldTextPrimary} group-hover:underline transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
+                <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Course Partnership Available</span>
+                <span className={`text-[10px] sm:text-[12px] font-black uppercase tracking-tighter ${fadedTextPrimary} group-hover:text-amber-600 transition-colors leading-tight`}>ADOPT THIS COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
-            <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-amber-500 text-amber-400 group-hover:bg-amber-500 group-hover:text-amber-900' : 'border-amber-600 text-amber-700 group-hover:bg-amber-600 group-hover:text-white'} whitespace-nowrap`}>
-              GET IN TOUCH
+            <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-white/10 text-slate-500 group-hover:border-amber-500 group-hover:text-amber-500' : 'border-slate-300 text-slate-400 group-hover:border-amber-500 group-hover:text-amber-600'} whitespace-nowrap`}>
+              ENQUIRE
             </div>
         </a>
       );
@@ -677,10 +691,10 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 
     if (isMillennium) {
       return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix`}>
-              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic`}>JB</div>
+          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
+              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)]`}>JB</div>
               <div className="flex flex-col text-left">
-                  <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsored By</span>
+                  <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsor</span>
                   <span className={`text-[10px] font-black uppercase tracking-tight ${goldTextPrimary}`}>Juicebox.money</span>
               </div>
           </a>
@@ -1424,6 +1438,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             mapRef.current = null;
         }
 
+        // Initialize Map with specific settings for mobile stability
         const map = window.L.map(mapContainerRef.current, {
             zoomControl: false,
             minZoom: 2,
@@ -1432,7 +1447,8 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
             preferCanvas: true,
-            tap: true 
+            tap: false, // Disabling Leaflet's custom tap listener helps with modern mobile browser interactions
+            bounceAtZoomLimits: true
         }).setView([20, 0], 2);
         
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -1495,17 +1511,18 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         courses.forEach(c => {
             if (!c.parsedCoords) return;
             
+            // Marker with forced pointer events for mobile responsiveness
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
                     html: `
-                      <div class="w-9 h-9 rounded-full bg-blue-600/10 border-3 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix" style="pointer-events: auto;">
+                      <div class="asr-marker-container w-9 h-9 rounded-full bg-blue-600/10 border-3 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix" style="pointer-events: auto !important; cursor: pointer;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                           <circle cx="12" cy="10" r="3"></circle>
                         </svg>
                       </div>
                     `,
-                    className: '',
+                    className: 'asr-marker-outer',
                     iconSize: [36, 36],
                     iconAnchor: [18, 18],
                     popupAnchor: [0, -18]
@@ -1521,13 +1538,17 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
 
             marker.bindPopup(popupContent, { closeButton: false });
             
+            // Multi-listener approach for mobile clicking
             const handleMarkerClick = (e) => {
-                if (window.L.DomEvent) window.L.DomEvent.stopPropagation(e);
+                if (window.L.DomEvent) {
+                  window.L.DomEvent.stopPropagation(e);
+                  window.L.DomEvent.preventDefault(e);
+                }
                 onCourseClick('course', c);
             };
 
             marker.on('click', handleMarkerClick);
-            marker.on('mousedown', handleMarkerClick);
+            marker.on('touchend', handleMarkerClick); // Explicit touch listener for some mobile environments
 
             clusterGroupRef.current.addLayer(marker);
         });
@@ -1787,15 +1808,26 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
             
             <ASRPatronPill course={course} theme={theme} />
 
-            <div className="flex items-center gap-3 w-full">
-              <a href={course.demoVideo || "#"} target={course.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] transition-all border-3 shadow-md h-[54px] ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/40 text-slate-400/50 grayscale opacity-40 pointer-events-none'} whitespace-nowrap`}>
-                  <Play size={10} className="mr-0.5" /> RULES
+            <div className="flex flex-row items-center gap-3 w-full">
+              <a 
+                href={course.demoVideo || "#"} 
+                target={course.demoVideo ? "_blank" : "_self"} 
+                rel="noopener noreferrer" 
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border-2 shadow-xl h-[72px] text-center ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/40 text-slate-400/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}
+              >
+                  <Play size={14} /> 
+                  <span>RULES</span>
               </a>
-              {course.coordinates && (
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] transition-all border-3 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 shadow-md h-[54px] whitespace-nowrap`}>
-                      <MapPin size={10} className="mr-0.5" /> MAP
-                  </a>
-              )}
+
+              <a 
+                href={course.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}` : "#"} 
+                target={course.coordinates ? "_blank" : "_self"} 
+                rel="noopener noreferrer" 
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border-2 shadow-xl h-[72px] text-center ${course.coordinates ? 'border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95' : 'border-slate-400/40 text-slate-400/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}
+              >
+                  <MapPin size={14} /> 
+                  <span>MAP</span>
+              </a>
             </div>
         </div>
     );
@@ -1848,7 +1880,6 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
 
             <div className="pt-4 flex flex-col gap-4">
               <ASRPromotionBanner type="setter" theme={theme} />
-              <ASRPromotionBanner type="masterclass" theme={theme} />
             </div>
         </ASRBaseModal>
     );
