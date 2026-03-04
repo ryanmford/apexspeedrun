@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v5';
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v6';
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -215,6 +215,7 @@ const CustomStyles = () => (
       font-weight: 900 !important;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       transition: transform 0.1s ease;
+      pointer-events: auto !important;
     }
     .asr-cluster:hover {
       transform: scale(1.05);
@@ -309,10 +310,19 @@ const CustomStyles = () => (
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-    body {
-      padding-top: var(--safe-top);
-      padding-bottom: var(--safe-bottom);
+    
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
       overflow-x: hidden;
+      background: #000;
+    }
+
+    body {
+      padding-top: 0;
+      padding-bottom: 0;
     }
 
     .animate-spin-slow { animation: spin 8s linear infinite; }
@@ -1377,7 +1387,8 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBounds: [[-90, -180], [90, 180]],
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
-            preferCanvas: true 
+            preferCanvas: true,
+            tap: true // Enable tap for mobile
         }).setView([20, 0], 2);
         
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -1443,7 +1454,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
                     html: `
-                      <div class="w-9 h-9 rounded-full bg-blue-600/10 border-3 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix">
+                      <div class="w-9 h-9 rounded-full bg-blue-600/10 border-3 border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix" style="pointer-events: auto;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                           <circle cx="12" cy="10" r="3"></circle>
@@ -1466,9 +1477,14 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
 
             marker.bindPopup(popupContent, { closeButton: false });
             
-            marker.on('click', () => {
+            const handleMarkerClick = (e) => {
+                if (window.L.DomEvent) window.L.DomEvent.stopPropagation(e);
                 onCourseClick('course', c);
-            });
+            };
+
+            marker.on('click', handleMarkerClick);
+            // Fallback for mobile clicks/taps
+            marker.on('mousedown', handleMarkerClick);
 
             clusterGroupRef.current.addLayer(marker);
         });
@@ -1798,7 +1814,11 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
     const [activeRole, setActiveRole] = useState(initialRole || 'all-time');
     const accentColor = 'text-blue-600';
 
-    useEffect(() => { if (isOpen && initialRole) setActiveRole(initialRole); }, [identity?.name, isOpen, initialRole]);
+    useEffect(() => { 
+        if (isOpen && initialRole) {
+            setActiveRole(initialRole);
+        }
+    }, [isOpen, initialRole]);
 
     if (!isOpen || !identity) return null;
 
@@ -2237,7 +2257,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
 
 const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
     return (
-        <nav className={`fixed top-0 w-full backdrop-blur-2xl border-b-2 z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-white/10 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-20 sm:h-28`}>
+        <nav className={`fixed top-[var(--safe-top)] w-full backdrop-blur-2xl border-b-2 z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-white/10 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-20 sm:h-28`}>
             <div className="group flex items-center gap-3 shrink-0">
                 <div className="text-blue-600 animate-pulse"><IconSpeed size={32} /></div>
                 <span className="font-black text-lg sm:text-3xl uppercase italic leading-none hidden xs:block tracking-tighter">ASR</span>
@@ -2463,7 +2483,8 @@ export default function App() {
             const athleteData = atMet[pKey] || activeModal.data;
             const openAthleteData = openData.find(p => p.pKey === pKey);
             const setterData = settersWithImpact.find(s => normalizeName(s.name) === pKey);
-            return <ASRProfileModal {...props} identity={{ ...athleteData, setterData, openStats: openAthleteData }} initialRole={activeRole => (activeModal.roleOverride || (activeModal.type === 'player' ? 'all-time' : activeModal.type))} openModal={openModal} jumpToHistory={jumpToHistory} />;
+            const targetRole = activeModal.roleOverride || (activeModal.type === 'player' ? 'all-time' : activeModal.type);
+            return <ASRProfileModal {...props} identity={{ ...athleteData, setterData, openStats: openAthleteData }} initialRole={targetRole} openModal={openModal} jumpToHistory={jumpToHistory} />;
         }
         case 'course': return <ASRCourseModal {...props} course={activeModal.data} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} onPlayerClick={(p) => openModal('player', p)} onSetterClick={(sName) => { const sObj = settersWithImpact.find(s => s.name.toLowerCase() === sName.toLowerCase()); if (sObj) openModal('setter', sObj); }} />;
         case 'region': return <ASRRegionModal {...props} region={activeModal.data} athleteMetadata={atMet} athleteDisplayNameMap={dnMap} openModal={openModal} jumpToHistory={jumpToHistory} />;
@@ -2472,12 +2493,12 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 font-sans pb-32 flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-32 flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col pt-[calc(80px+var(--safe-top))] sm:pt-[calc(112px+var(--safe-top))]">
         {renderActiveModal()}
         <ASRControlBar view={view} eventType={eventType} setEventType={setEventType} theme={theme} />
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full">
@@ -2495,7 +2516,7 @@ export default function App() {
            </div>}
         </main>
       </div>
-      <footer className="mt-40 text-center pb-20 opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
+      <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
     </div>
   );
 }
