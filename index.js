@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v10'; // Incremented version
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v10'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -401,16 +401,16 @@ const FallbackAvatar = ({ name, sizeCls = "text-2xl sm:text-5xl", initialsOverri
 };
 
 const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
-    if (!namesStr && !flagsStr) return <div className="whitespace-normal break-words text-inherit font-black">UNKNOWN 🏳️</div>;
-    if (!namesStr) return <div className="whitespace-normal break-words text-inherit font-black">{flagsStr}</div>;
+    if (!namesStr && !flagsStr) return <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">UNKNOWN 🏳️</div>;
+    if (!namesStr) return <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">{flagsStr}</div>;
     const names = String(namesStr).split(/[,\/]/).map(s => s.trim()).filter(Boolean);
     const flagsMatch = String(flagsStr || '').match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|🏳️/g) || [];
     
     return (
-        <div className="flex flex-col gap-0.5 min-w-0 text-inherit font-black">
+        <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">
             {names.map((name, i) => {
                 const flag = flagsMatch[i] || flagsMatch[0] || '';
-                return <div key={i} className="whitespace-normal break-words text-inherit">{i === 0 ? prefix : ''}{name} {flag}</div>;
+                return <span key={i} className="text-inherit">{i > 0 ? ' / ' : prefix}{name} {flag}</span>;
             })}
         </div>
     );
@@ -511,7 +511,7 @@ const ASRCourseCard = ({ course, theme, onClick, accentColor = 'text-blue-600', 
                 
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
-                        <span className={`text-xs sm:text-[16px] font-black uppercase text-inherit hover:text-blue-600 leading-none transition-colors`}>{course.name}</span>
+                        <span className={`text-xs sm:text-[16px] font-black uppercase text-ellipsis overflow-hidden whitespace-nowrap leading-none transition-colors`}>{course.name}</span>
                     </div>
                     <div className="flex flex-col mt-1.5 gap-0.5">
                       <div className="opacity-60 text-[10px] sm:text-xs font-black uppercase flex items-center gap-1">
@@ -631,36 +631,44 @@ const ASRPromotionBanner = ({ type, theme }) => {
 const ASRPatronPill = ({ course, theme, compact = false }) => {
     const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
     
+    // Prestige Gold Theme Colors - Enhanced for readability
+    const goldBg = theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50';
+    const goldBorder = theme === 'dark' ? 'border-amber-500/40' : 'border-amber-400';
+    const goldTextPrimary = theme === 'dark' ? 'text-amber-400' : 'text-slate-900';
+    const goldTextSecondary = theme === 'dark' ? 'text-amber-400/80' : 'text-slate-600';
+    const goldIconBg = 'bg-amber-500';
+    const goldIconText = 'text-white';
+
     if (!compact) {
       if (isMillennium) {
         return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${theme === 'dark' ? 'bg-emerald-600/10 border-emerald-500/40' : 'bg-emerald-50 border-emerald-400'} ios-clip-fix`}>
+          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-5 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[88px]`}>
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-[12px] text-white font-black italic shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:rotate-12 transition-transform">JB</div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-white dark:border-emerald-900 rounded-full flex items-center justify-center shadow-sm">
-                   <ShieldCheck size={9} className="text-emerald-900" />
+                <div className={`w-10 h-10 rounded-full ${goldIconBg} flex items-center justify-center text-[12px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform`}>JB</div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-400 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center shadow-sm">
+                   <ShieldCheck size={9} className="text-amber-900" />
                 </div>
               </div>
-              <div className="flex flex-col flex-1">
-                  <span className="text-[9px] font-black uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 opacity-90 leading-none">This course is sponsored by</span>
-                  <span className="text-[15px] font-black uppercase tracking-tighter text-emerald-800 dark:text-white mt-1">Juicebox.money | Fund Your Thing</span>
+              <div className="flex flex-col flex-1 text-left">
+                  <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.25em] ${goldTextSecondary} opacity-90 leading-none`}>THIS COURSE IS SPONSORED BY</span>
+                  <span className={`text-[13px] sm:text-[15px] font-black uppercase tracking-tighter ${goldTextPrimary} mt-1`}>Juicebox.money | Fund Your Thing</span>
               </div>
           </a>
         );
       }
       
       return (
-        <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 rounded-3xl border transition-all duration-300 hover:scale-[1.005] group ${theme === 'dark' ? 'border-white/20 bg-black/40 hover:border-emerald-500 hover:bg-black/60' : 'border-slate-300 bg-white shadow-md hover:border-emerald-400 hover:bg-slate-50'} ios-clip-fix`}>
+        <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-5 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${goldBg} ${goldBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[88px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
-              <div className={`p-2.5 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-white/10 text-slate-400 group-hover:text-emerald-400' : 'bg-slate-100 text-slate-600 group-hover:text-emerald-600'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-white/60 text-amber-600 shadow-sm'}`}>
                 <Building2 size={18} />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Partnership Opportunity</span>
-                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-tighter group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">ADOPT A COURSE, SUPPORT THE PROJECT</span>
+              <div className="flex flex-col text-left">
+                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] ${goldTextSecondary}`}>Partnership Opportunity</span>
+                <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tighter ${goldTextPrimary} group-hover:underline transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
-            <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${theme === 'dark' ? 'border-emerald-500 text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white' : 'border-emerald-600 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'} whitespace-nowrap`}>
+            <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-amber-500 text-amber-400 group-hover:bg-amber-500 group-hover:text-amber-900' : 'border-amber-600 text-amber-700 group-hover:bg-amber-600 group-hover:text-white'} whitespace-nowrap`}>
               GET IN TOUCH
             </div>
         </a>
@@ -669,11 +677,11 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 
     if (isMillennium) {
       return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${theme === 'dark' ? 'bg-emerald-600/20 border-emerald-500/40' : 'bg-emerald-50 border-emerald-400'} ios-clip-fix`}>
-              <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-[8px] text-white font-black italic">JB</div>
-              <div className="flex flex-col">
-                  <span className="text-[7px] font-black uppercase tracking-widest opacity-80 leading-none">Sponsored By</span>
-                  <span className="text-[10px] font-black uppercase tracking-tight text-emerald-700 dark:text-emerald-400">Juicebox.money</span>
+          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix`}>
+              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic`}>JB</div>
+              <div className="flex flex-col text-left">
+                  <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsored By</span>
+                  <span className={`text-[10px] font-black uppercase tracking-tight ${goldTextPrimary}`}>Juicebox.money</span>
               </div>
           </a>
       );
@@ -1676,7 +1684,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                             <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
                                 <ASRRankBadge rank={i + 1} theme={theme} />
                                 <div className="flex flex-col min-w-0">
-                                  <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-600`}>{athleteDisplayNameMap[pKey]}</span>
+                                  <span className={`text-xs sm:text-[15px] font-black uppercase whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-600`}>{athleteDisplayNameMap[pKey]}</span>
                                   <span className="text-[10px] sm:text-xs uppercase font-black opacity-70">{meta.region || '🏳️'}</span>
                                 </div>
                             </div>
@@ -1770,23 +1778,25 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                   <FallbackAvatar name={course.name} sizeCls="text-xl sm:text-4xl" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
-                    <h2 style={{ textWrap: 'balance' }} className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight break-normal uppercase leading-tight mb-2 text-inherit">{course.name}</h2>
-                    <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit">
+                    <h2 style={{ textWrap: 'nowrap' }} className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tighter truncate uppercase leading-none mb-2 text-inherit">{course.name}</h2>
+                    <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit truncate">
                         {formatLocationSubtitle(course.country, course.flag, locStr ? locStr + ', ' : '')}
                     </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-3 shrink-0">
-                  <a href={course.demoVideo || "#"} target={course.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`w-[110px] flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-3 shadow-md ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/40 text-slate-400/50 grayscale opacity-40 pointer-events-none'} whitespace-nowrap`}>
-                      <Play size={10} /> RULES
-                  </a>
-                  {course.coordinates && (
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} target="_blank" rel="noopener noreferrer" className={`w-[110px] flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-3 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 shadow-md whitespace-nowrap`}>
-                          <MapPin size={10} /> MAP
-                      </a>
-                  )}
-                </div>
             </div>
+            
             <ASRPatronPill course={course} theme={theme} />
+
+            <div className="flex items-center gap-3 w-full">
+              <a href={course.demoVideo || "#"} target={course.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] transition-all border-3 shadow-md h-[54px] ${course.demoVideo ? 'border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95' : 'border-slate-400/40 text-slate-400/50 grayscale opacity-40 pointer-events-none'} whitespace-nowrap`}>
+                  <Play size={10} className="mr-0.5" /> RULES
+              </a>
+              {course.coordinates && (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] transition-all border-3 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 shadow-md h-[54px] whitespace-nowrap`}>
+                      <MapPin size={10} className="mr-0.5" /> MAP
+                  </a>
+              )}
+            </div>
         </div>
     );
 
@@ -1864,17 +1874,26 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
                 <FallbackAvatar name={identity.name} />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-1.5 sm:mb-2 min-w-0 w-full">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-2 min-w-0 w-full">
                     <h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words">{identity.name}</h2>
+                </div>
+                <div className="flex items-center gap-3 sm:gap-4 mt-1">
+                    {identity.region && (
+                      <div className="text-2xl sm:text-3xl leading-none flex items-center gap-1.5 drop-shadow-sm">
+                        {identity.region}
+                      </div>
+                    )}
                     {identity.igHandle && (
-                        <a href={`https://instagram.com/${identity.igHandle}`} target="_blank" rel="noopener noreferrer" className={`w-fit shrink-0 flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all hover:-translate-y-0.5 shadow-md border-2 ${theme === 'dark' ? 'bg-black/40 hover:bg-black/60 text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-900 border-slate-300'} ios-clip-fix`}>
-                          <div className="text-[#E1306C]"><Instagram size={14} /></div>
-                          <span className="text-[9px] sm:text-[12px] font-black tracking-widest uppercase mt-0.5 hidden xs:inline">@{identity.igHandle}</span>
+                        <a 
+                          href={`https://instagram.com/${identity.igHandle}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`}
+                          title={`@${identity.igHandle}`}
+                        >
+                          <div className="text-[#E1306C] transition-transform group-hover/ig:rotate-6"><Instagram size={18} strokeWidth={2.5} /></div>
                         </a>
                     )}
-                </div>
-                <div className="text-[10px] sm:text-[16px] font-black uppercase tracking-widest mt-1.5 sm:mt-0 min-w-0 opacity-80 text-inherit">
-                    {formatLocationSubtitle(identity.countryName, identity.region)}
                 </div>
             </div>
         </div>
@@ -1889,7 +1908,6 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
           const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
           return { ...cd, coordinates: matched?.coordinates, flag: matched?.flag, country: matched?.country, city: matched?.city, mRecord: matched?.allTimeMRecord, fRecord: matched?.allTimeFRecord };
         }).sort((a, b) => {
-            // Sort Logic: Golds first, then fastest time within golds. Others by points.
             const isGoldA = a.rank === 1;
             const isGoldB = b.rank === 1;
             if (isGoldA && !isGoldB) return -1;
@@ -1915,7 +1933,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         ];
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
                     {playerStats.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} glowClass={s.g} tooltip={s.t} />
@@ -1968,7 +1986,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         ];
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-14">
                     {setterStats.map((s, i) => (
                       <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} colorClass={s.c} tooltip={s.t} />
