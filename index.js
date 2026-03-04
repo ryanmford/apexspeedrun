@@ -557,8 +557,8 @@ const ASRPromotionBanner = ({ type, theme }) => {
       btnText: "GET CERTIFIED"
     },
     coach: {
-      title: "STUDY SPEED PARKOUR",
-      subtitle: "Become a certified speed parkour coach.",
+      title: "SPEED PARKOUR COACHING",
+      subtitle: "Study speed parkour and get certified.",
       icon: <ShieldCheck className="text-white" size={24} />,
       link: SKOOL_LINK,
       btnText: "GET STARTED"
@@ -1229,7 +1229,7 @@ const useASRData = () => {
 const calculateCityStats = (rawCourseList) => {
     const cityMap = {};
     rawCourseList.forEach(c => {
-        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
+        if (!cityMap[c.city]) cityMap[c.city] = { name: c.city, flag: c.flag, countryName: c.country, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.coords };
         cityMap[c.city].courses++;
         cityMap[c.city].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => cityMap[c.city].playersSet.add(a[0]));
@@ -1244,7 +1244,7 @@ const calculateCountryStats = (rawCourseList) => {
     const countryMap = {};
     rawCourseList.forEach(c => {
         const fixed = fixCountryEntity(c.country, c.flag);
-        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
+        if (!countryMap[fixed.name]) countryMap[fixed.name] = { name: fixed.name, flag: fixed.flag, continent: c.continent, courses: 0, runs: 0, playersSet: new Set(), coords: c.coords };
         countryMap[fixed.name].courses++;
         countryMap[fixed.name].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => countryMap[fixed.name].playersSet.add(a[0]));
@@ -1260,7 +1260,7 @@ const calculateContinentStats = (rawCourseList) => {
     rawCourseList.forEach(c => {
         const contName = c.continent || 'OTHER';
         if (contName === 'GLOBAL') return;
-        if (!map[contName]) map[contName] = { name: contName, flag: c.continentFlag || '🌐', courses: 0, runs: 0, playersSet: new Set(), coords: c.parsedCoords };
+        if (!map[contName]) map[contName] = { name: contName, flag: c.continentFlag || '🌐', courses: 0, runs: 0, playersSet: new Set(), coords: c.coords };
         map[contName].courses++;
         map[contName].runs += c.totalRuns;
         (c.athletesM || []).forEach(a => map[contName].playersSet.add(a[0]));
@@ -1803,7 +1803,8 @@ const ASRCourseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, cour
                 </div>
             )}
 
-            <div className="pt-4">
+            <div className="pt-4 flex flex-col gap-4">
+              <ASRPromotionBanner type="setter" theme={theme} />
               <ASRPromotionBanner type="masterclass" theme={theme} />
             </div>
         </ASRBaseModal>
@@ -1866,7 +1867,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         const currentRankValue = isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank;
 
         const playerStats = [
-            { l: 'RANK', v: currentRankValue, c: 'text-blue-600', g: 'glow-blue', t: "CURRENT POSITION IN THE WORLDWIDE LEADERBOARD" },
+            { l: 'RANK', v: currentRankValue, t: "CURRENT POSITION IN THE WORLDWIDE LEADERBOARD" },
             { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: accentColor, t: "TOTAL POINTS / RUNS = RATING" }, 
             { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00', t: "THE SUM OF ALL INDIVIDUAL COURSE POINTS" }, 
             { l: 'RUNS', v: metaSource.runs || 0 }, 
@@ -1915,9 +1916,14 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             .filter(c => isNameInList(identity.name, c.leadSetters) || isNameInList(identity.name, c.assistantsetters))
             .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0));
         
+        const impact = setterData.impact || setterCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
+        const setsCount = setterData.sets || setterCourses.length;
+        const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
+
         const setterStats = [
-            { l: 'IMPACT', v: setterData.impact || 0, c: accentColor, t: "TOTAL RUNS ON ALL COURSES BY THIS SETTER (AS LEAD OR ASSISTANT)" },
-            { l: 'SETS', v: setterData.sets || setterCourses.length, t: "THE SUM OF ALL LEAD AND ASSISTANT SETS" },
+            { l: 'IMPACT', v: impact, c: accentColor, t: "TOTAL RUNS ON ALL COURSES BY THIS SETTER (AS LEAD OR ASSISTANT)" },
+            { l: 'AVG IMPACT', v: avgImpact, t: "AVERAGE RUNS PER COURSE SET", c: accentColor },
+            { l: 'SETS', v: setsCount, t: "THE SUM OF ALL LEAD AND ASSISTANT SETS" },
             { l: 'LEADS', v: setterData.leads || 0 },
             { l: 'ASSISTS', v: setterData.assists || 0 },
             { l: 'CITIES', v: new Set(setterCourses.map(c => c.city).filter(Boolean)).size || 0 },
@@ -1958,7 +1964,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             {activeRole === 'all-time' && (
                 <>
                     {renderPlayerContent('all-time')}
-                    <div className="pt-8">
+                    <div className="pt-8 flex flex-col gap-4">
+                        <ASRPromotionBanner type="coach" theme={theme} />
                         <ASRPromotionBanner type="community" theme={theme} />
                     </div>
                 </>
@@ -1967,7 +1974,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             {activeRole === 'open' && (
                 <>
                     {renderPlayerContent('open')}
-                    <div className="pt-8">
+                    <div className="pt-8 flex flex-col gap-4">
+                        <ASRPromotionBanner type="coach" theme={theme} />
                         <ASRPromotionBanner type="masterclass" theme={theme} />
                     </div>
                 </>
@@ -2146,6 +2154,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             </tbody>
           </table>
         </div>
+      </div>
+      <div className="mt-8">
+        <ASRPromotionBanner type="masterclass" theme={theme} />
       </div>
     </div>
   );
@@ -2512,6 +2523,12 @@ export default function App() {
                  {(view === 'map' ? courseList : list).length > 0 ? <ASRDataTable theme={theme} columns={view === 'map' ? COURSE_COLS : PLAYER_COLS} sort={viewSorts[view === 'map' ? 'courses' : 'players']} onSort={handleSort} data={view === 'map' ? courseList : list} onRowClick={item => openModal(view === 'map' ? 'course' : 'player', item)} /> :
                  <div className="flex flex-col items-center justify-center py-40 opacity-30"><IconSpeed className="text-blue-600 mb-20 scale-[4.5]" /><h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">SYNC IN PROGRESS</h3></div>}
                </div>
+             </div>
+             
+             {/* Dynamic Promo Banners based on View */}
+             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4">
+                {view === 'map' && <ASRPromotionBanner type="setter" theme={theme} />}
+                {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
              </div>
            </div>}
         </main>
