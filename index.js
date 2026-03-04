@@ -582,7 +582,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
         btnText: "GET VERIFIED"
     },
     community: {
-        title: "JOIN THE COMMUNITY",
+        title: "JOIN APEX SKOOL APP",
         subtitle: "Join the Apex worldwide community.",
         icon: <Users className="text-white" size={24} />,
         link: SKOOL_LINK,
@@ -742,20 +742,25 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 
   const steps = [
     {
-      title: "1. Gather Intel",
-      desc: "Use our map to find a course near you. Join Apex Skool app to connect with others and access the latest ASR news and analytics.",
+      title: "How to get started",
+      desc: "Because our courses are set in outdoor, public spaces, anyone can start anytime.",
       icon: <Compass size={44} className="text-blue-500" />
     },
     {
-      title: "2. Film Your Run",
-      desc: "Video proof is everything. Check our community app for filming requirements and official rules to ensure that your best performances get verified.",
+      title: "1. Find a course",
+      desc: "Use our map and course guides to find a course near you. Join Apex Skool app to access the latest ASR resources.",
+      icon: <Compass size={44} className="text-blue-500" />
+    },
+    {
+      title: "2. Film your run",
+      desc: "Video proof is everything. Check Apex Skool app for filming requirements and official rules to ensure that your best runs count.",
       icon: <Video size={44} className="text-blue-600" />
     },
     {
-      title: "3. Get Verified",
-      desc: "Share your fastest clips in Apex Skool app for official verification. Once approved, your stats will update and broadcast live on our website.",
+      title: "3. Get verified",
+      desc: "Post your fastest runs in Apex Skool app for official review. Once verified, your stats will update and broadcast live on our website.",
       icon: <ShieldCheck size={44} className="text-blue-600" />,
-      action: "JOIN THE COMMUNITY"
+      action: "JOIN APEX SKOOL APP"
     }
   ];
 
@@ -2377,11 +2382,11 @@ const ASRControlBar = ({ view, eventType, setEventType, theme }) => {
                         <div className={`inline-flex flex-wrap items-center justify-center gap-x-10 gap-y-3 px-10 py-5 rounded-3xl sm:rounded-full border-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-black/90 border-white/20 text-slate-100' : 'bg-white/95 border-slate-400 text-slate-800'} ios-clip-fix`}>
                             <div className="flex items-center gap-3">
                                 <ShieldCheck size={18} className="text-blue-600" />
-                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">THE FASTEST IRL</span>
+                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">FINDING THE FASTEST IRL</span>
                             </div>
                             <div className="flex items-center gap-3 opacity-80">
                                 <Fingerprint size={16} className="text-blue-600" />
-                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">UPDATED IN REAL-TIME</span>
+                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">STATS TRACKED IN REAL-TIME</span>
                             </div>
                         </div>
                     )}
