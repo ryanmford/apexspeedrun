@@ -10,13 +10,21 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v6';
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v8'; // Incremented version
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
 // --- UTILITIES & HELPERS ---
 
-const normalizeName = (n) => n ? String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').trim() : "";
+const normalizeName = (n) => {
+  if (!n) return "";
+  return String(n)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") 
+    .replace(/[^a-z0-9]/g, '')     
+    .trim();
+};
 
 const normalizeCountryName = (name) => {
     let n = String(name || "").toUpperCase().trim();
@@ -479,7 +487,11 @@ const ASRRecordsBlock = ({ mRecord, fRecord, theme }) => {
 };
 
 const ASRCourseCard = ({ course, theme, onClick, accentColor = 'text-blue-600', isPerformance = false, perfData = {} }) => {
-    const videoToUse = (isPerformance && perfData.videoUrl) ? perfData.videoUrl : course.demoVideo;
+    /**
+     * BUG FIX: Only show performance video if it exists. 
+     * Do NOT fall back to course.demoVideo for individual player runs.
+     */
+    const videoToUse = isPerformance ? perfData.videoUrl : course.demoVideo;
     
     return (
         <div onClick={onClick} className={`flex items-center justify-between p-4 rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-black/30 border-white/20' : 'bg-white border-slate-300 shadow-md'} ios-clip-fix`}>
@@ -504,7 +516,6 @@ const ASRCourseCard = ({ course, theme, onClick, accentColor = 'text-blue-600', 
                     </div>
                 </div>
             </div>
-            {/* Standardized Right Column: Stats and Play Button */}
             <div className="flex items-center gap-4 shrink-0">
                 <div className="flex flex-col items-end min-w-[70px] sm:min-w-[90px] text-right">
                     {isPerformance ? (
@@ -663,22 +674,22 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 const ASRInlineValueCard = ({ theme, type }) => {
   const cards = {
     skool_training: {
-      title: "ASR GLOBAL NETWORK",
-      desc: "Join the largest speed parkour network on Skool.",
+      title: "Apex Global Network",
+      desc: "Join our worldwide network on Apex Skool app.",
       icon: <Users size={18} />,
       link: SKOOL_LINK,
       btn: "JOIN NOW"
     },
     shop_gear: {
       title: "Verify Your Run",
-      desc: "Submit your video proof via Skool for validation.",
+      desc: "Submit and verify your video proof via Apex Skool app.",
       icon: <Video size={18} />,
       link: SKOOL_LINK,
-      btn: "SUBMIT"
+      btn: "GET VERIFIED"
     },
     pro_setter: {
-        title: "Course Setter Cert",
-        desc: "Architecture certification pathway on Skool app.",
+        title: "Course Setter Certification",
+        desc: "Take the course setter certification on Apex Skool app.",
         icon: <GraduationCap size={18} />,
         link: SKOOL_LINK,
         btn: "LEARN MORE"
@@ -1060,13 +1071,27 @@ const useASRData = () => {
         }
         if (hIdx === -1) return result;
         const findIdx = (keys) => headers.findIndex(h => keys.some(k => h.toLowerCase().includes(k)));
+        
         const athleteIdx = Math.max(0, findIdx(['athlete', 'name', 'player']));
         const courseIdx = Math.max(0, findIdx(['course', 'track', 'level']));
         const resultIdx = Math.max(0, findIdx(['result', 'time', 'pb']));
         const genderIdx = findIdx(['div', 'gender', 'sex']);
         const dateIdx = findIdx(['date', 'day', 'timestamp']);
-        const videoIdx = findIdx(['video', 'proof', 'link', 'url']);
         const tagIdx = findIdx(['tag', 'event', 'category', 'season']);
+        
+        /**
+         * BUG FIX: Strictly target Column H (Index 7) for Video Proof as requested.
+         * We search for "proof", "link", or "video", but default to index 7 if that column 
+         * matches the user's specific requirement.
+         */
+        let videoIdx = findIdx(['proof', 'link']);
+        if (videoIdx === -1) videoIdx = findIdx(['video', 'url']);
+        // Override or fallback to 7 if header detection is ambiguous or missing
+        if (headers.length >= 8 && headers[7].toLowerCase().includes('proof')) {
+          videoIdx = 7;
+        } else if (videoIdx === -1 && headers.length >= 8) {
+          videoIdx = 7;
+        }
         
         const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
         const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
@@ -1082,13 +1107,20 @@ const useASRData = () => {
           const rawVideo = videoIdx !== -1 ? (vals[videoIdx] || "").trim() : "";
           const rawTag = tagIdx !== -1 ? (vals[tagIdx] || "") : "";
           if (!pName || !rawCourse || numericValue === null) return;
+          
           const pKey = normalizeName(pName);
           const normalizedCourseName = rawCourse.toUpperCase();
+          
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
           
           const pGender = athleteMetadata[pKey]?.gender || ((genderIdx !== -1 && (vals[genderIdx] || "").toUpperCase().startsWith('F')) ? 'F' : 'M');
           if (!athleteMetadata[pKey]) {
               athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
+          } else {
+              if (pName.length > (athleteMetadata[pKey].name || "").length) {
+                athleteMetadata[pKey].name = pName;
+                athleteDisplayNameMap[pKey] = pName;
+              }
           }
           
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
@@ -1178,7 +1210,7 @@ const useASRData = () => {
             totalFireCount: totalFires,
             searchKey: meta.searchKey || pKey.toLowerCase()
           };
-        }).sort((a, b) => b.rating - a.rating); // Initially sort by Open Rating
+        }).sort((a, b) => b.rating - a.rating); 
 
         return result;
       };
@@ -1388,7 +1420,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
             preferCanvas: true,
-            tap: true // Enable tap for mobile
+            tap: true 
         }).setView([20, 0], 2);
         
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -1483,7 +1515,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             };
 
             marker.on('click', handleMarkerClick);
-            // Fallback for mobile clicks/taps
             marker.on('mousedown', handleMarkerClick);
 
             clusterGroupRef.current.addLayer(marker);
@@ -1536,7 +1567,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
               </button>
             </div>
 
-            {/* UNIFIED STATUS INDICATOR (TOP RIGHT) */}
             <div className="absolute top-4 right-4 z-[40]">
                 <div className={`${mapPillStyle} bg-transparent border-blue-600/40 text-blue-600 dark:text-white flex items-center gap-2 whitespace-nowrap`}>
                     <span className={`text-blue-600 animate-pulse text-lg leading-none`}>●</span>
@@ -1544,7 +1574,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 </div>
             </div>
 
-            {/* UNIFIED COURSES BUTTON (TOP LEFT) */}
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2.5 max-w-xs h-[calc(100%-8rem)] sm:h-auto items-start">
                 <button 
                   onClick={() => setIsPanelOpen(!isPanelOpen)} 
@@ -1867,7 +1896,7 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         const currentRankValue = isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank;
 
         const playerStats = [
-            { l: 'RANK', v: currentRankValue, t: "CURRENT POSITION IN THE WORLDWIDE LEADERBOARD" },
+            { l: 'RANK', v: currentRankValue },
             { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: accentColor, t: "TOTAL POINTS / RUNS = RATING" }, 
             { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00', t: "THE SUM OF ALL INDIVIDUAL COURSE POINTS" }, 
             { l: 'RUNS', v: metaSource.runs || 0 }, 
@@ -1921,14 +1950,14 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
 
         const setterStats = [
-            { l: 'IMPACT', v: impact, c: accentColor, t: "TOTAL RUNS ON ALL COURSES BY THIS SETTER (AS LEAD OR ASSISTANT)" },
-            { l: 'AVG IMPACT', v: avgImpact, t: "AVERAGE RUNS PER COURSE SET", c: accentColor },
-            { l: 'SETS', v: setsCount, t: "THE SUM OF ALL LEAD AND ASSISTANT SETS" },
+            { l: 'IMPACT', v: impact, c: accentColor, t: "TOTAL PLAYERS ON ALL COURSES SET BY THIS SETTER" },
+            { l: 'AVG IMPACT', v: avgImpact, t: "AVERAGE PLAYERS PER COURSE SET", c: accentColor },
+            { l: 'SETS', v: setsCount, t: "LEAD SETS + ASSISTANT SETS" },
             { l: 'LEADS', v: setterData.leads || 0 },
             { l: 'ASSISTS', v: setterData.assists || 0 },
             { l: 'CITIES', v: new Set(setterCourses.map(c => c.city).filter(Boolean)).size || 0 },
             { l: 'COUNTRIES', v: new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0 },
-            { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0, t: "CONTRIBUTOR COINS (RUNS, WINS, & SETS)" }
+            { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0, t: "CONTRIBUTOR COINS FROM RUNS, WINS, & SETS" }
         ];
 
         return (
@@ -1964,9 +1993,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             {activeRole === 'all-time' && (
                 <>
                     {renderPlayerContent('all-time')}
-                    <div className="pt-8 flex flex-col gap-4">
+                    <div className="pt-8">
                         <ASRPromotionBanner type="coach" theme={theme} />
-                        <ASRPromotionBanner type="community" theme={theme} />
                     </div>
                 </>
             )}
@@ -1974,9 +2002,8 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
             {activeRole === 'open' && (
                 <>
                     {renderPlayerContent('open')}
-                    <div className="pt-8 flex flex-col gap-4">
+                    <div className="pt-8">
                         <ASRPromotionBanner type="coach" theme={theme} />
-                        <ASRPromotionBanner type="masterclass" theme={theme} />
                     </div>
                 </>
             )}
@@ -2096,7 +2123,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ].map((sec) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border-2 flex flex-col overflow-visible ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-slate-300 shadow-premium'}`}>
               {sec.t && (
-                <div className={`stat-card-tooltip ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
+                <div className={`stat-card-tooltip normal-case ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white border border-slate-200 text-slate-900 shadow-xl'}`}>
                     {sec.t}
                 </div>
               )}
@@ -2190,7 +2217,8 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
     useEffect(() => {
         if (!observerTarget.current) return;
         const observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setVisibleCount(p => Math.min(p + 50, data.length)); }, { threshold: 0.1, rootMargin: '400px' });
-        observer.observe(observerTarget.current);
+        const currentTarget = observerTarget.current;
+        observer.observe(currentTarget);
         return () => observer.disconnect();
     }, [data.length]);
 
@@ -2363,7 +2391,6 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  // Explicitly landing on a default setting with no search text inside
   useEffect(() => { setSearch(''); }, [view, eventType, gen]);
 
   const openModal = useCallback((type, data, roleOverride = null, contextOverride = null) => {
@@ -2525,7 +2552,6 @@ export default function App() {
                </div>
              </div>
              
-             {/* Dynamic Promo Banners based on View */}
              <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4">
                 {view === 'map' && <ASRPromotionBanner type="setter" theme={theme} />}
                 {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
