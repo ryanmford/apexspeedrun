@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v8'; // Incremented version
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v10'; // Incremented version
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -487,18 +487,28 @@ const ASRRecordsBlock = ({ mRecord, fRecord, theme }) => {
 };
 
 const ASRCourseCard = ({ course, theme, onClick, accentColor = 'text-blue-600', isPerformance = false, perfData = {} }) => {
-    /**
-     * BUG FIX: Only show performance video if it exists. 
-     * Do NOT fall back to course.demoVideo for individual player runs.
-     */
     const videoToUse = isPerformance ? perfData.videoUrl : course.demoVideo;
     
     return (
         <div onClick={onClick} className={`flex items-center justify-between p-4 rounded-3xl border transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-black/30 border-white/20' : 'bg-white border-slate-300 shadow-md'} ios-clip-fix`}>
             <div className="flex items-center gap-3 pr-4 min-w-0 flex-1">
-                <div className={`p-2.5 rounded-xl transition-all ${course.coordinates ? 'text-slate-500 hover:text-blue-600 hover:scale-110' : 'text-slate-400/30'}`}>
+                {course.coordinates ? (
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(course.coordinates)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`p-2.5 rounded-xl transition-all text-slate-500 hover:text-blue-600 hover:scale-110 active:scale-90`}
+                    title="View on Google Maps"
+                  >
                     <MapPin size={22} strokeWidth={2.5} />
-                </div>
+                  </a>
+                ) : (
+                  <div className={`p-2.5 rounded-xl text-slate-400/30`}>
+                      <MapPin size={22} strokeWidth={2.5} />
+                  </div>
+                )}
+                
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
                         <span className={`text-xs sm:text-[16px] font-black uppercase text-inherit hover:text-blue-600 leading-none transition-colors`}>{course.name}</span>
@@ -509,8 +519,8 @@ const ASRCourseCard = ({ course, theme, onClick, accentColor = 'text-blue-600', 
                       </div>
                       {isPerformance && (perfData.rank > 0 || perfData.fireCount > 0) && (
                         <div className="flex items-center gap-1 opacity-80 h-4">
-                           {perfData.rank > 0 && perfData.rank <= 3 && <ASRPerformanceBadge type={perfData.rank} />}
-                           {perfData.fireCount > 0 && <ASRPerformanceBadge type="fire" count={perfData.fireCount} />}
+                            {perfData.rank > 0 && perfData.rank <= 3 && <ASRPerformanceBadge type={perfData.rank} />}
+                            {perfData.fireCount > 0 && <ASRPerformanceBadge type="fire" count={perfData.fireCount} />}
                         </div>
                       )}
                     </div>
@@ -647,7 +657,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
               </div>
               <div className="flex flex-col">
                 <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Partnership Opportunity</span>
-                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-tighter group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">ADOPT THIS COURSE & SUPPORT THE PROJECT</span>
+                <span className="text-[11px] sm:text-[13px] font-black uppercase tracking-tighter group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">ADOPT A COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
             <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${theme === 'dark' ? 'border-emerald-500 text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white' : 'border-emerald-600 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'} whitespace-nowrap`}>
@@ -729,17 +739,17 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   const steps = [
     {
       title: "1. Gather Intel",
-      desc: "Use the ASR world map to find ASR courses near you. Join our community app to connect with others and access our latest ASR guides and analytics.",
+      desc: "Use our map to find a course near you. Join Apex Skool app to connect with others and access the latest ASR news and analytics.",
       icon: <Compass size={44} className="text-blue-500" />
     },
     {
       title: "2. Film Your Run",
-      desc: "Video proof is everything. Check our community app for filming requirements, official course rules, and live ASR news to ensure that your best performances get verified.",
+      desc: "Video proof is everything. Check our community app for filming requirements and official rules to ensure that your best performances get verified.",
       icon: <Video size={44} className="text-blue-600" />
     },
     {
       title: "3. Get Verified",
-      desc: "Share your fastest clips in the community app for official verification. Once approved, your stats will be updated and broadcast live on the ASR website.",
+      desc: "Share your fastest clips in Apex Skool app for official verification. Once approved, your stats will update and broadcast live on our website.",
       icon: <ShieldCheck size={44} className="text-blue-600" />,
       action: "JOIN THE COMMUNITY"
     }
@@ -826,8 +836,8 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-xl bg-black/90 animate-in fade-in duration-300" onClick={onClose}>
       <div className={`${theme === 'dark' ? 'bg-[#050505] border-white/20 text-slate-100' : 'bg-[#f1f5f9] border-slate-400 text-slate-900'} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.7)] scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col max-h-[94vh] ios-clip-fix`} onClick={e => e.stopPropagation()}>
         <div className={`shrink-0 flex flex-col p-6 sm:p-8 lg:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-slate-800/40' : 'from-slate-300/60'} to-transparent relative`}>
-          <div className="flex items-start justify-between gap-4 z-10">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-4 z-10 w-full">
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                   <button aria-label="Go Back" onClick={onBack} className={`group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0`} title="Go Back">
                       <IconCornerUpLeft size={18} className={`text-slate-200 group-hover:text-white transition-colors`} />
                   </button>
@@ -1079,14 +1089,8 @@ const useASRData = () => {
         const dateIdx = findIdx(['date', 'day', 'timestamp']);
         const tagIdx = findIdx(['tag', 'event', 'category', 'season']);
         
-        /**
-         * BUG FIX: Strictly target Column H (Index 7) for Video Proof as requested.
-         * We search for "proof", "link", or "video", but default to index 7 if that column 
-         * matches the user's specific requirement.
-         */
         let videoIdx = findIdx(['proof', 'link']);
         if (videoIdx === -1) videoIdx = findIdx(['video', 'url']);
-        // Override or fallback to 7 if header detection is ambiguous or missing
         if (headers.length >= 8 && headers[7].toLowerCase().includes('proof')) {
           videoIdx = 7;
         } else if (videoIdx === -1 && headers.length >= 8) {
@@ -1166,7 +1170,7 @@ const useASRData = () => {
               const fires = getFireCountForRun(data.num, pGender);
               fireTotal += fires;
               return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl, fireCount: fires };
-            }).sort((a, b) => a.label.localeCompare(b.label));
+            });
             
             if (athleteMetadata[pKey]) {
               athleteMetadata[pKey].totalFireCount = fireTotal;
@@ -1551,7 +1555,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         );
     }
 
-    const mapPillStyle = `pointer-events-auto px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all border-3 shadow-2xl backdrop-blur-md`;
+    const mapPillStyle = `pointer-events-auto px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all border-3 shadow-2xl backdrop-blur-md ${theme === 'dark' ? 'bg-black/60 border-blue-600/40 text-slate-100' : 'bg-white/80 border-blue-600 text-slate-900'}`;
 
     return (
         <div className={`relative w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-2xl border border-subtle ios-clip-fix`}>
@@ -1560,7 +1564,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40]">
               <button 
                 onClick={handleFindMe}
-                className={`${mapPillStyle} bg-transparent border-blue-600 text-blue-600 dark:text-white hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}
+                className={`${mapPillStyle} hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}
               >
                 <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} />
                 Find Courses Near Me
@@ -1568,7 +1572,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             </div>
 
             <div className="absolute top-4 right-4 z-[40]">
-                <div className={`${mapPillStyle} bg-transparent border-blue-600/40 text-blue-600 dark:text-white flex items-center gap-2 whitespace-nowrap`}>
+                <div className={`${mapPillStyle} flex items-center gap-2 whitespace-nowrap`}>
                     <span className={`text-blue-600 animate-pulse text-lg leading-none`}>●</span>
                     <span>{eventType === 'open' ? 'ASR OPEN' : 'ALL-TIME'} ({courses.length})</span>
                 </div>
@@ -1577,7 +1581,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2.5 max-w-xs h-[calc(100%-8rem)] sm:h-auto items-start">
                 <button 
                   onClick={() => setIsPanelOpen(!isPanelOpen)} 
-                  className={`${mapPillStyle} w-fit bg-transparent border-blue-600/40 text-blue-600 dark:text-white flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}
+                  className={`${mapPillStyle} w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}
                 >
                     <Globe size={12} className="shrink-0" />
                     {isPanelOpen ? 'HIDE' : 'COURSES'}
@@ -1855,21 +1859,21 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
     const pKey = identity.pKey || normalizeName(identity.name);
     
     const Header = (
-        <div className="flex items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left">
-            <div className={`w-16 h-16 sm:w-32 sm:h-32 rounded-3xl border-2 flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}>
+        <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left">
+            <div className={`w-16 h-16 sm:w-28 lg:w-32 sm:h-28 lg:h-32 rounded-3xl border-2 flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}>
                 <FallbackAvatar name={identity.name} />
             </div>
-            <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <div className="flex items-center gap-3 sm:gap-4 mb-1.5 sm:mb-2 min-w-0 flex-wrap sm:flex-nowrap">
-                    <h2 style={{ textWrap: 'balance' }} className="text-xl sm:text-4xl lg:text-6xl font-black tracking-tight break-normal uppercase leading-tight text-inherit">{identity.name}</h2>
+            <div className="min-w-0 flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-1.5 sm:mb-2 min-w-0 w-full">
+                    <h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words">{identity.name}</h2>
                     {identity.igHandle && (
                         <a href={`https://instagram.com/${identity.igHandle}`} target="_blank" rel="noopener noreferrer" className={`w-fit shrink-0 flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all hover:-translate-y-0.5 shadow-md border-2 ${theme === 'dark' ? 'bg-black/40 hover:bg-black/60 text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-slate-900 border-slate-300'} ios-clip-fix`}>
-                            <div className="text-[#E1306C]"><Instagram size={14} /></div>
-                            <span className="text-[9px] sm:text-[12px] font-black tracking-widest uppercase mt-0.5 hidden xs:inline">@{identity.igHandle}</span>
+                          <div className="text-[#E1306C]"><Instagram size={14} /></div>
+                          <span className="text-[9px] sm:text-[12px] font-black tracking-widest uppercase mt-0.5 hidden xs:inline">@{identity.igHandle}</span>
                         </a>
                     )}
                 </div>
-                <div className="text-[10px] sm:text-[18px] font-black uppercase tracking-widest mt-1.5 sm:mt-0 min-w-0 opacity-80 text-inherit">
+                <div className="text-[10px] sm:text-[16px] font-black uppercase tracking-widest mt-1.5 sm:mt-0 min-w-0 opacity-80 text-inherit">
                     {formatLocationSubtitle(identity.countryName, identity.region)}
                 </div>
             </div>
@@ -1885,10 +1889,13 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
           const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
           return { ...cd, coordinates: matched?.coordinates, flag: matched?.flag, country: matched?.country, city: matched?.city, mRecord: matched?.allTimeMRecord, fRecord: matched?.allTimeFRecord };
         }).sort((a, b) => {
-            const rankA = a.rank || 999;
-            const rankB = b.rank || 999;
-            if (rankA !== rankB) return rankA - rankB;
-            return a.num - b.num;
+            // Sort Logic: Golds first, then fastest time within golds. Others by points.
+            const isGoldA = a.rank === 1;
+            const isGoldB = b.rank === 1;
+            if (isGoldA && !isGoldB) return -1;
+            if (!isGoldA && isGoldB) return 1;
+            if (isGoldA && isGoldB) return a.num - b.num;
+            return b.points - a.points;
         });
 
         const currentOpenRankIndex = openRankings?.findIndex(p => p.pKey === pKey);
@@ -2167,9 +2174,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                 <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
                   <td className="pl-8 sm:pl-12 py-6"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="py-6 px-4">
-                    <div className="flex flex-col">
-                      <span className="text-xs sm:text-[17px] font-black uppercase group-hover:text-blue-600 transition-colors">{c.name}</span>
-                      <span className="text-2xl mt-1.5">{c.flag}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs sm:text-[17px] font-black uppercase group-hover:text-blue-600 transition-colors whitespace-nowrap">{c.name}</span>
+                      <span className="text-xl sm:text-2xl shrink-0 leading-none">{c.flag}</span>
                     </div>
                   </td>
                   <td className="text-right font-mono font-black text-amber-500 text-lg num-col">{c.gold}</td>
