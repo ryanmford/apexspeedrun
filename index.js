@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v13'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v14'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -188,36 +188,17 @@ const CustomStyles = () => (
       -webkit-mask-image: -webkit-radial-gradient(white, black);
     }
 
-    .asr-cluster {
-      background: rgba(37, 99, 235, 0.25) !important;
-      backdrop-filter: blur(8px) !important;
-      border: 3px solid #2563eb !important;
-      border-radius: 50%;
-      color: #2563eb !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      cursor: pointer;
-      font-weight: 900 !important;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      transition: transform 0.1s ease;
-      pointer-events: auto !important;
-      z-index: 500 !important;
-    }
-
-    /* Fix for mobile scroll/drag and click issues */
+    /* LEAFLET SPECIFIC FIXES */
     #asr-map-container {
-      touch-action: pan-x pan-y !important;
-      cursor: grab;
-    }
-    #asr-map-container:active {
-      cursor: grabbing;
+      touch-action: auto !important;
+      overflow: hidden;
+      position: relative;
     }
 
     .leaflet-container {
-        touch-action: pan-x pan-y !important;
+        touch-action: auto !important;
         -webkit-tap-highlight-color: transparent;
+        z-index: 1;
     }
 
     .leaflet-marker-icon, 
@@ -226,6 +207,24 @@ const CustomStyles = () => (
     .leaflet-pane > svg path, 
     .leaflet-tile-container {
         pointer-events: auto !important;
+        cursor: pointer !important;
+    }
+
+    .asr-cluster {
+      background: rgba(37, 99, 235, 0.9) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 3px solid #ffffff !important;
+      border-radius: 50%;
+      color: #ffffff !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      cursor: pointer !important;
+      font-weight: 900 !important;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      pointer-events: auto !important;
+      z-index: 1000 !important;
     }
 
     .asr-marker-outer {
@@ -236,9 +235,27 @@ const CustomStyles = () => (
 
     .asr-marker-container {
       cursor: pointer !important;
-      pointer-events: none; /* Inner icon doesn't block marker interaction */
-      -webkit-tap-highlight-color: transparent;
+      pointer-events: none; /* Icon interior shouldn't block click */
     }
+
+    .leaflet-popup-content-wrapper {
+        border-radius: 1.5rem !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.4) !important;
+        backdrop-filter: blur(12px) !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        pointer-events: auto !important;
+    }
+    .dark .leaflet-popup-content-wrapper {
+        background: rgba(10, 10, 12, 0.95) !important;
+        border: 2px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    .leaflet-popup-content { 
+      margin: 0 !important; 
+      pointer-events: auto !important;
+    }
+    .leaflet-popup-tip { display: none !important; }
 
     .btn-blue-gradient {
       background: rgba(37, 99, 235, 0.08);
@@ -305,25 +322,6 @@ const CustomStyles = () => (
       position: relative;
       overflow: hidden;
     }
-
-    .leaflet-popup-content-wrapper {
-        border-radius: 1.5rem !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.4) !important;
-        backdrop-filter: blur(12px) !important;
-        background: rgba(255, 255, 255, 0.98) !important;
-        pointer-events: auto !important;
-    }
-    .dark .leaflet-popup-content-wrapper {
-        background: rgba(10, 10, 12, 0.95) !important;
-        border: 2px solid rgba(255, 255, 255, 0.15) !important;
-    }
-    .leaflet-popup-content { 
-      margin: 0 !important; 
-      pointer-events: auto !important;
-    }
-    .leaflet-popup-tip { display: none !important; }
     
     .shadow-premium { box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15); }
     .border-subtle { border-color: rgba(0,0,0,0.1); }
@@ -1453,11 +1451,13 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             maxBoundsViscosity: 1.0,
             worldCopyJump: true,
             preferCanvas: true,
-            // Re-enabling explicit tap support for mobile Safari
-            tap: true, 
+            tap: false, // Critical: Disable Leaflet's legacy tap logic for modern interaction
             dragging: true,
             touchZoom: true,
-            bounceAtZoomLimits: true
+            scrollWheelZoom: true,
+            doubleClickZoom: true,
+            boxZoom: true,
+            keyboard: true
         }).setView([20, 0], 2);
         
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -1494,7 +1494,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         
         const timer = setTimeout(() => {
             if (mapRef.current) mapRef.current.invalidateSize();
-        }, 300);
+        }, 400);
 
         return () => {
             clearTimeout(timer);
@@ -1520,11 +1520,10 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         courses.forEach(c => {
             if (!c.parsedCoords) return;
             
-            // Re-structured marker for better interaction capture
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
                     html: `
-                        <div class="asr-marker-container w-10 h-10 rounded-full bg-blue-600/15 border-[3px] border-blue-600 flex items-center justify-center text-blue-600 shadow-xl backdrop-blur-md group ios-clip-fix">
+                        <div class="asr-marker-container w-10 h-10 rounded-full bg-blue-600 border-[3px] border-white flex items-center justify-center text-white shadow-xl backdrop-blur-md ios-clip-fix">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                               <circle cx="12" cy="10" r="3"></circle>
@@ -1538,17 +1537,11 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 })
             });
 
-            const handleInteract = (e) => {
-                if (window.L.DomEvent) {
-                  window.L.DomEvent.stopPropagation(e);
-                  window.L.DomEvent.preventDefault(e);
-                }
+            // Use Leaflet's standard event handling which is optimized for touch/click internally
+            marker.on('click', (e) => {
+                window.L.DomEvent.stopPropagation(e);
                 onCourseClick('course', c);
-            };
-
-            // Use multiple event listeners to catch mobile interaction nuances
-            marker.on('click', handleInteract);
-            marker.on('touchend', handleInteract);
+            });
 
             const popupContent = `
                 <div class="p-4 min-w-[140px] flex flex-col items-center text-center">
@@ -1587,7 +1580,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         return (
             <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-black/40 border-white/20 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} ios-clip-fix`}>
                 <div className="animate-spin opacity-70 mb-4"><IconSpeed className="text-blue-600" /></div>
-                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">Calibrating Satellites...</div>
+                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">Initializing Map...</div>
             </div>
         );
     }
@@ -1596,7 +1589,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
 
     return (
         <div id="asr-map-container" className={`relative w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-2xl border border-subtle ios-clip-fix`}>
-            <div ref={mapContainerRef} className="w-full h-full z-0" />
+            <div ref={mapContainerRef} className="w-full h-full z-[1]" />
             
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40]">
               <button 
@@ -1604,7 +1597,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 className={`${mapPillStyle} hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}
               >
                 <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} />
-                Find Courses Near Me
+                Locate Me
               </button>
             </div>
 
@@ -1621,12 +1614,12 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                   className={`${mapPillStyle} w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}
                 >
                     <Globe size={12} className="shrink-0" />
-                    {isPanelOpen ? 'HIDE' : 'COURSES'}
+                    {isPanelOpen ? 'HIDE LIST' : 'BROWSE'}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-3 backdrop-blur-xl shadow-2xl ${isPanelOpen ? 'scale-100 opacity-100 flex-1 sm:max-h-[60vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
-                        <button onClick={() => setActiveTab('continents')} className={`flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'continents' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>CONTINENTS</button>
-                        <button onClick={() => setActiveTab('countries')} className={`flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'countries' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>COUNTRIES</button>
+                        <button onClick={() => setActiveTab('continents')} className={`flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'continents' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>REIGONS</button>
+                        <button onClick={() => setActiveTab('countries')} className={`flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'countries' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>NATIONS</button>
                         <button onClick={() => setActiveTab('cities')} className={`flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'cities' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>CITIES</button>
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide flex-1">
@@ -1753,7 +1746,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
               type="text" 
               aria-label="Search" 
               value={search || ''} 
-              onChange={e => setSearch(e.target.value)} 
+              onChange={e => setSearch(e.target.value)}
               className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-4 sm:py-6 w-full text-xs sm:text-[15px] font-black uppercase tracking-widest outline-none transition-all border-2 ${theme === 'dark' ? 'bg-black/50 text-white focus:bg-black/70 border-white/15 focus:border-blue-600/60 shadow-2xl' : 'bg-white text-slate-900 border-slate-300 focus:border-blue-600 shadow-xl'} placeholder:text-slate-500`}
             />
             {search && (
@@ -1961,14 +1954,14 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
 
         const playerStats = [
             { l: 'RANK', v: currentRankValue },
-            { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: accentColor, t: "TOTAL POINTS / RUNS = RATING" }, 
-            { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00', t: "THE SUM OF ALL INDIVIDUAL COURSE POINTS" }, 
+            { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: accentColor, t: "POINTS DIVIDED BY RUNS" }, 
+            { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00', t: "TOTAL ACCUMULATED COURSE POINTS" }, 
             { l: 'RUNS', v: metaSource.runs || 0 }, 
             { l: 'WINS', v: metaSource.wins || 0 }, 
             { l: 'WIN %', v: ((metaSource.wins / (metaSource.runs || 1)) * 100).toFixed(2) + '%' }, 
             { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
             { l: 'COUNTRIES', v: new Set(courseData.map(c => c.country).filter(Boolean)).size || 0 },
-            { l: '🔥', v: metaSource.totalFireCount || 0, g: 'glow-blue', t: "FIRE BONUS FOR THE FASTEST RUNS" }
+            { l: '🔥', v: metaSource.totalFireCount || 0, g: 'glow-blue', t: "BONUS FOR FAST RUNS" }
         ];
 
         return (
@@ -2014,14 +2007,14 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
         const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
 
         const setterStats = [
-            { l: 'IMPACT', v: impact, c: accentColor, t: "TOTAL PLAYERS ON ALL COURSES SET BY THIS SETTER" },
-            { l: 'AVG IMPACT', v: avgImpact, t: "AVERAGE PLAYERS PER COURSE SET", c: accentColor },
-            { l: 'SETS', v: setsCount, t: "LEAD SETS + ASSISTANT SETS" },
+            { l: 'IMPACT', v: impact, c: accentColor, t: "TOTAL PLAYER RUNS ON ALL YOUR COURSES" },
+            { l: 'AVG IMPACT', v: avgImpact, t: "AVERAGE RUNS PER COURSE SET", c: accentColor },
+            { l: 'SETS', v: setsCount, t: "TOTAL LEAD AND ASSISTANT SETS" },
             { l: 'LEADS', v: setterData.leads || 0 },
             { l: 'ASSISTS', v: setterData.assists || 0 },
             { l: 'CITIES', v: new Set(setterCourses.map(c => c.city).filter(Boolean)).size || 0 },
             { l: 'COUNTRIES', v: new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0 },
-            { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0, t: "CONTRIBUTOR COINS FROM RUNS, WINS, & SETS" }
+            { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0, t: "CONTRIBUTOR REWARDS" }
         ];
 
         return (
@@ -2049,9 +2042,9 @@ const ASRProfileModal = ({ isOpen, onClose, onBack, onForward, canGoForward, ide
     return (
         <ASRBaseModal isOpen={isOpen} onClose={onClose} onBack={onBack} onForward={onForward} canGoForward={canGoForward} theme={theme} header={Header} breadcrumbs={breadcrumbs} onBreadcrumbClick={jumpToHistory}>
             <div className={`flex p-1.5 rounded-2xl mb-12 border-2 w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${theme === 'dark' ? 'bg-black/60 border-white/20' : 'bg-slate-300 border-slate-400 shadow-md'} ios-clip-fix`}>
-                <button onClick={() => setActiveRole('all-time')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'all-time' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>ALL-TIME STATS</button>
-                <button onClick={() => setActiveRole('open')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'open' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>ASR OPEN STATS</button>
-                <button onClick={() => setActiveRole('setter')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'setter' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>SETTER STATS</button>
+                <button onClick={() => setActiveRole('all-time')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'all-time' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>ALL-TIME</button>
+                <button onClick={() => setActiveRole('open')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'open' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>ASR OPEN</button>
+                <button onClick={() => setActiveRole('setter')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === 'setter' ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}>SETTER</button>
             </div>
             
             {activeRole === 'all-time' && (
@@ -2133,7 +2126,7 @@ const ASRRegionModal = ({ isOpen, onClose, onBack, onForward, canGoForward, regi
             </div>
             <div className="space-y-14 text-left">
                 <div>
-                    <ASRSectionHeading theme={theme}>TOP PLAYERS</ASRSectionHeading>
+                    <ASRSectionHeading theme={theme}>TOP ATHLETES</ASRSectionHeading>
                     <div className="grid grid-cols-1 gap-4">
                         {regionalPlayers.slice(0, 10).map((p, i) => (
                             <div key={i} onClick={() => openModal('player', p)} className={`group flex items-center justify-between p-4 rounded-3xl border-2 transition-all cursor-pointer active:scale-[0.98] ${theme === 'dark' ? 'bg-black/40 border-white/20 hover:bg-black/60' : 'bg-white border-slate-300 shadow-md hover:bg-slate-50'} ios-clip-fix h-[72px]`}>
@@ -2176,14 +2169,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
     <div className="space-y-12 sm:space-y-24 animate-in fade-in duration-700 pb-32 text-left">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {[
-          { l: 'TOP RATING', k: 'rating', t: "TOTAL POINTS / RUNS = RATING" },
+          { l: 'TOP RATING', k: 'rating', t: "AVERAGE POINTS PER RUN" },
           { l: 'MOST RUNS', k: 'runs' },
           { l: 'HIGHEST WIN %', k: 'winPercentage' },
-          { l: 'MOST COURSE RECORDS', k: 'wins' },
-          { l: 'MOST 🪙', k: 'contributionScore', t: "CONTRIBUTOR COINS (RUNS, WINS, & SETS)" },
-          { l: 'MOST 🔥', k: 'totalFireCount', t: "FIRE BONUS FOR THE FASTEST RUNS" },
-          { l: 'MOST IMPACT', k: 'impact', t: "TOTAL RUNS ON ALL COURSES BY THIS SETTER (AS LEAD OR ASSISTANT)" },
-          { l: 'MOST SETS', k: 'sets', t: "THE SUM OF ALL LEAD AND ASSISTANT SETS" }
+          { l: 'MOST RECORDS', k: 'wins' },
+          { l: 'MOST 🪙', k: 'contributionScore', t: "CONTRIBUTOR REWARDS" },
+          { l: 'MOST 🔥', k: 'totalFireCount', t: "FIRE BONUSES EARNED" },
+          { l: 'MOST IMPACT', k: 'impact', t: "TOTAL RUNS ON ALL YOUR COURSES" },
+          { l: 'MOST SETS', k: 'sets', t: "TOTAL COURSES SET" }
         ].map((sec) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border-2 flex flex-col overflow-visible ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-slate-300 shadow-premium'}`}>
               {sec.t && (
@@ -2213,7 +2206,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ))}
       </div>
       <div className={`rounded-[2.8rem] border-2 border-subtle overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/60' : 'bg-white shadow-premium'} ios-clip-fix`}>
-        <div className="p-8 border-b-2 border-inherit text-[12px] font-black uppercase tracking-[0.3em] opacity-80">WORLDWIDE MEDAL COUNT</div>
+        <div className="p-8 border-b-2 border-inherit text-[12px] font-black uppercase tracking-[0.3em] opacity-80">NATION MEDAL COUNT</div>
         <div className="overflow-auto scrollbar-hide">
           <table className="min-w-full">
             <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b-2 border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-white/95 text-slate-700'}`}>
@@ -2363,7 +2356,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
         <nav className={`fixed top-[var(--safe-top)] w-full backdrop-blur-2xl border-b-2 z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-white/10 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-16 sm:h-24 shadow-sm`}>
             <div className="group flex items-center gap-3 shrink-0">
                 <div className="text-blue-600 animate-pulse"><IconSpeed size={28} /></div>
-                <span className="font-black text-lg sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">ASR</span>
+                <span className="font-black text-lg sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">APEX RUN</span>
             </div>
             <div className="flex-1 flex justify-center gap-1 sm:gap-4 px-4 h-full items-center">
                 {['map', 'players', 'hof'].map(v => (
@@ -2401,19 +2394,19 @@ const ASRControlBar = ({ view, eventType, setEventType, theme }) => {
                                 <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">THE 2026 ASR OPEN IS LIVE</span>
                             </div>
                             <div className="flex items-center gap-3 opacity-80">
-                                <Timer size={16} className="text-blue-600" />
+                                <ShieldCheck size={16} className="text-blue-600" />
                                 <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">SUBMISSIONS DUE MAY 31</span>
                             </div>
                         </div>
                     ) : (
                         <div className={`inline-flex flex-wrap items-center justify-center gap-x-10 gap-y-3 px-10 py-5 rounded-3xl sm:rounded-full border-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-black/90 border-white/20 text-slate-100' : 'bg-white/95 border-slate-400 text-slate-800'} ios-clip-fix`}>
                             <div className="flex items-center gap-3">
-                                <ShieldCheck size={18} className="text-blue-600" />
+                                <Globe size={18} className="text-blue-600" />
                                 <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">FINDING THE FASTEST IRL</span>
                             </div>
                             <div className="flex items-center gap-3 opacity-80">
-                                <Fingerprint size={16} className="text-blue-600" />
-                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">STATS TRACKED IN REAL-TIME</span>
+                                <Trophy size={16} className="text-blue-600" />
+                                <span className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest whitespace-nowrap">STATS TRACKED IN REAL TIME</span>
                             </div>
                         </div>
                     )}
@@ -2612,7 +2605,7 @@ export default function App() {
              <div className={`relative border-2 border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/40' : 'bg-white'}`}>
                <div className="overflow-auto scrollbar-hide max-h-[80vh] relative w-full">
                  {(view === 'map' ? courseList : list).length > 0 ? <ASRDataTable theme={theme} columns={view === 'map' ? COURSE_COLS : PLAYER_COLS} sort={viewSorts[view === 'map' ? 'courses' : 'players']} onSort={handleSort} data={view === 'map' ? courseList : list} onRowClick={item => openModal(view === 'map' ? 'course' : 'player', item)} /> :
-                 <div className="flex flex-col items-center justify-center py-40 opacity-30"><IconSpeed className="text-blue-600 mb-20 scale-[4.5]" /><h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">SYNC IN PROGRESS</h3></div>}
+                 <div className="flex flex-col items-center justify-center py-40 opacity-30"><IconSpeed className="text-blue-600 mb-20 scale-[4.5]" /><h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">CALIBRATING DATA</h3></div>}
                </div>
              </div>
              
@@ -2623,7 +2616,7 @@ export default function App() {
            </div>}
         </main>
       </div>
-      <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
+      <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX MOVEMENT SPEED PROJECT</footer>
     </div>
   );
 }
