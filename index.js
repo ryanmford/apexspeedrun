@@ -173,7 +173,6 @@ const isQualifiedAthlete = (p, isAllTime = true) => {
     if (isAllTime) {
       return p.gender === 'M' ? (runs >= 4) : (runs >= 2);
     } else {
-      // ASR Open threshold is 3+ for both genders
       return runs >= 3;
     }
 };
@@ -634,7 +633,6 @@ const ASRPromotionBanner = ({ type, theme }) => {
 const ASRPatronPill = ({ course, theme, compact = false }) => {
     const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
     
-    // Unified bright gold theme
     const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10' : 'bg-gradient-to-br from-amber-100 to-amber-50';
     const goldBorder = theme === 'dark' ? 'border-amber-500/60' : 'border-amber-500/50';
     const goldTextPrimary = theme === 'dark' ? 'text-amber-500' : 'text-amber-700';
@@ -839,11 +837,20 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 };
 
 const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme, header, breadcrumbs, onBreadcrumbClick, children }) => {
+  const scrollContainerRef = useRef(null);
+
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
+
+  // Reset scroll on breadcrumb change (new profile/course entry)
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [breadcrumbs?.length]);
 
   if (!isOpen) return null;
   return (
@@ -885,7 +892,7 @@ const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme,
             {header}
           </div>
         </div>
-        <div className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}>
+        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}>
           {children}
         </div>
       </div>
@@ -1041,7 +1048,6 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const currentOpenRankIndex = openRankings?.findIndex(p => p.pKey === pKey);
     const currentOpenRank = currentOpenRankIndex !== -1 ? currentOpenRankIndex + 1 : "UR";
     
-    // Logic for UR reporting in profile based on minimums
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
     if (isAllTime) {
@@ -1097,19 +1103,19 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
   };
 
   const tabs = [
-    { id: 'all-time', label: 'ALL-TIME STATS' },
-    { id: 'asr-open', label: 'ASR OPEN STATS' },
-    { id: 'setter', label: 'SETTER STATS' }
+    { id: 'all-time', label: 'ALL-TIME' },
+    { id: 'asr-open', label: 'ASR OPEN' },
+    { id: 'setter', label: 'SETS' }
   ];
 
   return (
     <>
-      <div className={`flex p-1.5 rounded-2xl mb-12 border w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.CARD(theme)} ios-clip-fix`}>
+      <div className={`flex p-1.5 rounded-2xl mb-12 border w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.GLASS(theme)} ios-clip-fix`}>
         {tabs.map(tab => (
           <button 
             key={tab.id} 
             onClick={() => setActiveRole(tab.id)} 
-            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === tab.id ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}
+            className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === tab.id ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}
           >
             {tab.label}
           </button>
@@ -1348,7 +1354,7 @@ const useASRData = () => {
             pts: cleanNumeric(vals.pts) || 0, 
             sets: Math.floor(cleanNumeric(vals.sets) || 0), 
             contributionScore: cleanNumeric(vals.contribution) || 0, 
-            allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0), // Explicit All-Time
+            allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0),
             avgTime: cleanNumeric(vals.avg) || 0,
             searchKey
           };
@@ -1857,7 +1863,6 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                           key={pKey} variant="card" theme={theme} rank={i + 1} title={athleteDisplayNameMap[pKey] || pKey} subtitle={meta.region || '🏳️'}
                           stats={[{ value: typeof time === 'number' ? time.toFixed(2) : '--.--' }, { value: typeof points === 'number' ? points.toFixed(2) : '--.--' }]}
                           videoUrl={videoUrl}
-                          hasRuns={true}
                           onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })}
                         />
                     );
@@ -1954,7 +1959,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
                 <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
-                  <td className="pl-4 sm:pl-12 py-6"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
+                <td className="pl-4 sm:pl-12 py-6"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="py-6 px-4">
                     <div className="flex items-center gap-3 text-left">
                       <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors">{c.name}</span>
@@ -2096,7 +2101,6 @@ const ASRAnnouncementBar = ({ theme }) => {
 };
 
 const ASRControlBar = ({ view, eventType, setEventType, theme }) => {
-    // Gap between Toolbar and H1 should equal gap between H1 and Toggles
     const spacingClass = view === 'hof' ? "py-20 sm:py-32" : "pt-12 pb-12 sm:pt-20 sm:pb-20";
     
     return (
@@ -2200,7 +2204,6 @@ export default function App() {
       ...p, 
       currentRank: "UR", 
       isQualified: false,
-      // All-Time: always fade unranked. Open: only fade if truly zero runs.
       shouldFade: isAllTimeContext ? true : ((p.runs || 0) === 0)
     }));
     
