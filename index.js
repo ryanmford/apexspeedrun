@@ -1644,7 +1644,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
 
 // --- VIEW COMPONENTS ---
 
-const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, eventType, setEventType, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
@@ -1769,7 +1769,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
         return (
             <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
                 <div className="animate-spin opacity-70 mb-4"><ChevronsRight size={24} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600`} style={{ transform: 'skewX(-18deg)' }} /></div>
-                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">Initializing Map Environment...</div>
+                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP CORE...</div>
             </div>
         );
     }
@@ -1787,10 +1787,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                     <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES & RANKINGS'}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
-                    <div className={`flex items-center p-3 border-b shrink-0 gap-2 ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-300'}`}>
-                        <button onClick={() => setEventType('open')} className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === 'open' ? 'btn-blue-gradient active' : 'opacity-60 hover:opacity-100 text-inherit'}`}>ASR OPEN</button>
-                        <button onClick={() => setEventType('all-time')} className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active' : 'opacity-60 hover:opacity-100 text-inherit'}`}>ALL TIME</button>
-                    </div>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         {['continents', 'countries', 'cities'].map(t => (
                             <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
@@ -1908,6 +1904,21 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
   if (!stats) return null;
   const highlightColor = 'text-blue-600';
+
+  const MedalHeader = ({ l, k, a = 'left', w = "" }) => (
+    <th 
+      className={`${w} px-2 sm:px-4 py-8 cursor-pointer group select-none transition-all ${medalSort.key === k ? 'bg-current/[0.08]' : 'hover:bg-current/[0.05]'} border-b-2 border-transparent`}
+      onClick={() => setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
+    >
+      <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
+        <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
+        <div className={`transition-opacity shrink-0 ${medalSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
+          <ChevronDown size={16} strokeWidth={3} className={`${THEME.ICON} ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+    </th>
+  );
+
   return (
     <div className="space-y-12 sm:space-y-24 animate-in fade-in duration-700 pb-32 text-left">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -1947,29 +1958,31 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         <div className="overflow-auto scrollbar-hide">
           <table className="min-w-full table-fixed">
             <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-white/95 text-slate-700'}`}>
-              <tr className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest h-16">
-                <th className="w-16 sm:w-24 text-left pl-4 sm:pl-12">RANK</th>
-                <th className="text-left px-4">COUNTRY</th>
-                <th className="w-12 sm:w-20 text-right">🥇</th>
-                <th className="w-12 sm:w-20 text-right">🥈</th>
-                <th className="w-12 sm:w-20 text-right">🥉</th>
-                <th className="w-20 sm:w-32 text-right pr-4 sm:pr-12">TOTAL</th>
+              <tr className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest h-20">
+                <th className="w-20 sm:w-24 pl-4 sm:pl-10 text-left">RANK</th>
+                <MedalHeader l="COUNTRY" k="name" a="left" />
+                <MedalHeader l="🥇" k="gold" a="right" w="w-12 sm:w-24" />
+                <MedalHeader l="🥈" k="silver" a="right" w="w-12 sm:w-24" />
+                <MedalHeader l="🥉" k="bronze" a="right" w="w-12 sm:w-24" />
+                <MedalHeader l="TOTAL" k="total" a="right" w="w-24 sm:w-36" />
               </tr>
             </thead>
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'}`}>
               {stats.medalCount.map((c) => (
                 <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
-                <td className="pl-4 sm:pl-12 py-6"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
-                  <td className="py-6 px-4">
+                  <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
+                    <ASRRankBadge rank={c.displayRank} theme={theme} />
+                  </td>
+                  <td className="px-2 sm:px-4 py-6 text-left">
                     <div className="flex items-center gap-3 text-left">
                       <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors">{c.name}</span>
                       <span className="text-xl sm:text-2xl shrink-0 leading-none">{c.flag}</span>
                     </div>
                   </td>
-                  <td className={`text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{c.gold}</td>
-                  <td className={`text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.silver}</td>
-                  <td className={`text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.bronze}</td>
-                  <td className={`pr-4 sm:pr-12 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.total}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{c.gold}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.silver}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.bronze}</td>
+                  <td className={`w-24 sm:w-36 pl-2 sm:pl-4 pr-4 sm:pr-12 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.total}</td>
                 </tr>
               ))}
             </tbody>
@@ -2029,11 +2042,11 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                 <div className="w-20 sm:w-24 pl-4 sm:pl-10 py-8 text-left font-black text-[9px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
                   {columns.filter(c => !c.isRank).map((col, i) => (
-                      <ASRHeaderComp 
-                        key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} 
-                        activeSort={sort} handler={onSort} tooltip={col.tooltip} 
-                        paddingClass={col.type === 'profile' ? "pl-4 sm:pl-8 pr-2 flex-1" : "px-2 sm:px-4 shrink-0"}
-                      />
+                    <ASRHeaderComp 
+                      key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} 
+                      activeSort={sort} handler={onSort} tooltip={col.tooltip} 
+                      paddingClass={col.type === 'profile' ? "pl-4 sm:pl-8 pr-2 flex-1" : "px-2 sm:px-4 shrink-0"}
+                    />
                   ))}
                   <div className="w-10 sm:w-16 shrink-0" />
                 </div>
@@ -2072,7 +2085,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
         <nav className={`fixed top-[calc(var(--announcement-height)+var(--safe-top))] w-full backdrop-blur-2xl border-b z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-16 sm:h-24 shadow-sm`}>
             <div className="group flex items-center gap-3 shrink-0">
                 <div className="text-blue-600 animate-pulse"><ChevronsRight size={28} strokeWidth={2.5} className={THEME.ICON} style={{ transform: 'skewX(-18deg)' }} /></div>
-                <span className="font-black text-lg sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">APEX RUN</span>
+                <span className="font-black text-lg sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">APEX SPEED RUN</span>
             </div>
             <div className="flex-1 flex justify-center gap-1 sm:gap-4 px-4 h-full items-center">
                 {['map', 'players', 'hof'].map(v => (
@@ -2081,9 +2094,21 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
                     </button>
                 ))}
             </div>
-            <div className="shrink-0 flex items-center gap-2 sm:gap-3">
-                <button onClick={onOpenIntro} className="w-9 h-9 sm:w-14 sm:h-14 flex items-center justify-center border-2 rounded-2xl transition-all border-subtle hover:border-blue-500"><HelpCircle size={20} className={THEME.ICON} /></button>
-                <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} className="w-9 h-9 sm:w-14 sm:h-14 flex items-center justify-center border-2 rounded-2xl transition-all border-subtle hover:border-blue-500">{theme === 'dark' ? <Sun size={14} strokeWidth={2.5} className={THEME.ICON} /> : <Moon size={14} strokeWidth={2.5} className={THEME.ICON} />}</button>
+            <div className="shrink-0 flex items-center gap-2 sm:gap-3 h-full">
+                <button 
+                  onClick={onOpenIntro} 
+                  className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.5rem] transition-all border-2 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
+                  title="Get Started"
+                >
+                  <HelpCircle size={20} strokeWidth={2.5} className={THEME.ICON} />
+                </button>
+                <button 
+                  onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
+                  className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.5rem] transition-all border-2 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
+                  title="Toggle Theme"
+                >
+                  {theme === 'dark' ? <Sun size={14} strokeWidth={2.5} className={THEME.ICON} /> : <Moon size={14} strokeWidth={2.5} className={THEME.ICON} />}
+                </button>
             </div>
         </nav>
     );
@@ -2307,14 +2332,17 @@ export default function App() {
         </ASRBaseModal>
         <ASRControlBar view={view} eventType={eventType} setEventType={setEventType} theme={theme} />
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full">
-          {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`} /> : 
+          {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-6 ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`}>
+            <ChevronsRight size={48} strokeWidth={3} className="text-blue-600 animate-pulse" style={{ transform: 'skewX(-18deg)' }} />
+            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">ASR ENGINE CALIBRATION</span>
+          </div> : 
            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={viewSorts.hof} setMedalSort={handleSort} /> : 
            <div className="space-y-12">
              {view === 'map' && (
                <ASRGlobalMap 
                  courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} 
                  cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} 
-                 theme={theme} eventType={eventType} setEventType={setEventType} onCourseClick={openModal} 
+                 theme={theme} onCourseClick={openModal} 
                  onCountryClick={c => openModal('region', {...c, type: 'country'})} onCityClick={c => openModal('region', {...c, type: 'city'})} 
                  onContinentClick={c => openModal('region', {...c, type: 'continent'})} 
                />
@@ -2325,7 +2353,10 @@ export default function App() {
                  {(view === 'map' ? courseList : list).length > 0 ? (
                    <ASRDataTable theme={theme} columns={view === 'map' ? COURSE_COLS : PLAYER_COLS} sort={viewSorts[view === 'map' ? 'courses' : 'players']} onSort={handleSort} data={view === 'map' ? courseList : list} onRowClick={item => openModal(view === 'map' ? 'course' : 'player', item, isAllTimeContext ? 'all-time' : 'asr-open')} />
                  ) : (
-                   <div className="flex flex-col items-center justify-center py-40 opacity-30"><ChevronsRight size={28} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600 mb-20 scale-[4.5]`} style={{ transform: 'skewX(-18deg)' }} /><h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">CALIBRATING DATA</h3></div>
+                   <div className="flex flex-col items-center justify-center py-40 opacity-30">
+                     <ChevronsRight size={28} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600 mb-20 scale-[4.5]`} style={{ transform: 'skewX(-18deg)' }} />
+                     <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">ASR ENGINE CALIBRATION</h3>
+                   </div>
                  )}
                </div>
              </div>
@@ -2336,7 +2367,7 @@ export default function App() {
            </div>}
         </main>
       </div>
-      <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX MOVEMENT SPEED PROJECT</footer>
+      <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN // WORLDWIDE SPEED PARKOUR PROJECT</footer>
     </div>
   );
 }
