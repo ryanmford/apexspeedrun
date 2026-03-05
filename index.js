@@ -4,7 +4,7 @@ import {
   ChevronDown, Sun, Moon, MapPin, Globe, Instagram, Play, Trophy,
   Compass, Info, ChevronRight, Navigation, ShieldCheck,
   Video, HelpCircle, Building2, Map as MapIcon, GraduationCap, 
-  HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag, 
+  HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
   Dna, Ruler, Mountain, Calendar, AlertCircle, Timer
 } from 'lucide-react';
@@ -173,8 +173,9 @@ const isQualifiedAthlete = (p) => {
 
 const isNameInList = (name, listStr) => {
     if (!listStr || !name) return false;
+    const searchName = name.toLowerCase().trim();
     const parts = listStr.split(/[,&/]| and /i).map(n => n.trim().toLowerCase());
-    return parts.includes(name.toLowerCase().trim());
+    return parts.some(p => p === searchName || p.includes(searchName) || searchName.includes(p));
 };
 
 // --- DATA CONSTANTS ---
@@ -271,20 +272,22 @@ const CustomStyles = () => (
     }
 
     .asr-marker-outer:active {
-        transform: scale(0.85);
+        transform: scale(0.9);
     }
 
+    /* MINIMALIST MAP BUBBLES */
     .asr-cluster {
-      background: rgba(37, 99, 235, 0.95) !important;
-      border: 3px solid #ffffff !important;
+      background: rgba(37, 99, 235, 0.9) !important;
+      border: 2px solid #ffffff !important; /* Unified 2px outline */
       border-radius: 50%;
       color: #ffffff !important;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
       cursor: pointer !important;
       font-weight: 900 !important;
+      font-size: 11px !important;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       z-index: 1000 !important;
     }
@@ -388,20 +391,20 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   const grad = GRADIENTS[hash % GRADIENTS.length];
 
   return (
-    <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black drop-shadow-md rounded-inherit ${sizeCls} textured-surface ios-clip-fix`}>
+    <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black shadow-md rounded-inherit ${sizeCls} textured-surface ios-clip-fix`}>
       <span className="relative z-10">{getInitials(name)}</span>
     </div>
   );
 };
 
 const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
-    if (!namesStr && !flagsStr) return <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">UNKNOWN 🏳️</div>;
-    if (!namesStr) return <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">{flagsStr}</div>;
+    if (!namesStr && !flagsStr) return <div className="whitespace-normal text-inherit font-black">UNKNOWN 🏳️</div>;
+    if (!namesStr) return <div className="whitespace-normal text-inherit font-black">{flagsStr}</div>;
     const names = String(namesStr).split(/[,\/]/).map(s => s.trim()).filter(Boolean);
     const flagsMatch = String(flagsStr || '').match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|🏳️/g) || [];
     
     return (
-        <div className="whitespace-nowrap overflow-hidden text-ellipsis text-inherit font-black">
+        <div className="whitespace-normal text-inherit font-black">
             {names.map((name, i) => {
                 const flag = flagsMatch[i] || flagsMatch[0] || '';
                 return <span key={i} className="text-inherit">{i > 0 ? ' / ' : prefix}{name} {flag}</span>;
@@ -458,20 +461,64 @@ const ASRListItem = ({
   badgeContent
 }) => {
   const accentColor = 'text-blue-600';
-  const isCard = variant === 'card';
   
+  if (variant === 'table') {
+    return (
+      <div 
+        onClick={onClick} 
+        className={`group flex items-center transition-all cursor-pointer active:scale-[0.98] ios-clip-fix py-6 sm:py-8 px-0 ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-slate-200/40'} ${isUnranked ? 'opacity-50' : ''}`}
+      >
+        <div className="w-24 pl-6 sm:pl-10 shrink-0">
+           <ASRRankBadge rank={rank} theme={theme} />
+        </div>
+        <div className="flex-1 flex min-w-0 h-full items-center">
+            <div className="flex-1 flex flex-col min-w-0 pr-4 pl-4 sm:pl-8 text-left">
+              <span className={`text-xs sm:text-[17px] font-black uppercase whitespace-normal break-words leading-tight group-hover:${accentColor} transition-colors`}>
+                {title}
+              </span>
+              <div className="opacity-70 text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
+                {subtitle}
+              </div>
+              {badgeContent && <div className="mt-1 h-4 flex items-center gap-1">{badgeContent}</div>}
+            </div>
+            {stats.map((s, idx) => {
+                const colDef = columns.filter(c => !c.isRank && c.type !== 'profile')[idx];
+                return (
+                  <div key={idx} className={`${colDef?.width || 'w-24'} px-4 flex items-center justify-end text-right shrink-0 h-full`}>
+                    <span className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[10px] sm:text-[13px] opacity-60'}`}>
+                      {s.value}
+                    </span>
+                  </div>
+                );
+            })}
+            <div className="w-10 sm:w-16 flex items-center justify-center shrink-0">
+              {videoUrl ? (
+                <a 
+                  href={videoUrl} target="_blank" rel="noopener noreferrer" 
+                  onClick={e => e.stopPropagation()} 
+                  className="p-2.5 rounded-xl transition-all hover:scale-120 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                >
+                  <Play size={22} strokeWidth={2} className={THEME.ICON} />
+                </a>
+              ) : <div className="p-2.5" />}
+            </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       onClick={onClick} 
       className={`group flex items-center justify-between transition-all cursor-pointer active:scale-[0.98] ios-clip-fix 
-        ${isCard ? 'p-4 rounded-3xl border h-[72px]' : 'py-6 sm:py-8 px-0'}
+        p-4 rounded-3xl border h-auto min-h-[72px] py-4
         ${theme === 'dark' 
-          ? (isCard ? 'bg-black/30 border-white/20 hover:bg-black/40' : 'hover:bg-white/[0.08]') 
-          : (isCard ? 'bg-white border-slate-300 shadow-md hover:bg-slate-50' : 'hover:bg-slate-200/40')}
+          ? 'bg-black/30 border-white/20 hover:bg-black/40' 
+          : 'bg-white border-slate-300 shadow-md hover:bg-slate-50'}
         ${isUnranked ? 'opacity-50' : ''}`}
     >
-      <div className={`flex items-center gap-3 min-w-0 pr-2 ${isCard ? 'flex-1' : 'flex-1 pl-4 sm:pl-10'}`}>
-        {variant === 'card' && icon ? (
+      <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
+        {icon ? (
           <div className="p-2.5 rounded-xl text-slate-500 group-hover:text-blue-600 transition-colors shrink-0">
             {icon}
           </div>
@@ -480,48 +527,28 @@ const ASRListItem = ({
             <ASRRankBadge rank={rank} theme={theme} />
           </div>
         )}
-        
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col min-w-0 text-left">
           <div className="flex items-center gap-2">
-            <span className={`text-xs sm:text-[17px] font-black uppercase truncate leading-tight group-hover:${accentColor} transition-colors`}>
+            <span className={`text-xs sm:text-[17px] font-black uppercase whitespace-normal break-words leading-tight group-hover:${accentColor} transition-colors`}>
               {title}
             </span>
           </div>
           <div className="flex flex-col mt-0.5">
-            <div className="opacity-70 text-[10px] sm:text-xs font-black uppercase truncate">
+            <div className="opacity-70 text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words">
               {subtitle}
             </div>
             {badgeContent && <div className="mt-1 h-4 flex items-center gap-1">{badgeContent}</div>}
           </div>
         </div>
       </div>
-
-      {/* Row Stats - Aligned to Columns if in table variant */}
-      <div className={`flex items-center ${isCard ? 'gap-4 pr-2' : ''} shrink-0 h-full`}>
-        {variant === 'table' ? (
-           <>
-            {stats.map((s, idx) => {
-              // Map stats back to their defined column widths
-              const colDef = columns.filter(c => !c.isRank && c.type !== 'profile')[idx];
-              return (
-                <div key={idx} className={`${colDef?.width || 'w-24'} px-4 flex items-center justify-end text-right shrink-0 h-full`}>
-                   <span className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[10px] sm:text-[13px] opacity-60'}`}>
-                    {s.value}
-                  </span>
-                </div>
-              );
-            })}
-           </>
-        ) : (
-          <div className={`flex flex-col items-end min-w-[70px] sm:min-w-[100px] text-right`}>
-            {stats.map((s, idx) => (
-              <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[10px] opacity-60'}`}>
-                {s.value}
-              </span>
-            ))}
-          </div>
-        )}
-
+      <div className="flex items-center gap-4 pr-2 shrink-0 h-full">
+        <div className="flex flex-col items-end min-w-[70px] sm:min-w-[100px] text-right">
+          {stats.map((s, idx) => (
+            <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[10px] opacity-60'}`}>
+              {s.value}
+            </span>
+          ))}
+        </div>
         <div className="w-10 sm:w-16 flex items-center justify-center shrink-0">
           {videoUrl ? (
             <a 
@@ -531,9 +558,7 @@ const ASRListItem = ({
             >
               <Play size={22} strokeWidth={2} className={THEME.ICON} />
             </a>
-          ) : (
-            <div className="p-2.5" />
-          )}
+          ) : <div className="p-2.5" />}
         </div>
       </div>
     </div>
@@ -589,7 +614,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
           </div>
           <div className="flex flex-col text-left">
             <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter leading-none mb-2">{config.title}</h3>
-            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest opacity-90">{config.subtitle}</p>
+            <p className="text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words opacity-90">{config.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl group-hover:bg-blue-50 transition-colors whitespace-nowrap">
@@ -638,7 +663,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
               </div>
               <div className="flex flex-col text-left">
                 <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Course Partnership Available</span>
-                <span className={`text-[10px] sm:text-[12px] font-black uppercase tracking-tighter ${fadedTextPrimary} group-hover:text-[#D4AF37] transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
+                <span className={`text-[10px] sm:text-[12px] font-black uppercase whitespace-normal break-words ${fadedTextPrimary} group-hover:text-[#D4AF37] transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
             <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-white/10 text-slate-500 group-hover:border-[#D4AF37] group-hover:text-[#D4AF37]' : 'border-slate-300 text-slate-400 group-hover:border-[#D4AF37] group-hover:text-[#D4AF37]'} whitespace-nowrap`}>
@@ -654,7 +679,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
               <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(212,175,55,0.3)]`}>JB</div>
               <div className="flex flex-col text-left">
                   <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsor</span>
-                  <span className={`text-[10px] font-black uppercase tracking-tight ${goldTextPrimary}`}>Juicebox.money</span>
+                  <span className={`text-[10px] font-black uppercase whitespace-normal break-words ${goldTextPrimary}`}>Juicebox.money</span>
               </div>
           </a>
       );
@@ -694,7 +719,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
         <div className="p-3 bg-white dark:bg-black/60 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
           <h5 className="text-xs font-black uppercase tracking-tight">{c.title}</h5>
-          <p className="text-[10px] font-black opacity-60 uppercase">{c.desc}</p>
+          <p className="text-[10px] font-black opacity-60 uppercase whitespace-normal break-words">{c.desc}</p>
         </div>
       </div>
       <a href={c.link} target="_blank" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
@@ -765,10 +790,10 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
           </div>
           
           <div className="space-y-5">
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-[0.9]">
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-[0.9] whitespace-normal break-words">
               {steps[step].title}
             </h2>
-            <p className="text-lg sm:text-xl font-black opacity-70 leading-relaxed max-w-md text-inherit">
+            <p className="text-lg sm:text-xl font-black opacity-70 leading-relaxed max-w-md text-inherit whitespace-normal break-words">
               {steps[step].desc}
             </p>
           </div>
@@ -930,10 +955,17 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
 
 const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal }) => {
   const [activeRole, setActiveRole] = useState(initialRole || 'all-time');
-  const pKey = identity.pKey || normalizeName(identity.name);
+  
+  const pKey = useMemo(() => {
+    if (identity.pKey && (atPerfs[identity.pKey] || opPerfs[identity.pKey])) return identity.pKey;
+    const displayKey = normalizeName(identity.name);
+    if (atPerfs[displayKey] || opPerfs[displayKey]) return displayKey;
+    return identity.pKey || displayKey;
+  }, [identity, atPerfs, opPerfs]);
 
-  const renderRoleContent = (role) => {
-    const isSetter = role === 'setter';
+  const renderRoleContent = (roleId) => {
+    const isSetter = roleId === 'setter';
+    
     if (isSetter) {
         const setterData = identity.setterData || identity;
         const setterCourses = allCourses
@@ -945,7 +977,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
 
         const setterStats = [
-            { l: 'IMPACT', v: impact },
+            { l: 'IMPACT', v: impact, c: 'text-blue-600' },
             { l: 'AVG IMPACT', v: avgImpact },
             { l: 'SETS', v: setsCount },
             { l: 'LEADS', v: setterData.leads || 0 },
@@ -959,12 +991,12 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-14">
                     {setterStats.map((s, i) => (
-                      <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} />
+                      <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} />
                     ))}
                 </div>
                 <ASRSectionHeading theme={theme} className="text-left">VERIFIED SETS</ASRSectionHeading>
                 <div className="grid grid-cols-1 gap-2">
-                    {setterCourses.map((c, i) => (
+                    {setterCourses.length > 0 ? setterCourses.map((c, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                         icon={<MapPin size={22} strokeWidth={2.5} className={THEME.ICON} />}
@@ -972,14 +1004,18 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                         videoUrl={c.demoVideo}
                         onClick={() => openModal('course', c)}
                       />
-                    ))}
+                    )) : (
+                        <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
+                            <Building2 size={40} className={THEME.ICON} /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified sets found</span>
+                        </div>
+                    )}
                 </div>
                 <div className="pt-8"><ASRPromotionBanner type="setter" theme={theme} /></div>
             </div>
         );
     }
 
-    const isAllTime = role === 'all-time';
+    const isAllTime = roleId === 'all-time';
     const perfSource = isAllTime ? (atPerfs[pKey] || []) : (opPerfs[pKey] || []);
     const metaSource = isAllTime ? identity : (identity.openStats || { rating: 0, pts: 0, runs: 0, wins: 0, totalFireCount: 0 });
 
@@ -987,9 +1023,12 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
       const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
       return { ...cd, coordinates: matched?.coordinates, flag: matched?.flag, country: matched?.country, city: matched?.city, mRecord: matched?.allTimeMRecord, fRecord: matched?.allTimeFRecord };
     }).sort((a, b) => {
-        if (a.rank === 1 && b.rank !== 1) return -1;
-        if (a.rank !== 1 && b.rank === 1) return 1;
-        return b.points - a.points;
+        const aGold = a.rank === 1;
+        const bGold = b.rank === 1;
+        if (aGold && !bGold) return -1;
+        if (!aGold && bGold) return 1;
+        if (aGold && bGold) return (a.num || 0) - (b.num || 0);
+        return (b.points || 0) - (a.points || 0);
     });
 
     const currentOpenRankIndex = openRankings?.findIndex(p => p.pKey === pKey);
@@ -998,7 +1037,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
     const playerStats = [
         { l: 'RANK', v: currentRankValue },
-        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00' }, 
+        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: metaSource.runs || 0 }, 
         { l: 'WINS', v: metaSource.wins || 0 }, 
@@ -1012,7 +1051,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
                 {playerStats.map((s, i) => (
-                  <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} />
+                  <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
                 ))}
             </div>
             <ASRSectionHeading theme={theme} className="text-left">VERIFIED RUNS</ASRSectionHeading>
@@ -1031,7 +1070,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                     );
                 }) : (
                     <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
-                        <Compass size={40} className={THEME.ICON} /><span className="text-[10px] font-black uppercase tracking-widest">No verified runs found</span>
+                        <Compass size={40} className={THEME.ICON} /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified runs found</span>
                     </div>
                 )}
             </div>
@@ -1040,16 +1079,22 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     );
   };
 
+  const tabs = [
+    { id: 'all-time', label: 'ALL-TIME STATS' },
+    { id: 'asr-open', label: 'ASR OPEN STATS' },
+    { id: 'setter', label: 'SETTER STATS' }
+  ];
+
   return (
     <>
       <div className={`flex p-1.5 rounded-2xl mb-12 border-2 w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.CARD(theme)} ios-clip-fix`}>
-        {['ALL-TIME STATS', 'ASR OPEN STATS', 'SETTER STATS'].map(role => (
+        {tabs.map(tab => (
           <button 
-            key={role} 
-            onClick={() => setActiveRole(role)} 
-            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === role ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}
+            key={tab.id} 
+            onClick={() => setActiveRole(tab.id)} 
+            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === tab.id ? 'bg-blue-600 text-white shadow-xl' : 'opacity-70 hover:opacity-100 text-inherit'}`}
           >
-            {role.toUpperCase().replace('-', ' ')}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -1122,10 +1167,14 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
   switch (activeModal.type) {
     case 'player':
     case 'setter': {
-      const pKey = activeModal.data.pKey || normalizeName(activeModal.data.name);
-      const athleteData = atMet[pKey] || activeModal.data;
-      const openAthleteData = openRankings.find(p => p.pKey === pKey);
-      const setterData = settersWithImpact.find(s => normalizeName(s.name) === pKey);
+      const pKeyFromData = activeModal.data.pKey || normalizeName(activeModal.data.name);
+      const athleteData = atMet[pKeyFromData] || 
+                        Object.values(atMet).find(a => normalizeName(a.name) === normalizeName(activeModal.data.name)) || 
+                        activeModal.data;
+      
+      const pKey = athleteData.pKey || pKeyFromData;
+      const openAthleteData = openRankings.find(p => p.pKey === pKey) || openRankings.find(p => normalizeName(p.name) === normalizeName(athleteData.name));
+      const setterData = settersWithImpact.find(s => normalizeName(s.name) === pKey) || settersWithImpact.find(s => normalizeName(s.name) === normalizeName(athleteData.name));
       const targetRole = activeModal.roleOverride || (activeModal.type === 'player' ? 'all-time' : 'setter');
       
       return (
@@ -1267,11 +1316,9 @@ const useASRData = () => {
         return dataRows.map((vals, i) => {
           const pName = (vals.name || "").trim();
           if (pName.length < 2) return null; 
-          
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
           const searchKey = `${pName} ${fixed.name} ${rawIg}`.toLowerCase();
-
           return { 
             id: `${gender}-${normalizeName(pName)}-${i}`, 
             name: pName, pKey: normalizeName(pName), gender, 
@@ -1300,10 +1347,8 @@ const useASRData = () => {
                   const fixed = fixCountryEntity(vals.country, vals.flag);
                   const valAG = String(vals.__raw[32] || "").toUpperCase().trim();
                   const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
-
                   map[course] = { 
-                      is2026, 
-                      flag: fixed.flag || '🏳️',
+                      is2026, flag: fixed.flag || '🏳️',
                       city: (vals.city || "").trim().toUpperCase() || "UNKNOWN", 
                       stateProv: (vals.state || "").trim().toUpperCase(),
                       country: fixed.name.toUpperCase() || "UNKNOWN", 
@@ -1352,32 +1397,26 @@ const useASRData = () => {
           atRawBest: {}, opRawBest: {} 
         };
         if (!csv) return result;
-        
         const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
         let hIdx = -1;
         for(let i=0; i<Math.min(10, lines.length); i++) {
           if (/athlete|name|course|track|pb|result/i.test(lines[i])) { hIdx = i; break; }
         }
         if (hIdx === -1) return result;
-
         const dataRows = csvToObjects(csv, LIVE_FEED_MAPPING, hIdx);
         const OPEN_START = new Date('2026-03-02T00:00:00Z');
         const OPEN_END = new Date('2026-05-31T23:59:59Z');
-
         const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
         const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
         const openAthleteSetCount = {}; const athleteDisplayNameMap = {};
-
         dataRows.forEach(vals => {
           const pName = (vals.athlete || "").trim();
           const rawCourse = (vals.course || "").trim();
           const numericValue = cleanNumeric(vals.result);
           if (!pName || !rawCourse || numericValue === null) return;
-          
           const pKey = normalizeName(pName);
           const normC = rawCourse.toUpperCase();
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
-          
           const pGender = athleteMetadata[pKey]?.gender || (((vals.gender || "").toUpperCase().startsWith('F')) ? 'F' : 'M');
           if (!athleteMetadata[pKey]) {
               athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
@@ -1385,21 +1424,17 @@ const useASRData = () => {
               athleteMetadata[pKey].name = pName;
               athleteDisplayNameMap[pKey] = pName;
           }
-          
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
           if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
             allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
           }
-          
           if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
           if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
               allTimeCourseLeaderboards[pGender][normC][pKey] = numericValue;
           }
-          
           const runDate = vals.date ? new Date(vals.date) : null;
           const isASROpenTag = (vals.tag || "").toUpperCase().includes("OPEN");
           const isInOpenWindow = runDate && !isNaN(runDate.getTime()) && runDate >= OPEN_START && runDate <= OPEN_END;
-
           if (isASROpenTag || isInOpenWindow) {
             if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
             if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
@@ -1412,7 +1447,6 @@ const useASRData = () => {
             if (courseSetMap[normC]?.is2026) openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
           }
         });
-        
         const buildPerfs = (source) => {
           const res = {};
           Object.keys(source).forEach(pKey => {
@@ -1431,7 +1465,6 @@ const useASRData = () => {
           });
           return res;
         };
-        
         result.allTimePerformances = buildPerfs(allTimeAthleteBestTimes);
         result.openPerformances = buildPerfs(openAthleteBestTimes);
         result.allTimeLeaderboards = allTimeCourseLeaderboards;
@@ -1439,7 +1472,6 @@ const useASRData = () => {
         result.athleteDisplayNameMap = athleteDisplayNameMap;
         result.atRawBest = allTimeAthleteBestTimes;
         result.opRawBest = openAthleteBestTimes;
-
         result.openRankings = Object.keys(athleteMetadata).map(pKey => {
           const meta = athleteMetadata[pKey];
           const perfs = result.openPerformances[pKey] || [];
@@ -1450,7 +1482,6 @@ const useASRData = () => {
             sets: openAthleteSetCount[pKey] || 0, totalFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
           };
         }).sort((a, b) => b.rating - a.rating); 
-
         return result;
       };
 
@@ -1460,9 +1491,7 @@ const useASRData = () => {
       pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
-      
       const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")];
-      
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
@@ -1470,10 +1499,8 @@ const useASRData = () => {
         settersData: allSetters, atRawBest: processed.atRawBest, opRawBest: processed.opRawBest,
         isLoading: false, hasError: hasTotalError, hasPartialError
       };
-
       setState(nextState);
       localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextState));
-
     } catch(e) { 
         setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
     }
@@ -1487,18 +1514,15 @@ const useFilteredData = (source, searchTerm, sortConfig, predicate = null) => {
   return useMemo(() => {
     if (!source) return [];
     const term = searchTerm.toLowerCase();
-    
     let processed = source.filter(item => {
       const matchesSearch = (item?.searchKey || "").includes(term);
       const matchesPredicate = predicate ? predicate(item) : true;
       return matchesSearch && matchesPredicate;
     });
-
     if (sortConfig) {
       const dir = sortConfig.direction === 'ascending' ? 1 : -1;
       processed.sort((a, b) => robustSort(a, b, sortConfig.key, dir));
     }
-
     return processed;
   }, [source, searchTerm, sortConfig, predicate]);
 };
@@ -1509,7 +1533,6 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
         let name = c[groupBy];
         let flag = c.flag;
         let key = name;
-
         if (groupBy === 'country') {
             const fixed = fixCountryEntity(c.country, c.flag);
             name = fixed.name;
@@ -1521,29 +1544,21 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
             flag = c.continentFlag || '🌐';
             key = name;
         }
-
         if (!name) return;
-
         if (!map[key]) {
             map[key] = {
-                name,
-                flag,
-                courses: 0,
-                runs: 0,
-                playersSet: new Set(),
+                name, flag, courses: 0, runs: 0, playersSet: new Set(),
                 coords: c.coords || c.parsedCoords,
                 ...(groupBy === 'city' ? { countryName: c.country, continent: c.continent } : {}),
                 ...(groupBy === 'country' ? { continent: c.continent } : {})
             };
         }
-
         const entry = map[key];
         entry.courses++;
         entry.runs += (c.totalRuns || 0);
         (c.athletesM || []).forEach(a => entry.playersSet.add(a[0]));
         (c.athletesF || []).forEach(a => entry.playersSet.add(a[0]));
     });
-
     return Object.values(map)
         .map(item => ({ ...item, players: item.playersSet.size }))
         .sort((a, b) => b.courses - a.courses);
@@ -1551,16 +1566,13 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
 
 const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImpact) => {
     if (!data.length) return null;
-    const qualifiedAthletes = data.filter(p => isQualifiedAthlete(p)).map(p => { 
+    const qualifiedAthletes = data.filter(isQualifiedAthlete).map(p => { 
         const performances = atPerfs[p.pKey] || []; 
         const calculatedFires = performances.reduce((sum, run) => sum + (run.fireCount || 0), 0);
         return { 
-            ...p, 
-            totalFireCount: calculatedFires,
-            winPercentage: p.runs > 0 ? (p.wins / p.runs) * 100 : 0
+            ...p, totalFireCount: calculatedFires, winPercentage: p.runs > 0 ? (p.wins / p.runs) * 100 : 0
         }; 
     });
-    
     const medalsBase = {};
     const processMedals = (lb) => {
       if (!lb) return;
@@ -1575,7 +1587,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
             const fixed = fixCountryEntity(name, flags[i] || flags[0]);
             if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
             if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-             medalsBase[fixed.name].total++;
+              medalsBase[fixed.name].total++;
           });
         });
       });
@@ -1584,7 +1596,6 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
     const sortedMedalCount = Object.values(medalsBase).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze).map((c, i) => ({ ...c, displayRank: i + 1 }));
     const dir = medalSort.direction === 'ascending' ? 1 : -1;
     sortedMedalCount.sort((a, b) => robustSort(a, b, medalSort.key, dir));
-    
     return { medalCount: sortedMedalCount, topStats: { 
         rating: [...qualifiedAthletes].sort((a,b) => b.rating - a.rating).slice(0, 10), 
         runs: [...qualifiedAthletes].sort((a,b) => b.runs - a.runs).slice(0, 10), 
@@ -1599,7 +1610,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
 
 // --- VIEW COMPONENTS ---
 
-const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, eventType, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, eventType, setEventType, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
@@ -1614,24 +1625,17 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
             if (document.getElementById(id)) return Promise.resolve();
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.id = id;
-                script.src = url;
-                script.async = true;
-                script.onload = () => resolve();
-                script.onerror = () => reject(new Error(`Script load error for ${url}`));
+                script.id = id; script.src = url; script.async = true;
+                script.onload = () => resolve(); script.onerror = () => reject(new Error(`Script load error for ${url}`));
                 document.head.appendChild(script);
             });
         };
-
         const injectCSS = (url, id) => {
             if (document.getElementById(id)) return;
             const link = document.createElement('link');
-            link.id = id;
-            link.rel = 'stylesheet';
-            link.href = url;
+            link.id = id; link.rel = 'stylesheet'; link.href = url;
             document.head.appendChild(link);
         };
-
         const loadAll = async () => {
             try {
                 injectCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'leaflet-css');
@@ -1640,81 +1644,40 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
                 injectCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', 'cluster-default-css');
                 await injectScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', 'cluster-js');
                 setIsScriptsLoaded(true);
-            } catch (err) {
-                console.error("Map scripts failed to load", err);
-            }
+            } catch (err) { console.error("Map scripts failed to load", err); }
         };
-
         loadAll();
     }, []);
 
     useEffect(() => {
         if (!isScriptsLoaded || !window.L || !mapContainerRef.current) return;
-        
-        if (mapRef.current) {
-            mapRef.current.remove();
-            mapRef.current = null;
-        }
-
+        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
         const map = window.L.map(mapContainerRef.current, {
-            zoomControl: false,
-            attributionControl: false, // Prevent invisible click-shields in bottom right
-            minZoom: 2,
-            maxZoom: 18,
-            maxBounds: [[-90, -180], [90, 180]],
-            maxBoundsViscosity: 1.0,
-            worldCopyJump: true,
-            preferCanvas: false, 
-            tap: false, 
-            dragging: true,
-            touchZoom: true,
-            scrollWheelZoom: true,
-            doubleClickZoom: true,
-            boxZoom: true,
-            keyboard: true
+            zoomControl: false, attributionControl: false, 
+            minZoom: 2, maxZoom: 18, worldCopyJump: true, dragging: true, touchZoom: true,
+            scrollWheelZoom: true, doubleClickZoom: true, boxZoom: true, keyboard: true
         }).setView([20, 0], 2);
-        
         window.L.control.zoom({ position: 'bottomright' }).addTo(map);
-
         const lightTile = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
         const darkTile = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-        tileLayerRef.current = window.L.tileLayer(theme === 'dark' ? darkTile : lightTile, {
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(map);
-
+        tileLayerRef.current = window.L.tileLayer(theme === 'dark' ? darkTile : lightTile, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
         if (window.L.markerClusterGroup) {
             clusterGroupRef.current = window.L.markerClusterGroup({
-                chunkedLoading: true,
-                maxClusterRadius: 45,
-                showCoverageOnHover: false, // Prevents ghost polygons blocking taps
-                spiderfyOnMaxZoom: true,
-                zoomToBoundsOnClick: true,
+                chunkedLoading: true, maxClusterRadius: 45, showCoverageOnHover: false, 
+                spiderfyOnMaxZoom: true, zoomToBoundsOnClick: true,
                 iconCreateFunction: (cluster) => {
                     const count = cluster.getChildCount();
                     return window.L.divIcon({ 
                         html: `<div class="flex items-center justify-center w-full h-full">${count}</div>`,
-                        className: 'asr-cluster', 
-                        iconSize: window.L.point(44, 44) 
+                        className: 'asr-cluster', iconSize: window.L.point(38, 38) // Unified minimalist size
                     });
                 }
             });
             map.addLayer(clusterGroupRef.current);
         }
-        
         mapRef.current = map;
-        
-        setTimeout(() => {
-            if (mapRef.current) mapRef.current.invalidateSize();
-        }, 100);
-
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
+        setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 100);
+        return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     }, [isScriptsLoaded, theme]);
 
     useEffect(() => {
@@ -1725,44 +1688,25 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
     }, [theme]);
 
     useEffect(() => {
-        if (mapRef.current) {
-            setTimeout(() => mapRef.current.invalidateSize(), 300);
-        }
-    }, [isPanelOpen]);
-
-    useEffect(() => {
         if (!mapRef.current || !clusterGroupRef.current || !window.L) return;
-        
         clusterGroupRef.current.clearLayers();
-        
         courses.forEach(c => {
             if (!c.parsedCoords) return;
-            
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
                     html: `
-                        <div class="asr-marker-container w-10 h-10 rounded-full bg-blue-600 border-[3px] border-white flex items-center justify-center text-white shadow-lg pointer-events-none">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                              <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
+                        <div class="asr-marker-container w-7 h-7 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white shadow-lg pointer-events-none">
+                            <div class="w-1.5 h-1.5 rounded-full bg-white animate-subtle-pulse"></div>
                         </div>
                     `,
-                    className: 'asr-marker-outer',
-                    iconSize: [44, 44],
-                    iconAnchor: [22, 22],
-                    popupAnchor: [0, -22]
+                    className: 'asr-marker-outer', iconSize: [32, 32], iconAnchor: [16, 16]
                 })
             });
-
-            // Prevent event leaking to map background
             window.L.DomEvent.disableClickPropagation(marker);
-
             marker.on('click', (e) => {
                 window.L.DomEvent.stopPropagation(e);
                 onCourseClick('course', c);
             });
-
             clusterGroupRef.current.addLayer(marker);
         });
     }, [courses, isScriptsLoaded, onCourseClick, theme]);
@@ -1775,9 +1719,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
           const { latitude, longitude } = pos.coords;
           mapRef.current.flyTo([latitude, longitude], 12, { duration: 1.5 });
           setIsLocating(false);
-        },
-        () => setIsLocating(false),
-        { enableHighAccuracy: true }
+        }, () => setIsLocating(false), { enableHighAccuracy: true }
       );
     };
 
@@ -1800,47 +1742,38 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, ev
 
     return (
         <div id="asr-map-container" className={`relative w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-2xl border border-subtle`}>
-            {/* Lower Map Layer */}
             <div ref={mapContainerRef} className="w-full h-full z-[10]" />
-            
-            {/* UI Layers: Containers are pointer-events-none, components are auto */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40] pointer-events-none">
               <button onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
                 <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> Find Courses Near Me
               </button>
             </div>
-            
-            <div className="absolute top-4 right-4 z-[40] pointer-events-none">
-                <div className={`${mapPillStyle} pointer-events-auto flex items-center gap-2 whitespace-nowrap`}>
-                    <span className={`text-blue-600 animate-pulse text-lg leading-none`}>●</span>
-                    <span>{eventType === 'open' ? 'ASR OPEN' : 'ALL-TIME'} ({courses.length})</span>
-                </div>
-            </div>
-            
-            <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2.5 max-w-[280px] sm:max-w-xs h-fit items-start pointer-events-none">
+            <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
-                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES BY REGION'}
+                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES & RANKINGS'}
                 </button>
-                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-3 backdrop-blur-xl shadow-2xl ${isPanelOpen ? 'scale-100 opacity-100 max-h-[60vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
-                    <div className={`flex items-center p-2 border-b shrink-0 gap-1 ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
-                        <button onClick={() => setActiveTab('continents')} className={`${THEME.BUTTON_ROUNDED} flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest ${activeTab === 'continents' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>CONTINENTS</button>
-                        <button onClick={() => setActiveTab('countries')} className={`${THEME.BUTTON_ROUNDED} flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest ${activeTab === 'countries' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>COUNTRIES</button>
-                        <button onClick={() => setActiveTab('cities')} className={`${THEME.BUTTON_ROUNDED} flex-1 py-3 px-4 text-[9px] font-black uppercase tracking-widest ${activeTab === 'cities' ? 'bg-blue-600 text-white shadow-sm' : 'opacity-80'}`}>CITIES</button>
+                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-3 backdrop-blur-xl shadow-2xl ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
+                    <div className={`flex items-center p-3 border-b shrink-0 gap-2 ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
+                        <button onClick={() => setEventType('open')} className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === 'open' ? 'btn-blue-gradient active' : 'opacity-60 hover:opacity-100 text-inherit'}`}>ASR OPEN</button>
+                        <button onClick={() => setEventType('all-time')} className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active' : 'opacity-60 hover:opacity-100 text-inherit'}`}>ALL TIME</button>
+                    </div>
+                    <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                        {['continents', 'countries', 'cities'].map(t => (
+                            <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
+                        ))}
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide flex-1">
                         {displayData.slice(0, 40).map((c, i) => (
                             <div key={i} onClick={() => { jumpToLocation(c); if(activeTab === 'cities') onCityClick(c); else if(activeTab === 'countries') onCountryClick(c); else onContinentClick(c); }} className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-300/50'}`}>
-                                 <div className="flex items-center gap-3 min-w-0 pr-2">
+                                 <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
-                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-nowrap overflow-hidden text-ellipsis leading-tight transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>
+                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>
                                           {c.name} <span className="ml-1 opacity-80">{c.flag}</span>
                                         </span>
                                     </div>
                                  </div>
-                                 <div className="flex flex-col items-end">
-                                   <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
-                                 </div>
+                                 <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
                             </div>
                         ))}
                     </div>
@@ -1870,7 +1803,6 @@ const SetterDisplay = ({ text, onSetterClick }) => {
 const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
     const displayAthletes = [...athletes.slice(0, 10)];
     while (displayAthletes.length < 3) displayAthletes.push(null);
-
     return (
         <div className="space-y-1">
             <ASRSectionHeading theme={theme}>{title}</ASRSectionHeading>
@@ -1878,7 +1810,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                 {displayAthletes.map((athleteRow, i) => {
                     if (!athleteRow) {
                         return (
-                            <div key={`empty-${i}`} className={`flex items-center justify-between p-4 rounded-3xl border opacity-30 ${THEME.CARD(theme)} ios-clip-fix h-[72px]`}>
+                            <div key={`empty-${i}`} className={`flex items-center justify-between p-4 rounded-3xl border opacity-30 ${THEME.CARD(theme)} ios-clip-fix h-auto min-h-[72px]`}>
                                 <div className="flex items-center gap-3 flex-1">
                                     <ASRRankBadge rank={i + 1} theme={theme} />
                                     <span className="text-xs sm:text-[15px] font-black uppercase tracking-widest opacity-40">---</span>
@@ -1889,14 +1821,12 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                             </div>
                         );
                     }
-                    
                     const [pKey, time, videoUrl] = athleteRow;
                     const meta = athleteMetadata[pKey] || {};
                     const points = genderRecord && typeof time === 'number' && time !== 0 ? (genderRecord / time) * 100 : 0;
-                    
                     return (
                         <ASRListItem 
-                          key={pKey} variant="card" theme={theme} rank={i + 1} title={athleteDisplayNameMap[pKey]} subtitle={meta.region || '🏳️'}
+                          key={pKey} variant="card" theme={theme} rank={i + 1} title={athleteDisplayNameMap[pKey] || pKey} subtitle={meta.region || '🏳️'}
                           stats={[{ value: typeof time === 'number' ? time.toFixed(2) : '--.--' }, { value: typeof points === 'number' ? points.toFixed(2) : '--.--' }]}
                           videoUrl={videoUrl}
                           onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })}
@@ -1926,7 +1856,6 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
               </button>
             )}
         </div>
-
         {view === 'players' && (
             <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-black/60 border-white/15' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
                 <div className="flex gap-1.5">
@@ -1945,7 +1874,6 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
   if (!stats) return null;
   const highlightColor = 'text-blue-600';
-
   return (
     <div className="space-y-12 sm:space-y-24 animate-in fade-in duration-700 pb-32 text-left">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -1966,10 +1894,10 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-white/[0.05]' : 'divide-slate-200'}`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
                   <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, null, null, 'all-time')}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 text-left">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col">
-                        <span className="text-xs font-black uppercase group-hover:text-blue-600 transition-colors">{p.name}</span>
+                        <span className="text-xs font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors">{p.name}</span>
                         <span className="text-sm mt-1">{p.region}</span>
                       </div>
                     </div>
@@ -1981,7 +1909,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ))}
       </div>
       <div className={`rounded-[2.8rem] border-2 border-subtle overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/60' : 'bg-white shadow-premium'} ios-clip-fix`}>
-        <div className={`p-8 border-b-2 border-inherit ${THEME.HEADING_SM} opacity-80`}>NATION MEDAL COUNT</div>
+        <div className={`p-8 border-b-2 border-inherit ${THEME.HEADING_SM} opacity-80 text-left`}>NATION MEDAL COUNT</div>
         <div className="overflow-auto scrollbar-hide">
           <table className="min-w-full">
             <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b-2 border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-white/95 text-slate-700'}`}>
@@ -1999,8 +1927,8 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                 <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
                   <td className="pl-8 sm:pl-12 py-6"><ASRRankBadge rank={c.displayRank} theme={theme} /></td>
                   <td className="py-6 px-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs sm:text-[17px] font-black uppercase group-hover:text-blue-600 transition-colors whitespace-nowrap">{c.name}</span>
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="text-xs sm:text-[17px] font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors">{c.name}</span>
                       <span className="text-xl sm:text-2xl shrink-0 leading-none">{c.flag}</span>
                     </div>
                   </td>
@@ -2023,33 +1951,32 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
 
 const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip, paddingClass = "px-2" }) => {
   return (
-    <th className={`${w} ${paddingClass} py-8 cursor-pointer group select-none transition-all stat-card-container ${activeSort.key === k ? 'bg-current/[0.08]' : 'hover:bg-current/[0.05]'} text-inherit border-b-2 border-transparent`} onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}>
+    <div 
+        className={`${w} ${paddingClass} py-8 cursor-pointer group select-none transition-all stat-card-container ${activeSort.key === k ? 'bg-current/[0.08]' : 'hover:bg-current/[0.05]'} text-inherit border-b-2 border-transparent`} 
+        onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
+    >
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
           <ChevronDown size={16} strokeWidth={3} className={`${THEME.ICON} ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
         </div>
       </div>
-    </th>
+    </div>
   );
 };
 
 const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
     const [visibleCount, setVisibleCount] = useState(50);
     const observerTarget = useRef(null);
-
     useEffect(() => { setVisibleCount(50); }, [data, sort]);
     useEffect(() => {
         if (!observerTarget.current) return;
         const observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setVisibleCount(p => Math.min(p + 50, data.length)); }, { threshold: 0.1, rootMargin: '400px' });
-        const currentTarget = observerTarget.current;
-        observer.observe(currentTarget);
+        const currentTarget = observerTarget.current; observer.observe(currentTarget);
         return () => observer.disconnect();
     }, [data.length]);
-
     const visibleData = useMemo(() => {
-        const result = [];
-        const baseData = data.slice(0, visibleCount);
+        const result = []; const baseData = data.slice(0, visibleCount);
         const promoTypes = ['skool_training', 'shop_gear', 'pro_setter'];
         let rankedIdx = 0; let isUnranked = false;
         baseData.forEach((item, idx) => {
@@ -2062,12 +1989,10 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
         });
         return result;
     }, [data, visibleCount]);
-
     return (
         <div className="min-w-full flex flex-col">
-            {/* Sticky Table Header */}
             <div className={`sticky top-0 z-20 backdrop-blur-xl border-b-2 border-subtle flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-[#f1f5f9]/95 text-slate-700'}`}>
-                <div className="pl-6 sm:pl-10 py-8 text-left w-24 font-black text-[10px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
+                <div className="w-24 pl-6 sm:pl-10 py-8 text-left font-black text-[10px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
                   {columns.filter(c => !c.isRank).map((col, i) => (
                       <ASRHeaderComp 
@@ -2076,27 +2001,21 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                         paddingClass={col.type === 'profile' ? "pl-4 sm:pl-8 pr-2 flex-1" : "px-4 shrink-0"}
                       />
                   ))}
-                  <div className="w-10 sm:w-16 shrink-0" /> {/* Spacer for video icons */}
+                  <div className="w-10 sm:w-16 shrink-0" />
                 </div>
             </div>
-
-            {/* Table Content */}
             <div className={`divide-y-2 ${theme === 'dark' ? 'divide-white/10' : 'divide-slate-200'}`}>
                 {visibleData.map((item, idx) => {
                     if (item.isDivider) return <div key={idx} className="py-14 text-center opacity-60 text-[11px] font-black uppercase tracking-[0.5em]">{item.label}</div>;
                     if (item.isUtility) return <div key={idx} className="px-6 py-6"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
-                    
                     const athleteStats = [
                       { value: typeof item.rating === 'number' ? item.rating.toFixed(2) : '--.--' },
                       { value: item.runs || 0 },
                       { value: item.sets || 0 }
                     ];
-
                     const courseStats = [
-                      { value: item.totalAthletes || 0 },
-                      { value: item.mRecord ? item.mRecord.toFixed(2) : '--.--' }
+                      { value: item.totalAthletes || 0 }
                     ];
-
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
@@ -2148,7 +2067,6 @@ const ASRControlBar = ({ view, eventType, setEventType, theme }) => {
                           <button onClick={() => setEventType('all-time')} className={`px-8 sm:px-16 py-4 rounded-[1.2rem] text-[10px] sm:text-[16px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active' : 'opacity-70 hover:opacity-100'} whitespace-nowrap`}>ALL-TIME</button>
                       </div>
                   </div>
-
                   <div className="h-14 flex items-center justify-center">
                     <div className={`inline-flex flex-wrap items-center justify-center gap-x-10 gap-y-3 px-10 py-5 rounded-3xl sm:rounded-full border-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 ${theme === 'dark' ? 'bg-black/90 border-white/20 text-slate-100' : 'bg-white/95 border-slate-400 text-slate-800'} ios-clip-fix`}>
                         <div className="flex items-center gap-3">
@@ -2176,8 +2094,7 @@ const PLAYER_COLS = [
 const COURSE_COLS = [
     { isRank: true },
     { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full' },
-    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-24 sm:w-40' },
-    { label: 'RECORDS', type: 'number', key: 'mRecord', align: 'right', width: 'w-24 sm:w-40' }
+    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-24 sm:w-40' }
 ];
 
 export default function App() {
@@ -2190,36 +2107,28 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
-
   useEffect(() => { setSearch(''); }, [view, eventType, gen]);
-
   const openModal = useCallback((type, data, roleOverride = null, contextOverride = null) => {
     setModalHistory(p => [...p.slice(0, historyIndex + 1), { type, data, roleOverride, contextOverride }]);
     setHistoryIndex(p => p + 1);
   }, [historyIndex]);
-
   const closeAllModals = useCallback(() => { setHistoryIndex(-1); setModalHistory([]); }, []);
   const goBackModal = useCallback(() => setHistoryIndex(c => Math.max(-1, c - 1)), []);
   const goForwardModal = useCallback(() => setHistoryIndex(c => Math.min(modalHistory.length - 1, c + 1)), [modalHistory.length]);
   const jumpToHistory = useCallback((index) => setHistoryIndex(index), []);
-
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
   const canGoForward = historyIndex < modalHistory.length - 1;
-
   const [viewSorts, setViewSorts] = useState({
     players: { key: 'rating', direction: 'descending' },
     courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
     hof: { key: 'gold', direction: 'descending' }
   });
-
   const handleSort = (newSort) => {
     const key = view === 'map' ? 'courses' : (view === 'players' ? 'players' : view);
     setViewSorts(p => ({ ...p, [key]: typeof newSort === 'function' ? newSort(p[key]) : newSort }));
   };
-
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
@@ -2238,17 +2147,11 @@ export default function App() {
       };
     });
   }, [lbAT, cMet, atRawBest]);
-
-  const rawCourseList = useMemo(() => {
-    return masterCourseList.filter(c => isAllTimeContext || c.is2026);
-  }, [masterCourseList, isAllTimeContext]);
-
+  const rawCourseList = useMemo(() => masterCourseList.filter(c => isAllTimeContext || c.is2026), [masterCourseList, isAllTimeContext]);
   const filteredCourses = useFilteredData(rawCourseList, debouncedSearch, viewSorts.courses);
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
-
   const athletePool = isAllTimeContext ? data : openData;
   const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen, [gen]));
-
   const list = useMemo(() => {
     if (filteredAthletes.length === 0) return [];
     let qual = filteredAthletes.filter(isQualifiedAthlete);
@@ -2261,7 +2164,6 @@ export default function App() {
     const fUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false }));
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: "UNRANKED" }, ...fUnranked] : [...fQual, ...fUnranked];
   }, [filteredAthletes, isAllTimeContext, data]);
-
   const settersWithImpact = useMemo(() => {
     return (settersData || []).map(s => {
         const sName = s.name.trim();
@@ -2269,38 +2171,33 @@ export default function App() {
         const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
         const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
         return { 
-            ...s, 
-            leads: leadCourses.length,
-            assists: assistCourses.length,
+            ...s, leads: leadCourses.length, assists: assistCourses.length,
             sets: leadCourses.length + assistCourses.length,
             impact: allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0)
         };
     }).filter(s => isAllTimeContext || s.sets > 0);
   }, [settersData, masterCourseList, isAllTimeContext]);
-
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
     return calculateHofStats(data, atPerfs, lbAT, atMet, viewSorts.hof, settersWithImpact);
   }, [data, lbAT, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
-
   const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
 
   const getModalHeader = (modal) => {
     if (!modal) return null;
     const { type, data } = modal;
-    
     if (type === 'course') {
         let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
         return (
           <div className="flex flex-col gap-6 w-full text-left">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
-              <div className={`w-13 h-13 sm:w-[100px] sm:h-[100px] rounded-3xl border-2 shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-white/20 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+              <div className={`w-26 h-26 sm:w-[100px] sm:h-[100px] rounded-3xl border-2 shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-white/20 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <h2 style={{ textWrap: 'nowrap' }} className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tighter truncate uppercase leading-none mb-2 text-inherit">{data.name}</h2>
-                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit truncate">
+                <h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tighter whitespace-normal break-words uppercase leading-none mb-2 text-inherit">{data.name}</h2>
+                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words">
                   {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
                 </div>
               </div>
@@ -2313,13 +2210,12 @@ export default function App() {
           </div>
         );
     }
-    
     if (type === 'player' || type === 'setter') {
         return (
           <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left">
-            <div className={`w-13 h-13 sm:w-[100px] lg:w-[116px] sm:h-[100px] lg:h-[116px] rounded-3xl border-2 flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
+            <div className={`w-26 h-26 sm:w-[100px] lg:w-[116px] sm:h-[100px] lg:h-[116px] rounded-3xl border-2 flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
             <div className="min-w-0 flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left">
-                <div className="flex wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-2 min-w-0 w-full"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words">{data.name}</h2></div>
+                <div className="flex wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-2 min-w-0 w-full"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
                 <div className="flex items-center gap-3 sm:gap-4 mt-1">
                     {data.region && <div className="text-2xl sm:text-3xl leading-none flex items-center gap-1.5 drop-shadow-sm">{data.region}</div>}
                     {data.igHandle && <a href={`https://instagram.com/${data.igHandle}`} target="_blank" rel="noopener noreferrer" className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`} title={`@${data.igHandle}`}><Instagram size={18} strokeWidth={2.5} className="text-[#E1306C] transition-transform group-hover/ig:rotate-6" /></a>}
@@ -2328,12 +2224,11 @@ export default function App() {
           </div>
         );
     }
-
     if (type === 'region') {
       return (
         <div className="flex items-center gap-6 sm:gap-10 text-left">
-            <div className={`w-13 h-13 sm:w-[100px] sm:h-[100px] rounded-3xl border-2 shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
-            <div className="flex flex-col"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit">{data.name}</h2><div className="text-3xl sm:text-5xl mt-3">{data.flag}</div></div>
+            <div className={`w-26 h-26 sm:w-[100px] sm:h-[100px] rounded-3xl border-2 shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-black/50 border-white/20' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
+            <div className="flex flex-col"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit whitespace-normal break-words">{data.name}</h2><div className="text-3xl sm:text-5xl mt-3">{data.flag}</div></div>
         </div>
       );
     }
@@ -2345,23 +2240,17 @@ export default function App() {
       <CustomStyles />
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
-      
       <div className="flex-1 flex flex-col pt-[calc(64px+var(--safe-top))] sm:pt-[calc(96px+var(--safe-top))]">
         <ASRBaseModal 
-          isOpen={historyIndex >= 0} onClose={closeAllModals} 
-          onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
-          theme={theme} header={getModalHeader(activeModal)} 
-          breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
+          isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
+          theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
         >
           <InspectorBody 
-             activeModal={activeModal} theme={theme} allCourses={masterCourseList} 
-             openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
-             atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} 
-             openModal={openModal}
+             activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
+             atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={openModal}
              onSetterClick={(sName) => { const sObj = settersWithImpact.find(s => s.name.toLowerCase() === sName.toLowerCase()); if (sObj) openModal('setter', sObj); }}
           />
         </ASRBaseModal>
-
         <ASRControlBar view={view} eventType={eventType} setEventType={setEventType} theme={theme} />
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full">
           {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse ${theme === 'dark' ? 'bg-black/40' : 'bg-slate-200'}`} /> : 
@@ -2371,15 +2260,14 @@ export default function App() {
                <ASRGlobalMap 
                  courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} 
                  cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} 
-                 theme={theme} eventType={eventType} onCourseClick={openModal} 
-                 onCountryClick={c => openModal('region', {...c, type: 'country'})} 
-                 onCityClick={c => openModal('region', {...c, type: 'city'})} 
+                 theme={theme} eventType={eventType} setEventType={setEventType} onCourseClick={openModal} 
+                 onCountryClick={c => openModal('region', {...c, type: 'country'})} onCityClick={c => openModal('region', {...c, type: 'city'})} 
                  onContinentClick={c => openModal('region', {...c, type: 'continent'})} 
                />
              )}
              <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} />
              <div className={`relative border-2 border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-black/40' : 'bg-white'}`}>
-               <div className="overflow-auto scrollbar-hide max-h-[80vh] relative w-full">
+               <div className="overflow-auto scrollbar-hide max-h-[80vh] relative w-full text-left">
                  {(view === 'map' ? courseList : list).length > 0 ? (
                    <ASRDataTable theme={theme} columns={view === 'map' ? COURSE_COLS : PLAYER_COLS} sort={viewSorts[view === 'map' ? 'courses' : 'players']} onSort={handleSort} data={view === 'map' ? courseList : list} onRowClick={item => openModal(view === 'map' ? 'course' : 'player', item)} />
                  ) : (
