@@ -667,7 +667,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
                 <Building2 size={16} className={THEME.ICON} />
               </div>
               <div className="flex flex-col text-left">
-                <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Course Partnership Available</span>
+                <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Partnership Available</span>
                 <span className={`text-[10px] sm:text-[12px] font-black uppercase whitespace-normal break-words ${fadedTextPrimary} group-hover:text-amber-500 transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
@@ -1104,7 +1104,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
   const tabs = [
     { id: 'all-time', label: 'ALL-TIME' },
-    { id: 'asr-open', label: 'ASR OPEN' },
+    { id: 'asr-open', label: 'OPEN' },
     { id: 'setter', label: 'SETS' }
   ];
 
@@ -1784,7 +1784,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
             </div>
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
-                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES & RANKINGS'}
+                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'REGIONAL COURSE LIST'}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
@@ -2369,6 +2369,18 @@ export default function App() {
       </div>
       <footer className="mt-40 text-center pb-[calc(80px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN // WORLDWIDE SPEED PARKOUR PROJECT</footer>
     </div>
+  );
+}
+                          // --- MOUNTING ---
+import ReactDOM from 'react-dom/client';
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
   );
 }
                           // --- MOUNTING ---
