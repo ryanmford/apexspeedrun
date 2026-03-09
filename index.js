@@ -873,14 +873,13 @@ const ASRBaseModal = ({
 }) => {
   const scrollContainerRef = useRef(null);
   const mainPageScrollRef = useRef(0);
-  const historyScrollPositions = useRef({}); // Memory bank for internal scroll depth
+  const historyScrollPositions = useRef({}); // Core memory for internal deep links
   const prevIndexRef = useRef(-1);
 
-  // Layer 1: Background Main Page Scroll Memory
+  // Background Scroll Protection (Layer 1)
   useEffect(() => {
     if (isOpen) {
       mainPageScrollRef.current = window.scrollY;
-      // Lock main body positioning
       document.body.style.top = `-${mainPageScrollRef.current}px`;
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
@@ -892,11 +891,9 @@ const ASRBaseModal = ({
       document.body.style.width = '';
       document.body.style.overflowY = '';
       
-      // Request frame to ensure CSS styles are released before jumping back
       requestAnimationFrame(() => {
         window.scrollTo({ top: savedY, behavior: 'auto' });
       });
-      // Clear history memory when modal fully closes
       historyScrollPositions.current = {};
     }
     return () => {
@@ -907,26 +904,25 @@ const ASRBaseModal = ({
     };
   }, [isOpen]);
 
-  // Layer 2: Internal Modal Deep-Link Scroll Memory
+  // Depth-Aware Scroll Restoration (Layer 2)
   useEffect(() => {
     if (!isOpen) return;
 
-    // Save scroll position of the "outgoing" page
+    // Save position of the content we just left
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
 
-    // Restore scroll position of the "incoming" page
-    const restoreScroll = () => {
+    const restoreInternalScroll = () => {
       if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
         scrollContainerRef.current.scrollTop = targetScroll;
       }
     };
 
-    // Double frame wait ensures the content DOM has actually updated before scroll application
+    // Double-frame delay ensures the mobile DOM has completely re-settled before scrolling
     requestAnimationFrame(() => {
-      requestAnimationFrame(restoreScroll);
+      requestAnimationFrame(restoreInternalScroll);
     });
 
     prevIndexRef.current = currentIndex;
@@ -935,27 +931,30 @@ const ASRBaseModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-xl bg-black/90 animate-in fade-in duration-300" onClick={onClose}>
-      <div className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.7)] scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col max-h-[94vh] ios-clip-fix`} onClick={e => e.stopPropagation()}>
-        <div className={`shrink-0 flex flex-col p-6 sm:p-8 lg:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/40' : 'from-slate-300/60'} to-transparent relative overflow-visible`}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200" onClick={onClose}>
+      <div 
+        className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-auto sm:max-h-[90vh] ios-clip-fix`} 
+        onClick={e => e.stopPropagation()}
+      >
+        <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative overflow-visible`}>
           <div className="flex items-start justify-between gap-4 z-10 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                  <button aria-label="Go Back" onClick={onBack} className={`group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0`} title="Go Back">
+                  <button aria-label="Go Back" onClick={onBack} className="group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Back">
                       <CornerUpLeft size={18} strokeWidth={2.5} className={`${THEME.ICON} text-slate-200 group-hover:text-white`} />
                   </button>
                   {canGoForward && (
-                      <button aria-label="Go Forward" onClick={onForward} className={`group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0`} title="Go Forward">
+                      <button aria-label="Go Forward" onClick={onForward} className="group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Forward">
                           <CornerUpRight size={18} strokeWidth={2.5} className={`${THEME.ICON} text-slate-200 group-hover:text-white`} />
                       </button>
                   )}
                   {breadcrumbs && breadcrumbs.length > 0 && (
-                      <div className={`ml-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[11px] font-black uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2.5 rounded-full border shadow-xl shrink min-w-0 ${THEME.GLASS(theme)}`}>
+                      <div className={`ml-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[11px] font-black uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2.5 rounded-full border shadow-xl shrink min-w-0 ${THEME.GLASS(theme)}`}>
                           {breadcrumbs.map((b, i) => (
                               <React.Fragment key={i}>
                                   <button 
                                       onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(i); }}
                                       disabled={i === breadcrumbs.length - 1}
-                                      className={`transition-colors outline-none whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'opacity-100 font-black' : 'opacity-40 cursor-pointer hover:opacity-100 active:opacity-75'}`}
+                                      className={`transition-colors outline-none whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'opacity-100 font-black' : 'opacity-40 cursor-pointer hover:opacity-100'}`}
                                   >
                                       {String(b).toUpperCase()}
                                   </button>
@@ -969,11 +968,11 @@ const ASRBaseModal = ({
                   <X size={18} strokeWidth={2.5} className={THEME.ICON} />
               </button>
           </div>
-          <div className="w-full pt-1 sm:pt-0 overflow-visible">
+          <div className="w-full overflow-visible">
             {header}
           </div>
         </div>
-        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-10 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'} overflow-visible`}>
+        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'} overflow-visible`}>
           {children}
         </div>
       </div>
@@ -1024,7 +1023,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Leads</span>
-                <div className={`text-[15px] sm:text-lg font-mono font-black text-blue-600`}>
+                <div className="text-[15px] sm:text-lg font-mono font-black text-blue-600">
                   <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1032,7 +1031,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.assistantsetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Assistants</span>
-                <div className={`text-[15px] sm:text-lg font-mono font-black text-blue-600`}>
+                <div className="text-[15px] sm:text-lg font-mono font-black text-blue-600">
                   <SetterDisplay text={course.assistantsetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -2379,9 +2378,9 @@ export default function App() {
         let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
         return (
-          <div className="flex flex-col gap-6 w-full text-left overflow-visible">
+          <div className="flex flex-col gap-6 w-full text-left overflow-visible animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full overflow-visible">
-              <div className={`w-26 h-26 sm:w-[100px] sm:h-[100px] rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="flex flex-col min-w-0 flex-1 overflow-visible">
@@ -2393,12 +2392,11 @@ export default function App() {
             </div>
             <ASRPatronPill course={data} theme={theme} />
             <div className="flex flex-row items-center gap-3 w-full">
-              {/* Pin/Map on LEFT, Play/Rules on RIGHT */}
-              <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target={data.coordinates ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.coordinates ? 'border-blue-600/50 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
+              <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target={data.coordinates ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[64px] sm:h-[72px] text-center ${data.coordinates ? 'border-blue-600/50 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
                 <MapPin size={14} className={THEME.ICON} />
                 <span>MAP</span>
               </a>
-              <a href={data.demoVideo || "#"} target={data.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.demoVideo ? 'border-rose-600/50 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
+              <a href={data.demoVideo || "#"} target={data.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[64px] sm:h-[72px] text-center ${data.demoVideo ? 'border-rose-600/50 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
                 <Play size={14} className={THEME.ICON} />
                 <span>RULES</span>
               </a>
@@ -2408,8 +2406,8 @@ export default function App() {
     }
     if (type === 'player' || type === 'setter') {
         return (
-          <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left overflow-visible">
-            <div className={`w-26 h-26 sm:w-[100px] lg:w-[116px] sm:h-[100px] lg:h-[116px] rounded-3xl border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
+          <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left overflow-visible animate-in fade-in duration-300">
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
             <div className="min-w-0 flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left overflow-visible">
                 <div className="flex wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-2 min-w-0 w-full overflow-visible"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
                 <div className="flex items-center gap-3 sm:gap-4 mt-1 overflow-visible">
@@ -2422,8 +2420,8 @@ export default function App() {
     }
     if (type === 'region') {
       return (
-        <div className="flex items-center gap-6 sm:gap-10 text-left overflow-visible">
-            <div className={`w-26 h-26 sm:w-[100px] sm:h-[100px] rounded-3xl border shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
+        <div className="flex items-center gap-6 sm:gap-10 text-left overflow-visible animate-in fade-in duration-300">
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
             <div className="flex flex-col overflow-visible"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit whitespace-normal break-words">{data.name}</h2><div className="text-3xl sm:text-5xl mt-3">{data.flag}</div></div>
         </div>
       );
