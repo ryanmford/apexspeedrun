@@ -786,9 +786,13 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      setStep(0); // Reset to first slide on open
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -821,8 +825,14 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   const prevStep = () => { if (step > 0) setStep(step - 1); };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500">
-      <div className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix`}>
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500"
+      onClick={onClose} // Allow clicking outside to close
+    >
+      <div 
+        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix`}
+        onClick={e => e.stopPropagation()} // Prevent closing when clicking inside
+      >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
         
         <button 
@@ -1687,47 +1697,67 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
 };
 
 const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImpact) => {
-    if (!data.length) return null;
-    const qualifiedAthletes = data.filter(p => isQualifiedAthlete(p, true)).map(p => { 
-        const performances = atPerfs[p.pKey] || []; 
-        const calculatedFires = performances.reduce((sum, run) => sum + (run.fireCount || 0), 0);
-        return { 
-            ...p, allTimeFireCount: calculatedFires, winPercentage: p.runs > 0 ? (p.wins / p.runs) * 100 : 0
-        }; 
-    });
-    const medalsBase = {};
-    const processMedals = (lb) => {
-      if (!lb) return;
-      Object.entries(lb).forEach(([courseName, athletes]) => {
-        if (!athletes) return;
-        const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
-        sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
-          const athlete = atMet[pKey] || {};
-          const names = athlete.countryName ? athlete.countryName.split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean) : ["UNKNOWN"];
-          const flags = athlete.region ? (athlete.region.match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g) || [athlete.region]) : ['🏳️'];
-          names.forEach((name, i) => {
-            const fixed = fixCountryEntity(name, flags[i] || flags[0]);
-            if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
-            if (rankIdx === 0) medalsBase[fixed.name].gold++; else if (rankIdx === 1) medalsBase[fixed.name].silver++; else medalsBase[fixed.name].bronze++;
-              medalsBase[fixed.name].total++;
-          });
+    try {
+        if (!data || !data.length) return null;
+        
+        const qualifiedAthletes = data.filter(p => isQualifiedAthlete(p, true)).map(p => { 
+            const performances = atPerfs?.[p.pKey] || []; 
+            const calculatedFires = performances.reduce((sum, run) => sum + (run.fireCount || 0), 0);
+            return { 
+                ...p, allTimeFireCount: calculatedFires, winPercentage: p.runs > 0 ? (p.wins / p.runs) * 100 : 0
+            }; 
         });
-      });
-    };
-    processMedals(lbAT.M); processMedals(lbAT.F);
-    const sortedMedalCount = Object.values(medalsBase).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze).map((c, i) => ({ ...c, displayRank: i + 1 }));
-    const dir = medalSort.direction === 'ascending' ? 1 : -1;
-    sortedMedalCount.sort((a, b) => robustSort(a, b, medalSort.key, dir));
-    return { medalCount: sortedMedalCount, topStats: { 
-        rating: [...qualifiedAthletes].sort((a,b) => b.rating - a.rating).slice(0, 10), 
-        runs: [...qualifiedAthletes].sort((a,b) => b.runs - a.runs).slice(0, 10), 
-        winPercentage: [...qualifiedAthletes].sort((a,b) => b.winPercentage - a.winPercentage || b.runs - a.runs).slice(0, 10),
-        wins: [...qualifiedAthletes].sort((a,b) => b.wins - a.wins).slice(0, 10), 
-        impact: [...(settersWithImpact || [])].sort((a,b) => b.impact - a.impact).slice(0, 10),
-        sets: [...(settersWithImpact || [])].sort((a,b) => b.sets - a.sets).slice(0, 10), 
-        contributionScore: [...qualifiedAthletes].sort((a,b) => b.contributionScore - a.contributionScore).slice(0, 10), 
-        totalFireCount: [...qualifiedAthletes].sort((a,b) => (b.allTimeFireCount || 0) - (a.allTimeFireCount || 0)).slice(0, 10)
-    }};
+
+        const medalsBase = {};
+        const processMedals = (lb) => {
+          if (!lb) return;
+          Object.entries(lb).forEach(([courseName, athletes]) => {
+            if (!athletes) return;
+            const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
+            sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
+              const athlete = atMet[pKey] || {};
+              const names = athlete.countryName ? athlete.countryName.split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean) : ["UNKNOWN"];
+              const flags = athlete.region ? (athlete.region.match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g) || [athlete.region]) : ['🏳️'];
+              names.forEach((name, i) => {
+                const fixed = fixCountryEntity(name, flags[i] || flags[0]);
+                if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
+                if (rankIdx === 0) medalsBase[fixed.name].gold++; 
+                else if (rankIdx === 1) medalsBase[fixed.name].silver++; 
+                else medalsBase[fixed.name].bronze++;
+                medalsBase[fixed.name].total++;
+              });
+            });
+          });
+        };
+        
+        processMedals(lbAT?.M); processMedals(lbAT?.F);
+        
+        const sortedMedalCount = Object.values(medalsBase)
+            .sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
+            .map((c, i) => ({ ...c, displayRank: i + 1 }));
+        
+        if (medalSort) {
+            const dir = medalSort.direction === 'ascending' ? 1 : -1;
+            sortedMedalCount.sort((a, b) => robustSort(a, b, medalSort.key, dir));
+        }
+
+        return { 
+            medalCount: sortedMedalCount, 
+            topStats: { 
+                rating: [...qualifiedAthletes].sort((a,b) => b.rating - a.rating).slice(0, 10), 
+                runs: [...qualifiedAthletes].sort((a,b) => b.runs - a.runs).slice(0, 10), 
+                winPercentage: [...qualifiedAthletes].sort((a,b) => b.winPercentage - a.winPercentage || b.runs - a.runs).slice(0, 10),
+                wins: [...qualifiedAthletes].sort((a,b) => b.wins - a.wins).slice(0, 10), 
+                impact: [...(settersWithImpact || [])].sort((a,b) => b.impact - a.impact).slice(0, 10),
+                sets: [...(settersWithImpact || [])].sort((a,b) => b.sets - a.sets).slice(0, 10), 
+                contributionScore: [...qualifiedAthletes].sort((a,b) => b.contributionScore - a.contributionScore).slice(0, 10), 
+                totalFireCount: [...qualifiedAthletes].sort((a,b) => (b.allTimeFireCount || 0) - (a.allTimeFireCount || 0)).slice(0, 10)
+            }
+        };
+    } catch (e) {
+        console.error("HOF stats calculation failed", e);
+        return null;
+    }
 };
 
 // --- VIEW COMPONENTS ---
@@ -1857,7 +1887,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
         return (
             <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
                 <div className="animate-spin opacity-70 mb-4"><ChevronsRight size={24} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600`} style={{ transform: 'skewX(-18deg)' }} /></div>
-                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP CORE...</div>
+                <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP SOURCE...</div>
             </div>
         );
     }
@@ -1867,12 +1897,12 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
             <div ref={mapContainerRef} className="w-full h-full z-[10]" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40] pointer-events-none">
               <button onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
-                <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> Find Courses Near Me
+                <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
               </button>
             </div>
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
-                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'REGIONAL COURSE LIST'}
+                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES BY REGION'}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
@@ -1996,7 +2026,6 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
 };
 
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
-  if (!stats) return null;
   const highlightColor = 'text-blue-600';
 
   const MedalHeader = ({ l, k, a = 'left', w = "" }) => (
@@ -2023,6 +2052,16 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
     impact: { desc: "Total runs verified on courses set by this individual." },
     sets: { desc: "Total number of courses officially verified and set." }
   };
+
+  // If stats are empty or null, provide a meaningful loading/empty state instead of crashing
+  if (!stats || !stats.topStats) {
+      return (
+          <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
+              <Trophy size={60} className="mb-6" />
+              <h3 className="text-xl font-black uppercase tracking-[0.3em]">RECALIBRATING LEGENDS...</h3>
+          </div>
+      );
+  }
 
   return (
     <div className="space-y-12 sm:space-y-24 animate-in fade-in duration-700 pb-32 text-left overflow-visible">
@@ -2379,10 +2418,16 @@ export default function App() {
         };
     }).filter(s => isAllTimeContext || s.sets > 0);
   }, [settersData, masterCourseList, isAllTimeContext]);
+
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
-    return calculateHofStats(data, atPerfs, lbAT, atMet, medalSort, settersWithImpact);
+    try {
+        return calculateHofStats(data, atPerfs, lbAT, atMet, viewSorts.hof, settersWithImpact);
+    } catch (e) {
+        return null;
+    }
   }, [data, lbAT, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
+
   const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
 
   const getModalHeader = (modal) => {
