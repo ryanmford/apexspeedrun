@@ -873,17 +873,18 @@ const ASRBaseModal = ({
 }) => {
   const scrollContainerRef = useRef(null);
   const mainPageScrollRef = useRef(0);
-  const historyScrollPositions = useRef({}); // Core memory for internal deep links
+  const historyScrollPositions = useRef({}); // Core stack for internal scroll preservation
   const prevIndexRef = useRef(-1);
 
-  // Background Scroll Protection (Layer 1)
+  // Background Stability Control (Layer 1)
+  // Ensures background position is "frozen" without destructive layout shifts
   useEffect(() => {
     if (isOpen) {
       mainPageScrollRef.current = window.scrollY;
       document.body.style.top = `-${mainPageScrollRef.current}px`;
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
-      document.body.style.overflowY = 'scroll';
+      document.body.style.overflowY = 'scroll'; // Keep gutter to prevent map/list shifts
     } else {
       const savedY = mainPageScrollRef.current;
       document.body.style.position = '';
@@ -891,6 +892,7 @@ const ASRBaseModal = ({
       document.body.style.width = '';
       document.body.style.overflowY = '';
       
+      // RequestAnimationFrame for DOM release before scroll restoration
       requestAnimationFrame(() => {
         window.scrollTo({ top: savedY, behavior: 'auto' });
       });
@@ -904,11 +906,12 @@ const ASRBaseModal = ({
     };
   }, [isOpen]);
 
-  // Depth-Aware Scroll Restoration (Layer 2)
+  // Deep-Link Scroll Memory (Layer 2)
+  // Remembers where you were when you click "Back" inside profile layers
   useEffect(() => {
     if (!isOpen) return;
 
-    // Save position of the content we just left
+    // Capture position of outgoing view
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
@@ -920,9 +923,9 @@ const ASRBaseModal = ({
       }
     };
 
-    // Double-frame delay ensures the mobile DOM has completely re-settled before scrolling
+    // Standard delay for WebKit layout stabilization
     requestAnimationFrame(() => {
-      requestAnimationFrame(restoreInternalScroll);
+      restoreInternalScroll();
     });
 
     prevIndexRef.current = currentIndex;
@@ -931,13 +934,13 @@ const ASRBaseModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl transition-opacity duration-200" onClick={onClose}>
       <div 
-        className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-auto sm:max-h-[90vh] ios-clip-fix`} 
+        className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-auto sm:max-h-[90vh] relative z-20 overflow-hidden`} 
         onClick={e => e.stopPropagation()}
       >
-        <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative overflow-visible`}>
-          <div className="flex items-start justify-between gap-4 z-10 w-full">
+        <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-30`}>
+          <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                   <button aria-label="Go Back" onClick={onBack} className="group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Back">
                       <CornerUpLeft size={18} strokeWidth={2.5} className={`${THEME.ICON} text-slate-200 group-hover:text-white`} />
@@ -972,7 +975,7 @@ const ASRBaseModal = ({
             {header}
           </div>
         </div>
-        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'} overflow-visible`}>
+        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'} overflow-visible pb-[calc(24px+env(safe-area-inset-bottom))]`}>
           {children}
         </div>
       </div>
@@ -995,13 +998,13 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
   ];
 
   return (
-    <>
+    <div className="animate-in fade-in duration-300">
       <div className="grid grid-cols-1 gap-14 sm:gap-20">
         <ASRRankList title="MEN'S TOP 10" athletes={course.allTimeAthletesM || []} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
         <ASRRankList title="WOMEN'S TOP 10" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-8 mt-14">
         <ASRSectionHeading theme={theme} className="text-left">COURSE STATS</ASRSectionHeading>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {stats.map((s, i) => (
@@ -1017,7 +1020,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
       </div>
       
       {(course.leadSetters || course.assistantsetters) && (
-        <div className="space-y-8 text-left">
+        <div className="space-y-8 mt-14 text-left">
           <ASRSectionHeading theme={theme}>COURSE SETTERS</ASRSectionHeading>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {course.leadSetters && (
@@ -1040,10 +1043,10 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
         </div>
       )}
 
-      <div className="pt-4 flex flex-col gap-4">
+      <div className="pt-4 mt-8 flex flex-col gap-4">
         <ASRPromotionBanner type="setter" theme={theme} />
       </div>
-    </>
+    </div>
   );
 };
 
