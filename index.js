@@ -150,7 +150,7 @@ const robustSort = (a, b, key, dir) => {
     let aVal = a[key];
     let bVal = b[key];
     const isANum = aVal !== null && aVal !== undefined && !isNaN(parseFloat(aVal)) && isFinite(aVal);
-    const isBNum = bVal !== null && bVal !== undefined && !isNaN(parseFloat(bVal)) && isFinite(bVal);
+    const isBNum = bVal !== null && bVal !== undefined && !isNaN(parseFloat(bVal)) && isFinite(aVal);
     if (isANum && isBNum) return (parseFloat(aVal) - parseFloat(bVal)) * dir;
     const aStr = String(aVal || "").toLowerCase();
     const bStr = String(bVal || "").toLowerCase();
@@ -867,23 +867,73 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   );
 };
 
-const ASRBaseModal = ({ isOpen, onClose, onBack, onForward, canGoForward, theme, header, breadcrumbs, onBreadcrumbClick, children }) => {
+const ASRBaseModal = ({ 
+  isOpen, onClose, onBack, onForward, canGoForward, 
+  theme, header, breadcrumbs, onBreadcrumbClick, currentIndex, children 
+}) => {
   const scrollContainerRef = useRef(null);
+  const mainPageScrollRef = useRef(0);
+  const historyScrollPositions = useRef({}); // Memory bank for internal scroll depth
+  const prevIndexRef = useRef(-1);
 
+  // Layer 1: Background Main Page Scroll Memory
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
+    if (isOpen) {
+      mainPageScrollRef.current = window.scrollY;
+      // Lock main body positioning
+      document.body.style.top = `-${mainPageScrollRef.current}px`;
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.overflowY = 'scroll';
+    } else {
+      const savedY = mainPageScrollRef.current;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+      
+      // Request frame to ensure CSS styles are released before jumping back
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'auto' });
+      });
+      // Clear history memory when modal fully closes
+      historyScrollPositions.current = {};
+    }
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+    };
   }, [isOpen]);
 
-  // Reset scroll on breadcrumb change (new profile/course entry)
+  // Layer 2: Internal Modal Deep-Link Scroll Memory
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
+    if (!isOpen) return;
+
+    // Save scroll position of the "outgoing" page
+    if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
+      historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
-  }, [breadcrumbs?.length]);
+
+    // Restore scroll position of the "incoming" page
+    const restoreScroll = () => {
+      if (scrollContainerRef.current) {
+        const targetScroll = historyScrollPositions.current[currentIndex] || 0;
+        scrollContainerRef.current.scrollTop = targetScroll;
+      }
+    };
+
+    // Double frame wait ensures the content DOM has actually updated before scroll application
+    requestAnimationFrame(() => {
+      requestAnimationFrame(restoreScroll);
+    });
+
+    prevIndexRef.current = currentIndex;
+  }, [currentIndex, isOpen]);
 
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 backdrop-blur-xl bg-black/90 animate-in fade-in duration-300" onClick={onClose}>
       <div className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.7)] scale-100 animate-in fade-in zoom-in-[0.98] duration-300 ease-out flex flex-col max-h-[94vh] ios-clip-fix`} onClick={e => e.stopPropagation()}>
@@ -2343,8 +2393,15 @@ export default function App() {
             </div>
             <ASRPatronPill course={data} theme={theme} />
             <div className="flex flex-row items-center gap-3 w-full">
-              <a href={data.demoVideo || "#"} target={data.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.demoVideo ? 'border-rose-600/50 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}><Play size={14} className={THEME.ICON} /><span>RULES</span></a>
-              <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target={data.coordinates ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.coordinates ? 'border-blue-600/50 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}><MapPin size={14} className={THEME.ICON} /><span>MAP</span></a>
+              {/* Pin/Map on LEFT, Play/Rules on RIGHT */}
+              <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target={data.coordinates ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.coordinates ? 'border-blue-600/50 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
+                <MapPin size={14} className={THEME.ICON} />
+                <span>MAP</span>
+              </a>
+              <a href={data.demoVideo || "#"} target={data.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[72px] text-center ${data.demoVideo ? 'border-rose-600/50 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
+                <Play size={14} className={THEME.ICON} />
+                <span>RULES</span>
+              </a>
             </div>
           </div>
         );
@@ -2384,6 +2441,7 @@ export default function App() {
         <ASRBaseModal 
           isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
           theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
+          currentIndex={historyIndex}
         >
           <InspectorBody 
              activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
@@ -2417,7 +2475,7 @@ export default function App() {
                  ) : (
                    <div className="flex flex-col items-center justify-center py-40 opacity-30">
                      <ChevronsRight size={28} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600 mb-20 scale-[4.5]`} style={{ transform: 'skewX(-18deg)' }} />
-                     <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">ASR ENGINE CALIBRATION</h3>
+                     <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">CONNECTING TO LIVE ASR DATA SOURCES</h3>
                    </div>
                  )}
                </div>
