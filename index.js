@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { 
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
   ChevronDown, Sun, Moon, MapPin, Globe, Instagram, Play, Trophy,
@@ -241,12 +241,10 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
+    /* Improved clipping for mobile profiles */
     .ios-clip-fix {
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
       isolation: isolate;
       overflow: hidden;
-      -webkit-mask-image: -webkit-radial-gradient(white, black);
     }
 
     #asr-map-container {
@@ -358,6 +356,13 @@ const CustomStyles = () => (
       padding: 0;
       overflow-x: hidden;
       background: #000;
+    }
+
+    /* Fix for modal clipping on mobile browsers */
+    .modal-container-fixed {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
     }
   `}</style>
 );
@@ -873,62 +878,42 @@ const ASRBaseModal = ({
 }) => {
   const scrollContainerRef = useRef(null);
   const mainPageScrollRef = useRef(0);
-  const historyScrollPositions = useRef({}); // Core stack for internal scroll preservation
+  const historyScrollPositions = useRef({});
   const prevIndexRef = useRef(-1);
 
-  // Background Stability Control (Layer 1)
-  // Ensures background position is "frozen" without destructive layout shifts
+  // Background Stability Logic
   useEffect(() => {
     if (isOpen) {
       mainPageScrollRef.current = window.scrollY;
-      document.body.style.top = `-${mainPageScrollRef.current}px`;
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.overflowY = 'scroll'; // Keep gutter to prevent map/list shifts
+      document.body.style.overflow = 'hidden';
     } else {
-      const savedY = mainPageScrollRef.current;
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflowY = '';
-      
-      // RequestAnimationFrame for DOM release before scroll restoration
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: savedY, behavior: 'auto' });
-      });
+      document.body.style.overflow = '';
       historyScrollPositions.current = {};
     }
     return () => {
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overflowY = '';
+      document.body.style.overflow = '';
     };
   }, [isOpen]);
 
-  // Deep-Link Scroll Memory (Layer 2)
-  // Remembers where you were when you click "Back" inside profile layers
-  useEffect(() => {
+  // Internal Navigation Scroll Memory
+  useLayoutEffect(() => {
     if (!isOpen) return;
 
-    // Capture position of outgoing view
+    // Capture position of outgoing view before it changes
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
 
-    const restoreInternalScroll = () => {
+    // Use a small delay for WebKit layout stabilization on Brave/Safari
+    const timer = setTimeout(() => {
       if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
-        scrollContainerRef.current.scrollTop = targetScroll;
+        scrollContainerRef.current.scrollTo(0, targetScroll);
       }
-    };
-
-    // Standard delay for WebKit layout stabilization
-    requestAnimationFrame(() => {
-      restoreInternalScroll();
-    });
+    }, 10);
 
     prevIndexRef.current = currentIndex;
+    return () => clearTimeout(timer);
   }, [currentIndex, isOpen]);
 
   if (!isOpen) return null;
@@ -936,9 +921,10 @@ const ASRBaseModal = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl transition-opacity duration-200" onClick={onClose}>
       <div 
-        className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-auto sm:max-h-[90vh] relative z-20 overflow-hidden`} 
+        className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-[85dvh] relative z-20 overflow-hidden ios-clip-fix`} 
         onClick={e => e.stopPropagation()}
       >
+        {/* Modal Header: Rigid Height */}
         <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-30`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
@@ -971,12 +957,19 @@ const ASRBaseModal = ({
                   <X size={18} strokeWidth={2.5} className={THEME.ICON} />
               </button>
           </div>
-          <div className="w-full overflow-visible">
+          <div className="w-full">
             {header}
           </div>
         </div>
-        <div ref={scrollContainerRef} className={`flex-grow overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'} overflow-visible pb-[calc(24px+env(safe-area-inset-bottom))]`}>
-          {children}
+
+        {/* Modal Content: Scrollable flex area with rigid parent constraint */}
+        <div 
+          ref={scrollContainerRef} 
+          className={`flex-1 min-h-0 overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}
+        >
+          <div className="pb-16"> {/* Inner buffer to ensure bottom content isn't cropped by mobile nav */}
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -1226,7 +1219,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
       const countryTerm = normalizeCountryName(region.name);
       const playerCountries = (p.countryName || "").split(/[,\/]/).map(c => normalizeCountryName(c));
       const isMatch = (region.type === 'country' && playerCountries.includes(countryTerm)) ||
-                      (region.type === 'continent' && playerCountries.some(pc => getContinentData(pc).name === region.name));
+                    (region.type === 'continent' && playerCountries.some(pc => getContinentData(pc).name === region.name));
       return isMatch && isQualifiedAthlete(p);
   }).sort((a, b) => b.rating - a.rating);
 
@@ -1938,7 +1931,6 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     const meta = athleteMetadata[pKey] || {};
                     const points = genderRecord && typeof time === 'number' && time !== 0 ? (genderRecord / time) * 100 : 0;
                     
-                    // Build subtitle with medal and fire emojis separated by 1 space
                     const fireCount = getFireCountForRun(time, meta.gender);
                     const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
                     const fireArray = fireCount > 0 ? Array(fireCount).fill("🔥") : [];
