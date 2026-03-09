@@ -37,7 +37,7 @@ const THEME = {
     : "bg-white text-slate-900 border-slate-300 focus:border-blue-600 shadow-xl",
   
   BUTTON_ROUNDED: "rounded-[0.9rem] sm:rounded-[1.8rem] transition-all whitespace-nowrap",
-  NAV_ITEM: "px-4 sm:px-12 py-2 sm:py-3.5 rounded-2xl sm:rounded-[1.8rem] text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all text-inherit whitespace-nowrap",
+  NAV_ITEM: "px-3 sm:px-12 py-2 sm:py-3.5 rounded-2xl sm:rounded-[1.8rem] text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all text-inherit whitespace-nowrap active:scale-95",
   
   ICON: "shrink-0 transition-colors"
 };
@@ -241,7 +241,16 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
-    /* Improved clipping for mobile profiles */
+    /* Global Reset for Finnicky Mobile Behavior */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button, a {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
     .ios-clip-fix {
       isolation: isolate;
       overflow: hidden;
@@ -347,6 +356,8 @@ const CustomStyles = () => (
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --announcement-height: 28px;
+      --nav-height-mobile: 64px;
+      --nav-height-desktop: 96px;
     }
     
     html, body {
@@ -358,7 +369,6 @@ const CustomStyles = () => (
       background: #000;
     }
 
-    /* Fix for modal clipping on mobile browsers */
     .modal-container-fixed {
       height: 100dvh;
       display: flex;
@@ -815,11 +825,13 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       <div className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix`}>
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
         
-        {step > 0 && (
-          <button onClick={prevStep} className="absolute top-8 left-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" title="Go Back">
-            <CornerUpLeft size={24} strokeWidth={2.5} className={THEME.ICON} />
-          </button>
-        )}
+        <button 
+          onClick={step > 0 ? prevStep : onClose} 
+          className="absolute top-8 left-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" 
+          title={step > 0 ? "Go Back" : "Undo / Close"}
+        >
+          <CornerUpLeft size={24} strokeWidth={2.5} className={THEME.ICON} />
+        </button>
 
         <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20">
           <X size={24} strokeWidth={2.5} className={THEME.ICON} />
@@ -2139,7 +2151,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
         return result;
     }, [data, visibleCount]);
 
-    const topOffset = "top-[calc(64px+var(--announcement-height))] sm:top-[calc(96px+var(--announcement-height))]";
+    const topOffset = "top-[calc(var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--nav-height-desktop)+var(--announcement-height))]";
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
@@ -2187,29 +2199,31 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
 
 const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
     return (
-        <nav className={`fixed top-[calc(var(--announcement-height)+var(--safe-top))] w-full backdrop-blur-2xl border-b z-50 flex items-center justify-between px-4 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-16 sm:h-24 shadow-sm`}>
-            <div className="group flex items-center gap-3 shrink-0">
+        <nav className={`fixed top-[calc(var(--announcement-height)+var(--safe-top))] w-full backdrop-blur-2xl border-b z-50 flex items-center justify-between px-3 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <div className="text-blue-600 animate-pulse"><ChevronsRight size={28} strokeWidth={2.5} className={THEME.ICON} style={{ transform: 'skewX(-18deg)' }} /></div>
-                <span className="font-black text-lg sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">APEX SPEED RUN</span>
+                <span className="font-black text-sm sm:text-2xl uppercase italic leading-none hidden xs:block tracking-tighter">APEX SPEED RUN</span>
             </div>
-            <div className="flex-1 flex justify-center gap-1 sm:gap-4 px-4 h-full items-center">
+
+            <div className="flex-1 flex justify-center gap-1 sm:gap-4 px-2 h-full items-center">
                 {['map', 'players', 'hof'].map(v => (
                     <button key={v} onClick={() => setView(v)} className={`${THEME.NAV_ITEM} ${view === v ? 'btn-blue-gradient active' : 'opacity-70 hover:opacity-100'}`}>
                         {v.toUpperCase()}
                     </button>
                 ))}
             </div>
-            <div className="shrink-0 flex items-center gap-2 sm:gap-3 h-full">
+
+            <div className="shrink-0 flex items-center gap-1.5 sm:gap-3 h-full">
                 <button 
                   onClick={onOpenIntro} 
-                  className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.5rem] transition-all border-2 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
+                  className={`w-9 h-9 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl sm:rounded-[1.5rem] transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Get Started"
                 >
-                  <HelpCircle size={20} strokeWidth={2.5} className={THEME.ICON} />
+                  <HelpCircle size={18} strokeWidth={2.5} className={THEME.ICON} />
                 </button>
                 <button 
                   onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
-                  className={`w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center rounded-2xl sm:rounded-[1.5rem] transition-all border-2 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
+                  className={`w-9 h-9 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl sm:rounded-[1.5rem] transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Toggle Theme"
                 >
                   {theme === 'dark' ? <Sun size={14} strokeWidth={2.5} className={THEME.ICON} /> : <Moon size={14} strokeWidth={2.5} className={THEME.ICON} />}
@@ -2219,12 +2233,17 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro }) => {
     );
 };
 
-const ASRAnnouncementBar = ({ theme }) => {
+const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     return (
-      <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-colors duration-500 ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}>
-        <div className="flex items-center gap-3 animate-in fade-in duration-700">
+      <div 
+        onClick={onOpenIntro}
+        className={`fixed top-[var(--safe-top)] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 cursor-pointer group/bar active:opacity-90 ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50 hover:bg-[#2563eb]' : 'bg-blue-600 border-blue-700 text-white hover:bg-blue-500'}`}
+      >
+        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none">
           <span className="animate-pulse text-xs leading-none">●</span>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">THE 2026 ASR OPEN IS LIVE, CLIPS DUE MAY 31</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
+            THE 2026 ASR OPEN IS LIVE, CLIPS DUE MAY 31
+          </span>
         </div>
       </div>
     );
@@ -2362,7 +2381,7 @@ export default function App() {
   }, [settersData, masterCourseList, isAllTimeContext]);
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
-    return calculateHofStats(data, atPerfs, lbAT, atMet, viewSorts.hof, settersWithImpact);
+    return calculateHofStats(data, atPerfs, lbAT, atMet, medalSort, settersWithImpact);
   }, [data, lbAT, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
   const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
 
@@ -2427,10 +2446,10 @@ export default function App() {
   return (
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-32 flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
-      <ASRAnnouncementBar theme={theme} />
+      <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
-      <div className="flex-1 flex flex-col pt-[calc(64px+var(--announcement-height)+var(--safe-top))] sm:pt-[calc(96px+var(--announcement-height)+var(--safe-top))]">
+      <div className="flex-1 flex flex-col pt-[calc(var(--nav-height-mobile)+var(--announcement-height)+var(--safe-top))] sm:pt-[calc(var(--nav-height-desktop)+var(--announcement-height)+var(--safe-top))]">
         <ASRBaseModal 
           isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
           theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
