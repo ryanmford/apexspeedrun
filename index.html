@@ -1,68 +1,54 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-B4W7YVST8N');
-</script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-<title>Apex Speed Run</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Apex Speed Run | Data Vault</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Noto Sans for consistency) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons (Browser Ready) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-<meta name="theme-color" content="#09090b">
-<meta name="description" content="The official map, stats, and leaderboards for Apex Speed Run.">
+    <!-- Custom Styles (CSS Variables for Layout) -->
+    <link rel="stylesheet" href="styles.css">
 
-<!-- Mobile App Settings -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Apex Speed Run">
-<meta name="mobile-web-app-capable" content="yes">
-
-<!-- Favicon & Icons -->
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="apple-touch-icon" href="asr.jpg">
-<link rel="manifest" href="manifest.json">
-
-<!-- Social Metadata (Open Graph / Facebook) -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://apexspeedrun.com/">
-<meta property="og:title" content="Apex Speed Run">
-<meta property="og:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
-<meta property="og:image" content="asr.jpg">
-
-<!-- Social Metadata (Twitter) -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Apex Speed Run">
-<meta name="twitter:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
-<meta name="twitter:image" content="asr.jpg">
-
-<!-- Dependencies -->
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
-<!-- 
-  CRITICAL: This line links to the CSS fix we just made. 
-  Ensure styles.css contains the isolation code I provided in the previous turn.
--->
-<link rel="stylesheet" href="./styles.css">
-
-
+    <style>
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            margin: 0;
+            background-color: #000; /* Matches your dark theme default */
+        }
+        /* Loading State Styling */
+        #root:empty::before {
+            content: "CONNECTING TO LIVE ASR STATS";
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            font-weight: 900;
+            letter-spacing: 0.4em;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
 </head>
-<body class="text-slate-100 antialiased selection:bg-blue-500/30 selection:text-white">
+<body>
+    <!-- React Mount Point -->
+    <div id="root"></div>
 
-<!-- React Entry Point -->
-<div id="root"></div>
-
-<!-- JavaScript Entry Point (Parcel will bundle this) -->
-<script type="module" src="./index.js"></script>
-
-
+    <!-- 
+      Note: To run your React code on GitHub Pages, 
+      it should be compiled into a script (usually app.js). 
+      If you are using a basic setup, include your React bundle here:
+    -->
+    <script src="app.js"></script>
 </body>
 </html>
