@@ -1,148 +1,68 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-B4W7YVST8N');
-    </script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-    <title>Apex Speed Run</title>
-    
-    <meta name="theme-color" content="#09090b">
-    <meta name="description" content="The official map, stats, and leaderboards for Apex Speed Run.">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-B4W7YVST8N');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<title>Apex Speed Run</title>
 
-    <!-- Mobile App Settings -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Apex Speed Run">
-    <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- Favicon & Icons -->
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="asr.jpg">
-    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#09090b">
+<meta name="description" content="The official map, stats, and leaderboards for Apex Speed Run.">
 
-    <!-- Social Metadata (Open Graph / Facebook) -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://apexspeedrun.com/">
-    <meta property="og:title" content="Apex Speed Run">
-    <meta property="og:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
-    <meta property="og:image" content="asr.jpg">
+<!-- Mobile App Settings -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Apex Speed Run">
+<meta name="mobile-web-app-capable" content="yes">
 
-    <!-- Social Metadata (Twitter) -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Apex Speed Run">
-    <meta name="twitter:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
-    <meta name="twitter:image" content="asr.jpg">
+<!-- Favicon & Icons -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="asr.jpg">
+<link rel="manifest" href="manifest.json">
 
-    <!-- Dependencies -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <style>
-        /* 1. VIEWPORT STABILIZATION */
-        /* Force the browser to treat the app as the primary layer */
-        html, body { 
-            background-color: #000000 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 100% !important;
-            width: 100% !important;
-            overflow: hidden !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-        }
+<!-- Social Metadata (Open Graph / Facebook) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://apexspeedrun.com/">
+<meta property="og:title" content="Apex Speed Run">
+<meta property="og:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
+<meta property="og:image" content="asr.jpg">
 
-        /* 2. APP CONTAINER ENFORCEMENT */
-        #root {
-            position: fixed !important;
-            inset: 0 !important;
-            height: 100dvh !important;
-            width: 100vw !important;
-            display: flex !important;
-            flex-direction: column !important;
-            background-color: #000000 !important;
-            z-index: 2147483647 !important; /* Max possible z-index to beat host site overlays */
-            overflow: hidden !important;
-        }
+<!-- Social Metadata (Twitter) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Apex Speed Run">
+<meta name="twitter:description" content="The official map, stats, and leaderboards for Apex Speed Run.">
+<meta name="twitter:image" content="asr.jpg">
 
-        /* 3. SURGICAL COMPONENT FIXES */
-        /* Fixes the huge buttons by stripping parent site's button/padding styles */
-        #root button {
-            all: unset !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            cursor: pointer !important;
-            box-sizing: border-box !important;
-            width: auto !important;
-            height: auto !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
+<!-- Dependencies -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-        /* Fixes tiny search bar by overriding host site input constraints */
-        #root input {
-            all: unset !important;
-            display: block !important;
-            width: 100% !important;
-            height: 100% !important;
-            box-sizing: border-box !important;
-            color: inherit !important;
-        }
+<!-- 
+  CRITICAL: This line links to the CSS fix we just made. 
+  Ensure styles.css contains the isolation code I provided in the previous turn.
+-->
+<link rel="stylesheet" href="./styles.css">
 
-        /* Nav Isolation: Force navs to respect the absolute viewport */
-        #root nav {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 100 !important;
-        }
 
-        #root .bottom-nav-dock {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 100 !important;
-            transform: translateZ(0); /* Force hardware acceleration */
-        }
-
-        /* 4. MAP & BUBBLE FIXES */
-        /* Prevents host site from scaling map icons */
-        #root .leaflet-container img {
-            max-width: none !important;
-            height: auto !important;
-        }
-
-        /* Scrollable content area fix */
-        #root main {
-            flex: 1 !important;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-        }
-
-        /* Font Restoration */
-        body { font-family: 'Inter', sans-serif !important; }
-        .font-mono { font-family: 'JetBrains Mono', monospace !important; }
-    </style>
 </head>
 <body class="text-slate-100 antialiased selection:bg-blue-500/30 selection:text-white">
 
-    <!-- React Entry Point -->
-    <div id="root"></div>
-    
-    <!-- JavaScript Entry Point -->
-    <script type="module" src="./index.js"></script>
+<!-- React Entry Point -->
+<div id="root"></div>
+
+<!-- JavaScript Entry Point (Parcel will bundle this) -->
+<script type="module" src="./index.js"></script>
+
 
 </body>
 </html>
