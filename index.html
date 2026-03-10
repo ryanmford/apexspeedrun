@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-B4W7YVST8N');
-</script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-B4W7YVST8N');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
     <title>Apex Speed Run</title>
@@ -48,43 +47,76 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* Base Typography */
+        /* Base Typography & Variables */
         :root {
             --asr-bg-dark: #09090b;
         }
 
-        body { 
+        /* 1. LAYOUT ISOLATION FIX */
+        /* Forces the app to ignore host site scrolling/scaling issues */
+        html, body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: var(--asr-bg-dark);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            /* Allow natural overscroll gestures for Pull-to-Refresh */
-            overscroll-behavior-y: auto; 
+            background-color: var(--asr-bg-dark) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+            overflow: hidden !important; /* Stop host site from double-scrolling */
+        }
+
+        /* 2. THE RESET (Nuclear Option) */
+        /* Stops the website's default CSS from making your buttons huge or search bars tiny */
+        #root * {
+            box-sizing: border-box;
+        }
+
+        #root button {
+            all: unset; /* Strip every style the website tries to force on buttons */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        #root input {
+            all: unset; /* Strip every style the website tries to force on search bars */
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 3. NAV BAR & SCROLL FIX */
+        /* Locks the app to the viewport so the bottom nav stays fixed at the bottom */
+        #root {
+            position: relative;
+            height: 100dvh;
+            width: 100vw;
+            overflow-y: auto; 
             overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            background-color: var(--asr-bg-dark);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 4. MAP PROTECTION */
+        /* Prevents host site "img {max-width: 100%}" from breaking Leaflet markers */
+        .leaflet-container img {
+            max-width: none !important;
         }
 
         .font-mono { 
             font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
         }
 
-        /* BRAVE & MOBILE REFRESH FIX */
         html {
             height: -webkit-fill-available;
             -webkit-text-size-adjust: 100%;
         }
 
-        /* Optimize for touch & notched devices */
         * {
             -webkit-tap-highlight-color: transparent;
-            box-sizing: border-box;
-        }
-
-        /* Prevent layout shift on load */
-        #root {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
     </style>
 </head>
