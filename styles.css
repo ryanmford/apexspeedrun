@@ -1,98 +1,51 @@
-/* APEX SPEED RUN - GLOBAL ISOLATION LAYER */
+:root {
+    /* Safe Area Insets for modern mobile browsers (PWA/Mobile Notch support) */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-/* 1. VIEWPORT & BODY RESET */
-html,
-body {
-  background-color: #000000 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  left: 0 !important;
-  top: 0 !important;
-  -webkit-text-size-adjust: 100%;
-  font-family: 'Inter', sans-serif !important;
+    /* Fixed Layout Heights used in your React component logic */
+    --announcement-height: 28px;
+    --nav-height-mobile: 68px;
+    --nav-height-desktop: 76px;
+    --bottom-nav-height: 84px;
 }
 
-/* 2. THE ROOT FIREWALL */
-#root {
-  position: fixed !important;
-  inset: 0 !important;
-  height: 100dvh !important;
-  width: 100vw !important;
-  display: flex !important;
-  flex-direction: column !important;
-  background-color: #000000 !important;
-  z-index: 2147483647 !important;
-  overflow: hidden !important;
-  isolation: isolate !important;
+/* Premium Scrollbar Reset - Keeps the UI clean and minimalist */
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
 }
 
-/* 3. SURGICAL COMPONENT RESETS */
-#root button {
-  all: unset !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  box-sizing: border-box !important;
-  width: auto !important;
-  height: auto !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  text-transform: none !important;
-  font-family: inherit !important;
+/* Prevent accidental text selection on interactive UI elements */
+button, nav, .bottom-nav-dock {
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-#root input {
-  all: unset !important;
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  box-sizing: border-box !important;
-  color: inherit !important;
-  font-family: inherit !important;
+/* Base body fixes for 100dvh (Dynamic Viewport Height).
+   This ensures the app fills the screen correctly on mobile browsers 
+   where the address bar might expand or collapse.
+*/
+html, body {
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background-color: #000; /* Dark background matches dark theme default */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* 4. NAVIGATION FIXES */
-#root nav {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 100 !important;
+/* Ensure Leaflet maps don't break the layout stack */
+#asr-map-container {
+    isolation: isolate;
 }
 
-#root .bottom-nav-dock {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 100 !important;
-  background-color: inherit !important;
-}
-
-/* 5. MAP PROTECTION */
-#root .leaflet-container img {
-  max-width: none !important;
-  height: auto !important;
-}
-
-/* 6. CONTENT AREA SCROLLING */
-#root main {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  width: 100% !important;
-}
-
-/* 7. TYPOGRAPHY RECOVERY */
-.font-mono {
-  font-family: 'JetBrains Mono', monospace !important;
-}
-
-* {
-  -webkit-tap-highlight-color: transparent;
+/* Generic Utility for iOS Clipping 
+   Used by various components in your React code 
+*/
+.ios-clip-fix {
+    isolation: isolate;
+    overflow: hidden;
 }
