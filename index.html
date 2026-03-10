@@ -44,6 +44,10 @@
     <!-- React Mount Point -->
     <div id="root"></div>
 
-    <script src="index.js"></script>
+    <!-- 
+      FIXED: Added type="module" to handle React imports correctly.
+      Note: Ensure your React code is in index.js (or update the src below to app.js)
+    -->
+    <script type="module" src="index.js"></script>
 </body>
 </html>
