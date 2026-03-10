@@ -6,11 +6,11 @@ import {
   Video, HelpCircle, Building2, Map as MapIcon, GraduationCap, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
-  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer
+  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v20'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v23_launch'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -50,7 +50,7 @@ const normalizeName = (n) => {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") 
-    .replace(/[^a-z0-9]/g, '')     
+    .replace(/[^a-z0-9]/g, '')      
     .trim();
 };
 
@@ -231,7 +231,6 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
-    /* Global Reset for Finnicky Mobile Behavior */
     * {
       -webkit-tap-highlight-color: transparent;
     }
@@ -382,29 +381,50 @@ const CustomStyles = () => (
 
     .bottom-nav-dock {
       position: fixed;
-      bottom: calc(var(--safe-bottom) + 16px);
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 0;
+      left: 0;
+      right: 0;
       z-index: 100;
-      width: calc(100% - 32px);
-      max-width: 500px;
+      width: 100%;
     }
   `}</style>
 );
 
 // --- ATOMIC UI COMPONENTS ---
 
-const ASRStatTooltip = ({ title, desc, children, theme }) => (
-  <div className="group relative inline-block">
-    {children}
-    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 rounded-xl border shadow-2xl transition-all opacity-0 scale-95 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 z-[100] ${theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-800'}`}>
-      <div className="flex flex-col gap-1 text-left">
-        <p className="text-[10px] font-black uppercase tracking-tight opacity-90 leading-relaxed">{desc}</p>
-      </div>
-      <div className={`absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent ${theme === 'dark' ? 'border-t-zinc-700' : 'border-t-slate-300'}`}></div>
+const ASRStatTooltip = ({ title, desc, children, theme, position = "top" }) => {
+  const getPositionClasses = () => {
+    switch (position) {
+      case "bottom": return "top-full mt-2 left-1/2 -translate-x-1/2";
+      case "left": return "right-full mr-2 top-1/2 -translate-y-1/2";
+      case "top":
+      default: return "bottom-full mb-2 left-1/2 -translate-x-1/2";
+    }
+  };
+
+  const getArrowClasses = () => {
+    switch (position) {
+      case "bottom": return "bottom-full border-b-zinc-700 sm:border-b-slate-300 left-1/2 -translate-x-1/2 translate-y-[1px] rotate-180";
+      case "left": return "left-full border-l-zinc-700 sm:border-l-slate-300 top-1/2 -translate-y-1/2 -translate-x-[1px]";
+      case "top":
+      default: return "top-full border-t-zinc-700 sm:border-t-slate-300 left-1/2 -translate-x-1/2 translate-y-[-1px]";
+    }
+  };
+
+  return (
+    <div className="group relative inline-block overflow-visible">
+      {children}
+      {desc && (
+        <div className={`absolute ${getPositionClasses()} w-48 p-3 rounded-xl border shadow-2xl transition-all opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 z-[200] ${theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-800'}`}>
+          <div className="flex flex-col gap-1 text-left">
+            <p className="text-[10px] font-black uppercase tracking-tight opacity-90 leading-relaxed">{desc}</p>
+          </div>
+          <div className={`absolute border-8 border-transparent ${getArrowClasses()}`}></div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const ASRSectionHeading = ({ children, theme, className = "" }) => (
     <h3 className={`${THEME.HEADING_SM} px-1 sm:px-2 mb-4 ${theme === 'dark' ? 'text-zinc-400' : 'text-slate-800'} ${className}`}>
@@ -489,7 +509,7 @@ const ASRPerformanceBadge = ({ type, count = 1 }) => {
     </span>;
 };
 
-const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon }) => {
+const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon, index = 0, tooltipPosition = "top" }) => {
   const statInfo = {
     'RATING': { desc: "OVERALL RATING = POINTS / RUNS" },
     '🔥': { desc: "FIRE BONUS FOR THE FASTEST RUNS." },
@@ -499,10 +519,15 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
 
   const info = statInfo[label] || (tooltip ? { desc: tooltip } : null);
 
-  const cardContent = (
-    <div className={`stat-card-container relative flex flex-col border p-3 sm:p-5 rounded-3xl transition-all ${THEME.CARD(theme)} ${info ? 'cursor-help' : ''} overflow-visible`}>
-        <span className={`${THEME.LABEL} mb-1.5 flex items-center gap-1.5 text-inherit whitespace-nowrap overflow-visible shrink-0`}>
-            {label} {info && <Info size={10} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+  return (
+    <div className={`stat-card-container relative flex flex-col border p-3 sm:p-5 rounded-3xl transition-all ${THEME.CARD(theme)} overflow-visible`}>
+        <span className={`${THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap overflow-visible shrink-0`}>
+            {label} 
+            {info && (
+              <ASRStatTooltip desc={info.desc} theme={theme} position={tooltipPosition}>
+                <Info size={10} className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
+              </ASRStatTooltip>
+            )}
         </span>
         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0 min-w-0">
           {icon && <span className="text-xs sm:text-sm shrink-0 mb-0.5">{icon}</span>}
@@ -510,16 +535,6 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
         </div>
     </div>
   );
-
-  if (info) {
-    return (
-      <ASRStatTooltip desc={info.desc} theme={theme}>
-        {cardContent}
-      </ASRStatTooltip>
-    );
-  }
-
-  return cardContent;
 };
 
 const ASRListItem = ({ 
@@ -564,7 +579,7 @@ const ASRListItem = ({
                   onClick={e => e.stopPropagation()} 
                   className="p-2 sm:p-2.5 rounded-xl transition-all hover:scale-120 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                 >
-                  <Play size={18} strokeWidth={2.5} className={THEME.ICON} />
+                  <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                 </a>
               ) : <div className="p-2 sm:p-2.5" />}
             </div>
@@ -622,7 +637,7 @@ const ASRListItem = ({
               onClick={e => e.stopPropagation()} 
               className="p-2.5 rounded-xl transition-all hover:scale-120 text-slate-500 hover:text-blue-600 flex items-center justify-center"
             >
-              <Play size={20} strokeWidth={2.5} className={THEME.ICON} />
+              <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
             </a>
           ) : <div className="p-2.5" />}
         </div>
@@ -671,7 +686,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
       href={config.link} 
       target="_blank" 
       rel="noopener noreferrer" 
-      className="group block w-full my-4 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] transition-all duration-300 ios-clip-fix"
+      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] transition-all duration-300 ios-clip-fix"
     >
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-5">
@@ -684,7 +699,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
           </div>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl group-hover:bg-blue-50 transition-colors whitespace-nowrap">
-          {config.btnText} <ChevronRight size={14} strokeWidth={3} className={THEME.ICON} />
+          {config.btnText} <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" strokeWidth={3} />
         </div>
       </div>
     </a>
@@ -725,7 +740,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
         <a href={`mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
               <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
-                <Building2 size={16} className={THEME.ICON} />
+                <Building2 className="w-4 h-4" />
               </div>
               <div className="flex flex-col text-left">
                 <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Partnership Available</span>
@@ -758,21 +773,21 @@ const ASRInlineValueCard = ({ theme, type }) => {
     skool_training: {
       title: "Apex Global Network",
       desc: "Join our worldwide network on Apex Skool app.",
-      icon: <Users size={18} className={THEME.ICON} />,
+      icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
       link: SKOOL_LINK,
       btn: "JOIN NOW"
     },
     shop_gear: {
       title: "Verify Your Run",
       desc: "Submit and verify your video proof via Apex Skool app.",
-      icon: <Video size={18} className={THEME.ICON} />,
+      icon: <Video className="w-4 h-4 sm:w-5 sm:h-5" />,
       link: SKOOL_LINK,
       btn: "GET VERIFIED"
     },
     pro_setter: {
         title: "Course Setter Certification",
         desc: "Take the course setter certification on Apex Skool app.",
-        icon: <GraduationCap size={18} className={THEME.ICON} />,
+        icon: <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />,
         link: SKOOL_LINK,
         btn: "LEARN MORE"
     }
@@ -816,22 +831,22 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
     {
       title: "How to get started",
       desc: "Because our courses are set in outdoor, public spaces, anyone can start anytime.",
-      icon: <Compass size={44} className="text-blue-500" />
+      icon: <Compass className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
     },
     {
       title: "1. Find a course",
       desc: "Use our map and course guides to find a course near you. Join Apex Skool app to access the latest ASR resources.",
-      icon: <Compass size={44} className="text-blue-500" />
+      icon: <Compass className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
     },
     {
       title: "2. Film your run",
       desc: "Video proof is everything. Check Apex Skool app for filming requirements and official rules to ensure that your best runs count.",
-      icon: <Video size={44} className="text-blue-600" />
+      icon: <Video className="w-10 h-10 sm:w-11 sm:h-11 text-blue-600" />
     },
     {
       title: "3. Get verified",
       desc: "Post your fastest runs in Apex Skool app for official review. Once verified, your stats will update and broadcast live on our website.",
-      icon: <ShieldCheck size={44} className="text-blue-600" />,
+      icon: <ShieldCheck className="w-10 h-10 sm:w-11 sm:h-11 text-blue-600" />,
       action: "JOIN APEX SKOOL APP"
     }
   ];
@@ -855,11 +870,11 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
           className="absolute top-8 left-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" 
           title={step > 0 ? "Go Back" : "Undo / Close"}
         >
-          <CornerUpLeft size={24} strokeWidth={2.5} className={THEME.ICON} />
+          <CornerUpLeft className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
         </button>
 
         <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20">
-          <X size={24} strokeWidth={2.5} className={THEME.ICON} />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
         </button>
         
         <div className="flex flex-col items-center text-center space-y-10 relative z-10 pt-12 sm:pt-0">
@@ -891,14 +906,14 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
                   rel="noopener noreferrer"
                   className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-2xl whitespace-nowrap"
                 >
-                  {steps[step].action} <CornerUpRight size={20} strokeWidth={2.5} className={THEME.ICON} />
+                  {steps[step].action} <CornerUpRight className="w-5 h-5" strokeWidth={2.5} />
                 </a>
               ) : (
                 <button 
                   onClick={nextStep} 
                   className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 text-xs sm:text-sm shadow-2xl whitespace-nowrap"
                 >
-                  Next <ChevronRight size={20} strokeWidth={2.5} className={THEME.ICON} />
+                  Next <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
                 </button>
               )}
             </div>
@@ -956,21 +971,21 @@ const ASRBaseModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl transition-opacity duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-6 bg-black/90 backdrop-blur-xl transition-opacity duration-200" onClick={onClose}>
       <div 
         className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-24px)] sm:h-[85dvh] relative z-20 overflow-hidden ios-clip-fix`} 
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header: Rigid Height */}
-        <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-30`}>
+        <div className={`shrink-0 flex flex-col p-6 sm:p-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-[130]`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                   <button aria-label="Go Back" onClick={onBack} className="group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Back">
-                      <CornerUpLeft size={18} strokeWidth={2.5} className={`${THEME.ICON} text-slate-200 group-hover:text-white`} />
+                      <CornerUpLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                   </button>
                   {canGoForward && (
                       <button aria-label="Go Forward" onClick={onForward} className="group p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Forward">
-                          <CornerUpRight size={18} strokeWidth={2.5} className={`${THEME.ICON} text-slate-200 group-hover:text-white`} />
+                          <CornerUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                       </button>
                   )}
                   {breadcrumbs && breadcrumbs.length > 0 && (
@@ -991,7 +1006,7 @@ const ASRBaseModal = ({
                   )}
               </div>
               <button aria-label="Close Modal" onClick={onClose} className="p-2.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
-                  <X size={18} strokeWidth={2.5} className={THEME.ICON} />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
           </div>
           <div className="w-full">{header}</div>
@@ -1000,7 +1015,7 @@ const ASRBaseModal = ({
         {/* Modal Content: Scrollable flex area with rigid parent constraint */}
         <div 
           ref={scrollContainerRef} 
-          className={`flex-1 min-h-0 overflow-y-auto p-6 sm:p-12 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}
+          className={`flex-1 min-h-0 overflow-y-auto p-6 sm:p-12 space-y-16 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}
         >
           <div className="pb-16">
             {children}
@@ -1015,14 +1030,14 @@ const ASRBaseModal = ({
 
 const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
   const stats = [
-    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap size={14} className={THEME.ICON} />, color: 'text-blue-600' },
-    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap size={14} className={THEME.ICON} />, color: 'text-blue-600' },
-    { label: 'Diff', value: course.difficulty || '-', icon: <Compass size={14} className={THEME.ICON} /> }, 
-    { label: 'Players', value: course.totalAllTimeAthletes, icon: <Users size={14} className={THEME.ICON} /> },
-    { label: 'Length', value: course.length ? `${course.length}m` : '-', icon: <Ruler size={14} className={THEME.ICON} /> },
-    { label: 'Elev', value: course.elevation ? `${course.elevation}m` : '-', icon: <Mountain size={14} className={THEME.ICON} /> },
-    { label: 'Type', value: course.type || '-', icon: <Dna size={14} className={THEME.ICON} /> },
-    { label: 'Date', value: course.dateSet || '-', icon: <Calendar size={14} className={THEME.ICON} /> }
+    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
+    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
+    { label: 'Diff', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
+    { label: 'Players', value: course.totalAllTimeAthletes, icon: <Users className="w-3.5 h-3.5" /> },
+    { label: 'Length', value: course.length ? `${course.length}m` : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
+    { label: 'Elev', value: course.elevation ? `${course.elevation}m` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
+    { label: 'Type', value: course.type || '-', icon: <Dna className="w-3.5 h-3.5" /> },
+    { label: 'Date', value: course.dateSet || '-', icon: <Calendar className="w-3.5 h-3.5" /> }
   ];
 
   return (
@@ -1032,7 +1047,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
         <ASRRankList title="WOMEN'S TOP 10" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
       </div>
 
-      <div className="space-y-8 mt-14">
+      <div className="space-y-8 mt-16">
         <ASRSectionHeading theme={theme} className="text-left">COURSE STATS</ASRSectionHeading>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {stats.map((s, i) => (
@@ -1048,13 +1063,13 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
       </div>
       
       {(course.leadSetters || course.assistantsetters) && (
-        <div className="space-y-8 mt-14 text-left">
+        <div className="space-y-8 mt-16 text-left">
           <ASRSectionHeading theme={theme}>COURSE SETTERS</ASRSectionHeading>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Leads</span>
-                <div className="text-[15px] sm:textlg font-mono font-black text-blue-600">
+                <div className="text-[15px] sm:text-lg font-mono font-black text-blue-600">
                   <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1071,7 +1086,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
         </div>
       )}
 
-      <div className="pt-4 mt-8 flex flex-col gap-4">
+      <div className="pt-8 mt-8 flex flex-col gap-4">
         <ASRPromotionBanner type="setter" theme={theme} />
       </div>
     </div>
@@ -1079,7 +1094,8 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
 };
 
 const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal }) => {
-  const [activeRole, setActiveRole] = useState(initialRole || 'all-time');
+  // LANDING TABS REORDERED: OPEN FIRST, ALL-TIME SECOND
+  const [activeRole, setActiveRole] = useState(initialRole || 'asr-open');
   
   const pKey = useMemo(() => {
     if (identity.pKey && (atPerfs[identity.pKey] || opPerfs[identity.pKey])) return identity.pKey;
@@ -1114,28 +1130,28 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left overflow-visible">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-14 overflow-visible">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-16 overflow-visible">
                     {setterStats.map((s, i) => (
-                      <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} />
+                      <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} tooltipPosition={i < 4 ? "bottom" : "top"} />
                     ))}
                 </div>
                 <ASRSectionHeading theme={theme} className="text-left">VERIFIED SETS</ASRSectionHeading>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-3 mt-4">
                     {setterCourses.length > 0 ? setterCourses.map((c, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                        icon={<MapPin size={22} strokeWidth={2.5} className={THEME.ICON} />}
+                        icon={<MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} />}
                         stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
                         videoUrl={c.demoVideo}
                         onClick={() => openModal('course', c)}
                       />
                     )) : (
                         <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
-                            <Building2 size={40} className={THEME.ICON} /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified sets found</span>
+                            <Building2 className="w-10 h-10" /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified sets found</span>
                         </div>
                     )}
                 </div>
-                <div className="pt-8"><ASRPromotionBanner type="setter" theme={theme} /></div>
+                <div className="pt-12"><ASRPromotionBanner type="setter" theme={theme} /></div>
             </div>
         );
     }
@@ -1183,19 +1199,19 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left overflow-visible">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14 overflow-visible">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-16 overflow-visible">
                 {playerStats.map((s, i) => (
-                  <ASRStatCard key={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
+                  <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} tooltipPosition={i < 3 ? "bottom" : "top"} />
                 ))}
             </div>
             <ASRSectionHeading theme={theme} className="text-left">VERIFIED RUNS</ASRSectionHeading>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-3 mt-4">
                 {courseData.length > 0 ? courseData.map((c, i) => {
                     const target = allCourses.find(x => x.name.toUpperCase() === c.label.toUpperCase());
                     return (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                        icon={target?.coordinates ? <MapPin size={22} strokeWidth={2.5} className={THEME.ICON} /> : <div className="p-2.5 opacity-20"><MapPin size={22} /></div>}
+                        icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
                         stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
                         videoUrl={c.videoUrl}
                         badgeContent={<>{c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}{c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}</>}
@@ -1204,18 +1220,18 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                     );
                 }) : (
                     <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
-                        <Compass size={40} className={THEME.ICON} /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified runs found</span>
+                        <Compass className="w-10 h-10" /><span className="text-[10px] font-black uppercase whitespace-normal break-words">No verified runs found</span>
                     </div>
                 )}
             </div>
-            <div className="pt-8"><ASRPromotionBanner type="coach" theme={theme} /></div>
+            <div className="pt-12"><ASRPromotionBanner type="coach" theme={theme} /></div>
         </div>
     );
   };
 
   const tabs = [
-    { id: 'all-time', label: 'ALL-TIME' },
-    { id: 'asr-open', label: 'OPEN' },
+    { id: 'asr-open', label: 'OPEN' }, // Open is now first
+    { id: 'all-time', label: 'ALL-TIME' }, // All-time is second
     { id: 'setter', label: 'SETS' }
   ];
 
@@ -1260,14 +1276,14 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-6 mb-14">
+      <div className="grid grid-cols-2 gap-6 mb-16">
           <ASRStatCard label="RANKED PLAYERS" value={regionalPlayers.length} theme={theme} />
           <ASRStatCard label="ACTIVE COURSES" value={regionalCourses.length} theme={theme} />
       </div>
-      <div className="space-y-14 text-left">
+      <div className="space-y-16 text-left">
           <div>
               <ASRSectionHeading theme={theme}>TOP ATHLETES</ASRSectionHeading>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-3 mt-4">
                   {regionalPlayers.slice(0, 10).map((p, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
@@ -1279,11 +1295,11 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
           </div>
           <div>
               <ASRSectionHeading theme={theme}>TOP COURSES</ASRSectionHeading>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-3 mt-4">
                   {regionalCourses.slice(0, 10).map((c, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                        icon={<MapPin size={22} strokeWidth={2.5} className={THEME.ICON} />}
+                        icon={<MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} />}
                         stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
                         onClick={() => openModal('course', c)}
                       />
@@ -1309,7 +1325,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
       const pKey = athleteData.pKey || pKeyFromData;
       const openAthleteData = openRankings.find(p => p.pKey === pKey) || openRankings.find(p => normalizeName(p.name) === normalizeName(athleteData.name));
       const setterData = settersWithImpact.find(s => normalizeName(s.name) === pKey) || settersWithImpact.find(s => normalizeName(s.name) === normalizeName(athleteData.name));
-      const targetRole = activeModal.roleOverride || (activeModal.type === 'player' ? 'all-time' : 'setter');
+      const targetRole = activeModal.roleOverride || (activeModal.type === 'player' ? 'asr-open' : 'setter');
       
       return (
         <PlayerDetails 
@@ -1369,7 +1385,8 @@ const useASRData = () => {
     } catch (e) { console.warn("Cache recovery fail-safe."); }
 
     const cacheBucket = Math.floor(Date.now() / REFRESH_INTERVAL); 
-    const getCsv = (q) => encodeURI(`https://docs.google.com/spreadsheets/d/1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`);
+    const SPREADSHEET_ID = '1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4';
+    const getCsv = (q) => encodeURI(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`);
 
     const safeFetch = async (url) => {
         try {
@@ -1381,12 +1398,12 @@ const useASRData = () => {
 
     try {
       const [rM, rF, rLive, rSet, rSettersM, rSettersF] = await Promise.all([
-        safeFetch(getCsv('sheet=RANKINGS (M)')),
-        safeFetch(getCsv('sheet=RANKINGS (F)')),
-        safeFetch(getCsv('gid=623600169')),
-        safeFetch(getCsv('gid=1961325686')),
-        safeFetch(getCsv('gid=595214914')),
-        safeFetch(getCsv('gid=566627843'))
+        safeFetch(getCsv('gid=595214914')), 
+        safeFetch(getCsv('gid=566627843')), 
+        safeFetch(getCsv('gid=623600169')), 
+        safeFetch(getCsv('gid=1961325686')), 
+        safeFetch(getCsv('gid=595214914')), 
+        safeFetch(getCsv('gid=566627843'))  
       ]);
       
       const hasTotalError = rM === null && rF === null && rLive === null;
@@ -1488,7 +1505,7 @@ const useASRData = () => {
                       country: fixed.name.toUpperCase() || "UNKNOWN", 
                       difficulty: (vals.rating || "").trim(),
                       length: (vals.length || "").trim(),
-                      elevation: (vals.elev || "").trim(),
+                      elevation: (vals.elevation || "").trim(),
                       type: (vals.type || "").trim(),
                       dateSet: (vals.dateSet || "").trim(),
                       setter: (vals.leads || "") + ((vals.assists) ? `, ${vals.assists}` : ""),
@@ -1560,7 +1577,7 @@ const useASRData = () => {
           }
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
           if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
-            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: dataRows[0].result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
           }
           if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
           if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
@@ -1572,7 +1589,7 @@ const useASRData = () => {
           if (isASROpenTag || isInOpenWindow) {
             if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
             if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
-              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: dataRows[0].result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
             }
             if (!openCourseLeaderboards[pGender][normC]) openCourseLeaderboards[pGender][normC] = {};
             if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
@@ -1899,7 +1916,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
     if (!isScriptsLoaded) {
         return (
             <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
-                <div className="animate-spin opacity-70 mb-4"><ChevronsRight size={24} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600`} style={{ transform: 'skewX(-18deg)' }} /></div>
+                <div className="animate-spin opacity-70 mb-4"><ChevronsRight className="w-6 h-6 text-blue-600" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} /></div>
                 <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP SOURCE...</div>
             </div>
         );
@@ -1910,12 +1927,12 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
             <div ref={mapContainerRef} className="w-full h-full z-[10]" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40] pointer-events-none">
               <button onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
-                <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
+                <Navigation className={`w-3 h-3 mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
               </button>
             </div>
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
-                    <Globe size={12} className={THEME.ICON} /> {isPanelOpen ? 'HIDE' : 'COURSES BY REGION'}
+                    <Globe className="w-3 h-3" /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
@@ -1965,9 +1982,9 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     const displayAthletes = [...athletes.slice(0, 10)];
     while (displayAthletes.length < 3) displayAthletes.push(null);
     return (
-        <div className="space-y-1">
+        <div className="space-y-4">
             <ASRSectionHeading theme={theme}>{title}</ASRSectionHeading>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-3">
                 {displayAthletes.map((athleteRow, i) => {
                     if (!athleteRow) {
                         return (
@@ -2005,11 +2022,11 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     );
 };
 
-const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
+const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, setMapMode }) => {
   return (
-    <div className="w-full flex items-center gap-2 sm:gap-4 my-2 sm:my-3 animate-in fade-in slide-in-from-top-2 duration-500">
+    <div className="w-full flex items-center gap-2 sm:gap-4 my-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex-1 relative group w-full">
-            <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600`}><Search size={18} strokeWidth={2.5} className={THEME.ICON} /></div>
+            <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600`}><Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></div>
             <input 
               type="text" 
               aria-label="Search" 
@@ -2020,18 +2037,38 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view }) => {
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
-                <X size={20} strokeWidth={2.5} className={THEME.ICON} />
+                <X className="w-5 h-5" strokeWidth={2.5} />
               </button>
             )}
         </div>
         {view === 'players' && (
             <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
-                <div className="flex gap-1.5">
+                <div className="flex gap-1">
                     {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                        <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-[0.9rem] sm:rounded-[1.8rem] text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
+                        <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
                           {g.l}
                         </button>
                     ))}
+                </div>
+            </div>
+        )}
+        {view === 'map' && (
+            <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
+                <div className="flex gap-1">
+                    <button 
+                      onClick={() => setMapMode('list')} 
+                      className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setMapMode('map')} 
+                      className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                      title="Map View"
+                    >
+                      <MapIcon className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
         )}
@@ -2050,7 +2087,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         <div className={`transition-opacity shrink-0 ${medalSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-          <ChevronDown size={16} strokeWidth={3} className={`${THEME.ICON} ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
         </div>
       </div>
     </th>
@@ -2058,6 +2095,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
 
   const hofStatDetails = {
     rating: { desc: "OVERALL RATING = POINTS / RUNS" },
+    runs: { desc: "TOTAL NUMBER OF VERIFIED RUNS." },
+    winPercentage: { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." },
+    wins: { desc: "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD." },
     contributionScore: { desc: "Project contribution score earned via setting and support." },
     totalFireCount: { desc: "Elite markers earned by beating specific course thresholds." },
     impact: { desc: "Total runs verified on courses set by this individual." },
@@ -2067,14 +2107,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
   if (!stats || !stats.topStats) {
       return (
           <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
-              <Trophy size={60} className="mb-6" />
+              <Trophy className="w-14 h-14 mb-6" />
               <h3 className="text-xl font-black uppercase tracking-[0.3em]">RECALIBRATING LEGENDS...</h3>
           </div>
       );
   }
 
   return (
-    <div className="space-y-12 sm:space-y-24 animate-in fade-in duration-700 pb-32 text-left overflow-visible">
+    <div className="space-y-16 animate-in fade-in duration-700 pb-32 text-left overflow-visible">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 overflow-visible">
         {[
           { l: 'TOP RATING', k: 'rating' },
@@ -2088,15 +2128,16 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ].map((sec) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border flex flex-col overflow-visible ${THEME.CARD(theme)}`}>
               <div className={`p-5 border-b border-inherit opacity-80 ${THEME.HEADING_SM} flex items-center justify-between overflow-visible group`}>
-                <ASRStatTooltip desc={hofStatDetails[sec.k]?.desc} theme={theme}>
-                  <div className="flex items-center gap-2 cursor-help">
-                    {sec.l} <Info size={12} className="opacity-30 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </ASRStatTooltip>
+                <div className="flex items-center gap-2 w-full justify-between">
+                  <span>{sec.l}</span>
+                  <ASRStatTooltip desc={hofStatDetails[sec.k]?.desc} theme={theme} position="left">
+                    <Info className="w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
+                  </ASRStatTooltip>
+                </div>
               </div>
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'} overflow-visible`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
-                  <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, null, null, 'all-time')}>
+                  <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}>
                     <div className="flex items-center gap-3 text-left">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col">
@@ -2168,7 +2209,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip,
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-          <ChevronDown size={16} strokeWidth={3} className={`${THEME.ICON} ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
         </div>
       </div>
     </div>
@@ -2200,7 +2241,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
         return result;
     }, [data, visibleCount]);
 
-    const topOffset = "top-[calc(var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--nav-height-desktop)+var(--announcement-height))]";
+    const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))]";
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
@@ -2214,13 +2255,15 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
                       paddingClass={col.type === 'profile' ? "pl-4 sm:pl-8 pr-2 flex-1" : "px-2 sm:px-4 shrink-0"}
                     />
                   ))}
-                  <div className="w-10 sm:w-16 shrink-0" />
+                  <div className="w-10 sm:w-16 shrink-0 flex items-center justify-center pr-4">
+                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest opacity-40">RULES</span>
+                  </div>
                 </div>
             </div>
             <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'} overflow-visible`}>
                 {visibleData.map((item, idx) => {
                     if (item.isDivider) return <div key={idx} className="py-14 text-center opacity-60 text-[11px] font-black uppercase tracking-[0.5em]">{item.label}</div>;
-                    if (item.isUtility) return <div key={idx} className="px-6 py-6"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
+                    if (item.isUtility) return <div key={idx} className="px-6 py-10"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
                     const athleteStats = [
                       { value: typeof item.rating === 'number' ? item.rating.toFixed(2) : '--.--' },
                       { value: item.runs || 0 }
@@ -2248,31 +2291,34 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick }) => {
 
 // --- REFINED BRANDING & NAV COMPONENTS ---
 
-const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, eventType, setEventType }) => {
+const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) => {
     return (
-        <nav className={`fixed top-[var(--announcement-height)] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
-            {/* BRANDING LEFT: Persistent Logo */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" onClick={() => setView('map')}>
-                <div className="text-blue-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110">
-                    <ChevronsRight strokeWidth={3} style={{ transform: 'skewX(-15deg)' }} className="w-7 h-7 sm:w-8 sm:h-8" />
-                </div>
+        <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
+            {/* BRANDING LEFT */}
+            <div 
+                className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" 
+                onClick={() => {
+                    setView('players');
+                    setEventType('open');
+                }}
+            >
                 <div className="flex flex-col leading-none">
                     <span className="font-black text-sm sm:text-xl lg:text-2xl uppercase italic tracking-tighter">APEX SPEED RUN</span>
                 </div>
             </div>
 
-            {/* EVENT TOGGLE CENTER */}
+            {/* EVENT TOGGLE CENTER - SYNCED STYLING WITH SEARCH TABS */}
             {view !== 'hof' && (
-              <div className={`flex items-center p-1 rounded-xl sm:rounded-2xl border-2 transition-all ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
+              <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
                 <button 
                   onClick={() => setEventType('open')} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   OPEN
                 </button>
                 <button 
                   onClick={() => setEventType('all-time')} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   ALL-TIME
                 </button>
@@ -2282,42 +2328,36 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, eventType, set
             {/* UTILS RIGHT */}
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3 h-full">
                 <button 
-                  onClick={onOpenIntro} 
-                  className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
-                  title="Get Started"
-                >
-                  <HelpCircle strokeWidth={2.5} className={`${THEME.ICON} w-4 h-4 sm:w-[18px] sm:h-[18px]`} />
-                </button>
-                <button 
                   onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
                   className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Toggle Theme"
                 >
-                  {theme === 'dark' ? <Sun size={14} strokeWidth={2.5} className={THEME.ICON} /> : <Moon size={14} strokeWidth={2.5} className={THEME.ICON} />}
+                  {theme === 'dark' ? <Sun className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Moon className="w-3.5 h-3.5" strokeWidth={2.5} />}
                 </button>
             </div>
         </nav>
     );
 };
 
-const ASRBottomNav = ({ view, setView, theme }) => {
+const ASRBottomNav = ({ view, setView, theme, onOpenIntro }) => {
   const items = [
-    { id: 'map', label: 'MAP', icon: <Globe size={20} /> },
-    { id: 'players', label: 'RANKINGS', icon: <Users size={20} /> },
-    { id: 'hof', label: 'HOF', icon: <Trophy size={20} /> }
+    { id: 'players', label: 'PLAYERS', icon: <Users className="w-5 h-5" /> }, // Players listed first
+    { id: 'map', label: 'COURSES', icon: <Globe className="w-5 h-5" /> },
+    { id: 'hof', label: 'HOF', icon: <Trophy className="w-5 h-5" /> },
+    { id: 'start', label: 'START', icon: <Play className="w-5 h-5 fill-current" /> }
   ];
 
   return (
     <div className="bottom-nav-dock">
-      <div className={`p-1.5 rounded-[2rem] border-2 shadow-2xl backdrop-blur-3xl flex items-center justify-around transition-all duration-500 ${theme === 'dark' ? 'bg-black/80 border-zinc-800 shadow-blue-900/20' : 'bg-white/90 border-slate-200'}`}>
+      <div className={`w-full px-4 pt-3 pb-[calc(12px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
         {items.map(item => (
           <button
             key={item.id}
-            onClick={() => setView(item.id)}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-2xl transition-all duration-300 ${view === item.id ? 'bg-blue-600 text-white shadow-lg scale-105' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            onClick={() => item.id === 'start' ? onOpenIntro() : setView(item.id)}
+            className={`flex flex-col items-center justify-center gap-1.5 flex-1 py-1 rounded-2xl transition-all duration-300 active:scale-95 ${view === item.id ? 'text-blue-600 scale-105' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
-            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest">{item.label}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
           </button>
         ))}
       </div>
@@ -2329,7 +2369,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     return (
       <div 
         onClick={onOpenIntro}
-        className={`fixed top-0 left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 cursor-pointer group/bar active:opacity-90 ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50 hover:bg-[#2563eb]' : 'bg-blue-600 border-blue-700 text-white hover:bg-blue-500'}`}
+        className={`fixed top-[var(--safe-top)] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 cursor-pointer group/bar active:opacity-90 ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50 hover:bg-[#2563eb]' : 'bg-blue-600 border-blue-700 text-white hover:bg-blue-500'}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none">
           <span className="animate-pulse text-xs leading-none">●</span>
@@ -2368,7 +2408,8 @@ export default function App() {
   const [theme, setTheme] = useState('dark');
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
-  const [view, setView] = useState('map'); 
+  const [view, setView] = useState('players'); // Landing on Players
+  const [mapMode, setMapMode] = useState('list'); // Landing on List
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
@@ -2380,9 +2421,11 @@ export default function App() {
   useEffect(() => { setSearch(''); }, [view, eventType, gen]);
 
   const openModal = useCallback((type, data, roleOverride = null, contextOverride = null) => {
-    setModalHistory(p => [...p.slice(0, historyIndex + 1), { type, data, roleOverride, contextOverride }]);
+    // If we're on players page, click should respect the current view's context
+    const effectiveRole = roleOverride || (type === 'player' ? (isAllTimeContext ? 'all-time' : 'asr-open') : (type === 'setter' ? 'setter' : null));
+    setModalHistory(p => [...p.slice(0, historyIndex + 1), { type, data, roleOverride: effectiveRole, contextOverride }]);
     setHistoryIndex(p => p + 1);
-  }, [historyIndex]);
+  }, [historyIndex, isAllTimeContext]);
 
   const closeAllModals = useCallback(() => { setHistoryIndex(-1); setModalHistory([]); }, []);
   const goBackModal = useCallback(() => setHistoryIndex(c => Math.max(-1, c - 1)), []);
@@ -2488,28 +2531,30 @@ export default function App() {
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
         return (
           <div className="flex flex-col gap-6 w-full text-left overflow-visible animate-in fade-in duration-300">
-            <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full overflow-visible">
+            <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full overflow-visible">
               <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="flex flex-col min-w-0 flex-1 overflow-visible">
-                <h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tighter whitespace-normal break-words uppercase leading-none mb-2 text-inherit">{data.name}</h2>
-                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words overflow-visible">
+                <div className="mb-2">
+                   <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
+                </div>
+                
+                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words overflow-visible mb-3">
                   {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-900/50 text-blue-500 hover:border-blue-500' : 'border-slate-300 text-slate-400 hover:border-blue-600 hover:text-blue-600'} whitespace-nowrap`}>
+                      <MapPin size={10} /> MAP
+                    </a>
+                    <a href={data.demoVideo || "#"} target="_blank" className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-900/50 text-rose-500 hover:border-rose-500' : 'border-slate-300 text-slate-400 hover:border-rose-600 hover:text-rose-600'} whitespace-nowrap`}>
+                      <Play size={10} /> RULES
+                    </a>
                 </div>
               </div>
             </div>
             <ASRPatronPill course={data} theme={theme} />
-            <div className="flex flex-row items-center gap-3 w-full">
-              <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target={data.coordinates ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[64px] sm:h-[72px] text-center ${data.coordinates ? 'border-blue-600/50 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
-                <MapPin size={14} className={THEME.ICON} />
-                <span>MAP</span>
-              </a>
-              <a href={data.demoVideo || "#"} target={data.demoVideo ? "_blank" : "_self"} rel="noopener noreferrer" className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-4 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all border shadow-xl h-[64px] sm:h-[72px] text-center ${data.demoVideo ? 'border-rose-600/50 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-zinc-800/40 text-zinc-600/50 grayscale opacity-40 cursor-not-allowed'} whitespace-nowrap`}>
-                <Play size={14} className={THEME.ICON} />
-                <span>RULES</span>
-              </a>
-            </div>
           </div>
         );
     }
@@ -2518,10 +2563,10 @@ export default function App() {
           <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left overflow-visible animate-in fade-in duration-300">
             <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
             <div className="min-w-0 flex-1 flex flex-col justify-center items-center sm:items-start text-center sm:text-left overflow-visible">
-                <div className="flex wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-2 min-w-0 w-full overflow-visible"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
+                <div className="flex wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mb-3 min-w-0 w-full overflow-visible"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
                 <div className="flex items-center gap-3 sm:gap-4 mt-1 overflow-visible">
                     {data.region && <div className="text-2xl sm:text-3xl leading-none flex items-center gap-1.5 drop-shadow-sm">{data.region}</div>}
-                    {data.igHandle && <a href={`https://instagram.com/${data.igHandle}`} target="_blank" rel="noopener noreferrer" className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`} title={`@${data.igHandle}`}><Instagram size={18} strokeWidth={2.5} className="text-[#E1306C] transition-transform group-hover/ig:rotate-6" /></a>}
+                    {data.igHandle && <a href={`https://instagram.com/${data.igHandle}`} target="_blank" rel="noopener noreferrer" className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`} title={`@${data.igHandle}`}><Instagram className="w-[18px] h-[18px] text-[#E1306C] transition-transform group-hover/ig:rotate-6" strokeWidth={2.5} /></a>}
                 </div>
             </div>
           </div>
@@ -2531,7 +2576,7 @@ export default function App() {
       return (
         <div className="flex items-center gap-6 sm:gap-10 text-left overflow-visible animate-in fade-in duration-300">
             <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
-            <div className="flex flex-col overflow-visible"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit whitespace-normal break-words">{data.name}</h2><div className="text-3xl sm:text-5xl mt-3">{data.flag}</div></div>
+            <div className="flex flex-col overflow-visible"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit whitespace-normal break-words">{data.name}</h2><div className="text-3xl sm:text-5xl mt-4">{data.flag}</div></div>
         </div>
       );
     }
@@ -2539,18 +2584,17 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(80px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(100px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASRNavBar 
         theme={theme} setTheme={setTheme} view={view} setView={setView} 
-        onOpenIntro={() => setShowIntro(true)} 
         eventType={eventType} setEventType={setEventType}
       />
-      <ASRBottomNav view={view} setView={setView} theme={theme} />
+      <ASRBottomNav view={view} setView={setView} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
-      <div className="flex-1 flex flex-col pt-[calc(var(--nav-height-mobile)+var(--announcement-height)+var(--safe-top))] sm:pt-[calc(var(--nav-height-desktop)+var(--announcement-height)+var(--safe-top))]">
+      <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))]">
         <ASRBaseModal 
           isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
           theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
@@ -2566,37 +2610,51 @@ export default function App() {
         <ASRControlBar theme={theme} />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
-          {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-6 ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`}>
-            <ChevronsRight size={48} strokeWidth={3} className="text-blue-600 animate-pulse" style={{ transform: 'skewX(-18deg)' }} />
+          {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`}>
+            <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">CALIBRATING DATA...</span>
           </div> : 
            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={viewSorts.hof} setMedalSort={handleSort} /> : 
-           <div className="space-y-1 sm:space-y-2 overflow-visible">
-             {view === 'map' && (
-               <ASRGlobalMap 
-                 courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} 
-                 cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} 
-                 theme={theme} onCourseClick={openModal} 
-                 onCountryClick={c => openModal('region', {...c, type: 'country'})} onCityClick={c => openModal('region', {...c, type: 'city'})} 
-                 onContinentClick={c => openModal('region', {...c, type: 'continent'})} 
-               />
-             )}
-             <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} />
-             
-             <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
-               <div className="overflow-visible w-full text-left scrollbar-hide">
-                 {(view === 'map' ? courseList : list).length > 0 ? (
-                   <ASRDataTable theme={theme} columns={view === 'map' ? COURSE_COLS : PLAYER_COLS} sort={viewSorts[view === 'map' ? 'courses' : 'players']} onSort={handleSort} data={view === 'map' ? courseList : list} onRowClick={item => openModal(view === 'map' ? 'course' : 'player', item, isAllTimeContext ? 'all-time' : 'asr-open')} />
-                 ) : (
-                   <div className="flex flex-col items-center justify-center py-40 opacity-30">
-                     <ChevronsRight size={28} strokeWidth={2.5} className={`${THEME.ICON} text-blue-600 mb-20 scale-[4.5]`} style={{ transform: 'skewX(-18deg)' }} />
-                     <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">DATA SYNC IN PROGRESS</h3>
-                   </div>
-                 )}
-               </div>
-             </div>
+           <div className="space-y-4 overflow-visible">
+             <ASRSearchInput 
+               search={search} setSearch={setSearch} 
+               gen={gen} setGen={setGen} 
+               theme={theme} view={view} 
+               mapMode={mapMode} setMapMode={setMapMode} 
+             />
 
-             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pb-20 pt-4">
+             {view === 'map' ? (
+               mapMode === 'map' ? (
+                 <ASRGlobalMap 
+                   courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} 
+                   cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} 
+                   theme={theme} onCourseClick={openModal} 
+                   onCountryClick={c => openModal('region', {...c, type: 'country'})} onCityClick={c => openModal('region', {...c, type: 'city'})} 
+                   onContinentClick={c => openModal('region', {...c, type: 'continent'})} 
+                 />
+               ) : (
+                <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
+                  <div className="overflow-visible w-full text-left scrollbar-hide">
+                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => openModal('course', item)} />
+                  </div>
+                </div>
+               )
+             ) : (
+                <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
+                  <div className="overflow-visible w-full text-left scrollbar-hide">
+                    {list.length > 0 ? (
+                      <ASRDataTable theme={theme} columns={PLAYER_COLS} sort={viewSorts.players} onSort={handleSort} data={list} onRowClick={item => openModal('player', item)} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-40 opacity-30">
+                        <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
+                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">DATA SYNC IN PROGRESS</h3>
+                      </div>
+                    )}
+                  </div>
+                </div>
+             )}
+
+             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pb-20 pt-8">
                 {view === 'map' && <ASRPromotionBanner type="setter" theme={theme} />}
                 {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
              </div>
