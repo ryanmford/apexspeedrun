@@ -2254,7 +2254,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, eventType, set
             {/* BRANDING LEFT: Persistent Logo */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" onClick={() => setView('map')}>
                 <div className="text-blue-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110">
-                    <ChevronsRight size={28} sm:size={32} strokeWidth={3} style={{ transform: 'skewX(-15deg)' }} />
+                    <ChevronsRight strokeWidth={3} style={{ transform: 'skewX(-15deg)' }} className="w-7 h-7 sm:w-8 sm:h-8" />
                 </div>
                 <div className="flex flex-col leading-none">
                     <span className="font-black text-sm sm:text-xl lg:text-2xl uppercase italic tracking-tighter">APEX SPEED RUN</span>
@@ -2286,7 +2286,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, onOpenIntro, eventType, set
                   className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Get Started"
                 >
-                  <HelpCircle size={16} sm:size={18} strokeWidth={2.5} className={THEME.ICON} />
+                  <HelpCircle strokeWidth={2.5} className={`${THEME.ICON} w-4 h-4 sm:w-[18px] sm:h-[18px]`} />
                 </button>
                 <button 
                   onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
