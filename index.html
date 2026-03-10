@@ -47,86 +47,93 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* 1. AGGRESSIVE HOST ISOLATION */
-        /* We use !important everywhere to override whatever apexspeedrun.com is injecting */
+        /* 1. VIEWPORT STABILIZATION */
+        /* Force the browser to treat the app as the primary layer */
         html, body { 
             background-color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
             height: 100% !important;
             width: 100% !important;
-            position: fixed !important; /* Prevents host site from scrolling underneath app */
             overflow: hidden !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
         }
 
-        /* 2. THE FIREWALL CONTAINER */
+        /* 2. APP CONTAINER ENFORCEMENT */
         #root {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
+            position: fixed !important;
+            inset: 0 !important;
             height: 100dvh !important;
             width: 100vw !important;
             display: flex !important;
             flex-direction: column !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            -webkit-overflow-scrolling: touch !important;
             background-color: #000000 !important;
-            z-index: 999999 !important; /* Force to the very front */
+            z-index: 2147483647 !important; /* Max possible z-index to beat host site overlays */
+            overflow: hidden !important;
         }
 
-        /* 3. SURGICAL ELEMENT RESETS (Overriding High Specificity Site CSS) */
-        /* If buttons are huge, it's usually because of "width: 100%" or "padding: 20px" on all buttons */
+        /* 3. SURGICAL COMPONENT FIXES */
+        /* Fixes the huge buttons by stripping parent site's button/padding styles */
         #root button {
             all: unset !important;
-            box-sizing: border-box !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             cursor: pointer !important;
-            width: auto !important; 
-            max-width: none !important;
+            box-sizing: border-box !important;
+            width: auto !important;
+            height: auto !important;
             padding: 0 !important;
             margin: 0 !important;
         }
 
-        /* If search bars are tiny, it's usually a "max-width" or "display: inline" issue */
+        /* Fixes tiny search bar by overriding host site input constraints */
         #root input {
             all: unset !important;
-            box-sizing: border-box !important;
             display: block !important;
             width: 100% !important;
-            max-width: none !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            color: inherit !important;
         }
 
-        /* Prevent host site from breaking map markers */
+        /* Nav Isolation: Force navs to respect the absolute viewport */
+        #root nav {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 100 !important;
+        }
+
+        #root .bottom-nav-dock {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 100 !important;
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+
+        /* 4. MAP & BUBBLE FIXES */
+        /* Prevents host site from scaling map icons */
         #root .leaflet-container img {
             max-width: none !important;
             height: auto !important;
         }
 
-        /* Keep fixed nav elements inside the root container */
-        #root nav, 
-        #root .bottom-nav-dock {
-            position: fixed !important;
-            z-index: 1000 !important;
-        }
-
-        #root .bottom-nav-dock {
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
+        /* Scrollable content area fix */
+        #root main {
+            flex: 1 !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
         }
 
         /* Font Restoration */
-        body { 
-            font-family: 'Inter', sans-serif !important; 
-        }
-        .font-mono { 
-            font-family: 'JetBrains Mono', monospace !important; 
-        }
+        body { font-family: 'Inter', sans-serif !important; }
+        .font-mono { font-family: 'JetBrains Mono', monospace !important; }
     </style>
 </head>
 <body class="text-slate-100 antialiased selection:bg-blue-500/30 selection:text-white">
