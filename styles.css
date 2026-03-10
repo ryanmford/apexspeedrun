@@ -49,3 +49,8 @@ html, body {
     isolation: isolate;
     overflow: hidden;
 }
+
+/* Base style for the premium shadow used in the theme object */
+.shadow-premium {
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15);
+}
