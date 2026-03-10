@@ -594,7 +594,11 @@ const ASRListItem = ({
                   >
                     <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                   </a>
-                ) : <div className="p-2 sm:p-2.5" />}
+                ) : (
+                  <div className="p-2 sm:p-2.5 opacity-20 cursor-not-allowed">
+                    <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
+                  </div>
+                )}
               </div>
             )}
         </div>
@@ -653,7 +657,11 @@ const ASRListItem = ({
             >
               <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
             </a>
-          ) : <div className="p-2.5" />}
+          ) : (
+            <div className="p-2.5 opacity-20 cursor-not-allowed">
+              <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1177,7 +1185,16 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
     const courseData = perfSource.map(cd => {
       const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
-      return { ...cd, coordinates: matched?.coordinates, flag: matched?.flag, country: matched?.country, city: matched?.city, mRecord: matched?.allTimeMRecord, fRecord: matched?.allTimeFRecord };
+      return { 
+        ...cd, 
+        coordinates: matched?.coordinates, 
+        flag: matched?.flag, 
+        country: matched?.country, 
+        city: matched?.city, 
+        mRecord: matched?.allTimeMRecord, 
+        fRecord: matched?.allTimeFRecord,
+        rulesVideo: matched?.demoVideo 
+      };
     }).sort((a, b) => {
         const aGold = a.rank === 1;
         const bGold = b.rank === 1;
@@ -1229,7 +1246,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                           key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                           icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
                           stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
-                          videoUrl={c.videoUrl}
+                          videoUrl={c.rulesVideo}
                           badgeContent={<>{c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}{c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}</>}
                           onClick={() => { if(target) openModal('course', target); }}
                         />
@@ -1514,6 +1531,8 @@ const useASRData = () => {
               if (course) {
                   const fixed = fixCountryEntity(vals.country, vals.flag);
                   const valAG = String(vals.__raw[32] || "").toUpperCase().trim();
+                  // AF is index 31: Course Rules Video
+                  const rulesVideoFromCol = String(vals.__raw[31] || "").trim();
                   const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
                   map[course] = { 
                       is2026, flag: fixed.flag || '🏳️',
@@ -1528,7 +1547,7 @@ const useASRData = () => {
                       setter: (vals.leads || "") + ((vals.assists) ? `, ${vals.assists}` : ""),
                       leadSetters: (vals.leads || "").trim(),
                       assistantsetters: (vals.assists || "").trim(),
-                      demoVideo: (vals.demo || "").trim(),
+                      demoVideo: rulesVideoFromCol || (vals.demo || "").trim(),
                       coordinates: (vals.coords || "").trim(),
                       searchKey: `${course} ${vals.city} ${fixed.name}`.toLowerCase()
                   };
@@ -1594,7 +1613,7 @@ const useASRData = () => {
           }
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
           if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
-            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: dataRows[0].result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
           }
           if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
           if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
@@ -1606,7 +1625,7 @@ const useASRData = () => {
           if (isASROpenTag || isInOpenWindow) {
             if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
             if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
-              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: dataRows[0].result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
             }
             if (!openCourseLeaderboards[pGender][normC]) openCourseLeaderboards[pGender][normC] = {};
             if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
@@ -2567,9 +2586,15 @@ export default function App() {
                     <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}>
                       <MapPin size={11} strokeWidth={3} /> MAP
                     </a>
-                    <a href={data.demoVideo || "#"} target="_blank" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
-                      <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
-                    </a>
+                    {data.demoVideo ? (
+                      <a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
+                        <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
+                      </a>
+                    ) : (
+                      <div className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest opacity-20 cursor-not-allowed ${theme === 'dark' ? 'border-zinc-700 text-zinc-500' : 'border-slate-300 text-slate-400'} whitespace-nowrap`}>
+                        <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
