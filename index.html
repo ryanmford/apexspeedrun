@@ -47,72 +47,83 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* Base Typography & Variables */
+        /* Base Variables */
         :root {
-            --asr-bg-dark: #09090b;
+            --asr-bg-dark: #000000;
         }
 
-        /* 1. LAYOUT PROTECTION */
-        /* We return to a more standard flow but keep the background locked */
+        /* 1. CRITICAL RECOVERY: Ensure the body doesn't fight the host site layout */
         html, body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background-color: var(--asr-bg-dark) !important;
             margin: 0 !important;
             padding: 0 !important;
-            min-height: 100% !important;
-            width: 100% !important;
-            overscroll-behavior-y: none; /* Prevents bounce breaking fixed elements */
+            height: 100% !important;
+            overflow: auto !important; /* Restore natural scroll if root-lock fails */
+            -webkit-text-size-adjust: 100%;
         }
 
-        /* 2. SELECTIVE RESET */
-        /* Instead of "all: unset" on everything, we target the problem areas */
-        #root button {
-            all: unset;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-sizing: border-box;
-            text-align: center;
-        }
-
-        #root input {
-            all: unset;
-            box-sizing: border-box;
-            width: 100%;
-        }
-
-        /* 3. NAV BAR FIX */
-        /* This ensures the root is the container for fixed elements */
+        /* 2. ROOT CONTAINER LOCK */
+        /* This prevents the "Bottom Nav at top" issue by forcing a specific container height */
         #root {
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
             position: relative;
+            background-color: var(--asr-bg-dark);
             isolation: isolate;
+            z-index: 1;
         }
 
-        /* 4. MAP PROTECTION */
+        /* 3. SURGICAL BUTTON RESET */
+        /* Targeted fix for "Huge MW Buttons" - strips host styles without breaking Tailwind */
+        #root button {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            cursor: pointer;
+            box-sizing: border-box;
+            line-height: inherit;
+            width: auto; /* Overrides global "button { width: 100% }" */
+        }
+
+        /* 4. SURGICAL INPUT RESET */
+        /* Targeted fix for "Tiny Search Bar" */
+        #root input {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            box-sizing: border-box;
+            width: 100% !important; /* Force width override */
+            max-width: none !important;
+        }
+
+        /* 5. MAP PROTECTION */
+        /* Fixes the "Bubble" glitches */
         .leaflet-container img {
             max-width: none !important;
+            height: auto;
+        }
+
+        /* 6. NAV BAR DEPTH */
+        /* Keeps your UI elements above the host's background/map */
+        nav, .bottom-nav-dock {
+            z-index: 9999 !important;
         }
 
         .font-mono { 
             font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
         }
 
-        html {
-            height: -webkit-fill-available;
-            -webkit-text-size-adjust: 100%;
-        }
-
         * {
             -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Ensure fixed elements stay on top of the map */
-        nav, .bottom-nav-dock {
-            z-index: 9999 !important;
         }
     </style>
 </head>
