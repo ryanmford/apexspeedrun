@@ -566,7 +566,7 @@ const ASRListItem = ({
                 );
             })}
             {showRules && (
-              <div className="w-12 sm:w-16 flex items-center justify-center shrink-0">
+              <div className="w-16 sm:w-32 px-2 sm:px-4 flex items-center justify-center shrink-0">
                 {videoUrl && (
                   <a 
                     href={videoUrl} target="_blank" rel="noopener noreferrer" 
@@ -2099,18 +2099,18 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
             <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
                 <div className="flex gap-1">
                     <button 
-                      onClick={() => setMapMode('list')} 
-                      className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
-                      title="List View"
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button 
                       onClick={() => setMapMode('map')} 
                       className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                       title="Map View"
                     >
                       <MapIcon className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setMapMode('list')} 
+                      className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -2243,17 +2243,21 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
   );
 };
 
-const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip, paddingClass = "px-2" }) => {
+const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip, paddingClass = "px-2", sortable = true }) => {
   return (
     <div 
-        className={`${w} ${paddingClass} py-8 cursor-pointer group select-none transition-all stat-card-container ${activeSort.key === k ? 'bg-current/[0.08]' : 'hover:bg-current/[0.05]'} text-inherit border-b-2 border-transparent`} 
-        onClick={() => handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
+        className={`${w} ${paddingClass} py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && activeSort.key === k ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
+        onClick={() => sortable && handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
     >
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
-        <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-          <ChevronDown className={`w-4 h-4 ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
-        </div>
+        {sortable && (
+          <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
+            <label className="cursor-pointer">
+              <ChevronDown className={`w-4 h-4 ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
+            </label>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2296,10 +2300,11 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                       key={col.key} l={col.label} k={col.key} a={col.align} w={col.width} 
                       activeSort={sort} handler={onSort} tooltip={col.tooltip} 
                       paddingClass={col.type === 'profile' ? "pl-4 sm:pl-8 pr-2 flex-1" : "px-2 sm:px-4 shrink-0"}
+                      sortable={col.sortable !== false}
                     />
                   ))}
                   {showRules && (
-                    <div className="w-12 sm:w-16 shrink-0 flex items-center justify-center pr-4">
+                    <div className="w-16 sm:w-32 px-2 sm:px-4 shrink-0 flex items-center justify-center">
                       <span className="uppercase text-[10px] sm:text-[12px] font-black opacity-80">RULES</span>
                     </div>
                   )}
@@ -2439,7 +2444,7 @@ const ASRControlBar = ({ theme }) => {
 
 const PLAYER_COLS = [
     { isRank: true },
-    { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full' },
+    { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
     { label: 'RATING', type: 'number', key: 'rating', decimals: 2, align: 'right', width: 'w-20 sm:w-40' },
     { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
 ];
@@ -2447,7 +2452,7 @@ const PLAYER_COLS = [
 const COURSE_COLS = [
     { isRank: true },
     { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full' },
-    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-24 sm:w-40' }
+    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-20 sm:w-40' }
 ];
 
 export default function App() {
@@ -2455,7 +2460,7 @@ export default function App() {
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
   const [view, setView] = useState('players'); 
-  const [mapMode, setMapMode] = useState('list'); 
+  const [mapMode, setMapMode] = useState('map'); 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
@@ -2515,6 +2520,37 @@ export default function App() {
     }).filter(s => isAllTimeContext || s.sets > 0);
   }, [settersData, masterCourseList, isAllTimeContext]);
 
+  // --- METADATA & PREVIEW LOGIC ---
+  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
+
+  useEffect(() => {
+    let title = "Apex Speed Run";
+    if (activeModal) {
+      title = `${activeModal.data.name.toUpperCase()} | ASR`;
+    } else {
+      const viewNames = { players: 'Players', map: 'Courses', hof: 'Hall of Fame' };
+      title = `${viewNames[view] || 'Home'} | Apex Speed Run`;
+    }
+    document.title = title;
+    
+    // Attempt to update meta tags for link previews
+    const updateMeta = (name, content) => {
+      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        if (name.startsWith('og:')) meta.setAttribute('property', name);
+        else meta.setAttribute('name', name);
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', content);
+    };
+
+    updateMeta('og:title', title);
+    updateMeta('og:description', 'Live statistics, rankings and verified courses for the worldwide parkour speed run network.');
+    updateMeta('og:image', 'https://apexspeedrun.com/og-image.png'); // Main site preview image
+    updateMeta('twitter:card', 'summary_large_image');
+  }, [activeModal, view]);
+
   // --- NAVIGATION LOGIC ---
 
   const jumpToHistoryIndex = useCallback((idx) => {
@@ -2532,12 +2568,10 @@ export default function App() {
     const currentHist = histRef.current;
     const currentIdx = idxRef.current;
     
-    // Logic: If the next item in existing history is the same as where we're going, just move index forward.
     const forwardItem = currentHist[currentIdx + 1];
     if (forwardItem && forwardItem.type === type && normalizeName(forwardItem.data.name) === normalizeName(data.name)) {
         setHistoryIndex(currentIdx + 1);
     } else {
-        // Otherwise, it's a new branch: truncate the future and append new item.
         const nextItem = { type, data };
         setModalHistory(prev => {
             const sliced = prev.slice(0, currentIdx + 1);
@@ -2570,7 +2604,7 @@ export default function App() {
     }
   }, [historyIndex, modalHistory.length, jumpToHistoryIndex]);
 
-  // --- HASH LISTENER (External logic) ---
+  // --- HASH LISTENER ---
   useEffect(() => {
     const handleHashChange = () => {
         if (isInternalNavRef.current) {
@@ -2588,13 +2622,11 @@ export default function App() {
             const type = firstSegment;
             const slug = parts[1];
             
-            // Try to find if this slug exists in our current trail (for browser back/forward)
             const existingIdx = histRef.current.findIndex(h => h.type === type && normalizeName(h.data.name) === slug);
             
             if (existingIdx !== -1) {
                 setHistoryIndex(existingIdx);
             } else {
-                // New entry from external source or direct link
                 let foundData = null;
                 if (type === 'player') foundData = Object.values(atMet).find(a => normalizeName(a.name) === slug);
                 if (type === 'course') foundData = masterCourseList.find(c => normalizeName(c.name) === slug);
@@ -2620,7 +2652,6 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isLoading, atMet, masterCourseList, settersWithImpact]);
 
-  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
   const canGoForward = historyIndex < modalHistory.length - 1;
 
   // UI Derived state
