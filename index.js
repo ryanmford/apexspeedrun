@@ -28,7 +28,7 @@ const THEME = {
     : "bg-[#f1f5f9] border-slate-400 text-slate-900",
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
-  HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter leading-none italic",
+  HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter italic leading-none",
   LABEL: "text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-60",
   VALUE: "font-mono font-black tabular-nums num-col",
   
@@ -162,7 +162,6 @@ const useDebounce = (value, delay) => {
     return debouncedValue; 
 };
 
-// Threshold Logic
 const isQualifiedAthlete = (p, isAllTime = true) => {
     if (!p || isPlaceholderPlayer(p.name)) return false;
     const runs = p.runs || 0;
@@ -896,7 +895,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
           </div>
           
           <div className="space-y-5">
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-[0.9] whitespace-normal break-words">
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter italic leading-[0.9] whitespace-normal break-words">
               {steps[step].title}
             </h2>
             <p className="text-lg sm:text-xl font-black opacity-70 leading-relaxed max-w-md text-inherit whitespace-normal break-words">
@@ -942,13 +941,11 @@ const ASRBaseModal = ({
   theme, header, breadcrumbs, onBreadcrumbClick, currentIndex, children 
 }) => {
   const scrollContainerRef = useRef(null);
-  const mainPageScrollRef = useRef(0);
   const historyScrollPositions = useRef({});
   const prevIndexRef = useRef(-1);
 
   useEffect(() => {
     if (isOpen) {
-      mainPageScrollRef.current = window.scrollY;
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -987,7 +984,7 @@ const ASRBaseModal = ({
                       <CornerUpLeft className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                   </button>
                   {canGoForward && (
-                      <button aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Forward">
+                      <button aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0 animate-in fade-in duration-300" title="Go Forward">
                           <CornerUpRight className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                       </button>
                   )}
@@ -997,8 +994,7 @@ const ASRBaseModal = ({
                               <React.Fragment key={i}>
                                   <button 
                                       onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(i); }}
-                                      disabled={i === breadcrumbs.length - 1}
-                                      className={`transition-colors outline-none whitespace-nowrap ${i === breadcrumbs.length - 1 ? 'opacity-100 font-black' : 'opacity-40 cursor-pointer hover:opacity-100'}`}
+                                      className={`transition-colors outline-none whitespace-nowrap ${i === currentIndex ? 'opacity-100 font-black' : 'opacity-40 cursor-pointer hover:opacity-100'}`}
                                   >
                                       {String(b).toUpperCase()}
                                   </button>
@@ -1115,7 +1111,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     
     if (isSetter) {
         const setterData = identity.setterData || identity;
-        const setterCourses = allCourses
+        const setterCourses = (allCourses || [])
             .filter(c => isNameInList(identity.name, c.leadSetters) || isNameInList(identity.name, c.assistantsetters))
             .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0));
         
@@ -1169,7 +1165,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const metaSource = isAllTime ? identity : (identity.openStats || { rating: 0, pts: 0, runs: 0, wins: 0, openFireCount: 0 });
 
     const courseData = perfSource.map(cd => {
-      const matched = allCourses.find(c => c.name.toUpperCase() === cd.label.toUpperCase());
+      const matched = (allCourses || []).find(c => c.name.toUpperCase() === cd.label.toUpperCase());
       return { 
         ...cd, 
         coordinates: matched?.coordinates, 
@@ -1225,7 +1221,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
               <ASRSectionHeading theme={theme} className="text-left !mb-0">VERIFIED RUNS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {courseData.length > 0 ? courseData.map((c, i) => {
-                      const target = allCourses.find(x => x.name.toUpperCase() === c.label.toUpperCase());
+                      const target = (allCourses || []).find(x => x.name.toUpperCase() === c.label.toUpperCase());
                       return (
                         <ASRListItem 
                           key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
@@ -1273,7 +1269,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 };
 
 const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformances, openModal }) => {
-  const regionalCourses = allCourses.filter(c => 
+  const regionalCourses = (allCourses || []).filter(c => 
       (region.type === 'city' && c.city === region.name) ||
       (region.type === 'country' && c.country === region.name) ||
       (region.type === 'continent' && c.continent === region.name)
@@ -1281,10 +1277,10 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
 
   const totalRuns = regionalCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
 
-  const regionalPlayersTotal = allPlayers.filter(p => {
+  const regionalPlayersTotal = (allPlayers || []).filter(p => {
       if (region.type === 'city') {
           return (playerPerformances[p.pKey] || []).some(perf => {
-              const matched = allCourses.find(c => c.name.toUpperCase() === perf.label.toUpperCase());
+              const matched = (allCourses || []).find(c => c.name.toUpperCase() === perf.label.toUpperCase());
               return matched?.city === region.name;
           });
       }
@@ -1731,7 +1727,7 @@ const useFilteredData = (source, searchTerm, sortConfig, predicate = null) => {
 
 const getAggregatedStats = (rawCourseList, groupBy) => {
     const map = {};
-    rawCourseList.forEach(c => {
+    (rawCourseList || []).forEach(c => {
         let name = c[groupBy];
         let flag = c.flag;
         let key = name;
@@ -1799,7 +1795,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
                 if (rankIdx === 0) medalsBase[fixed.name].gold++; 
                 else if (rankIdx === 1) medalsBase[fixed.name].silver++; 
                 else medalsBase[fixed.name].bronze++;
-                medalsBase[fixed.name].total++;
+                 medalsBase[fixed.name].total++;
               });
             });
           });
@@ -1917,7 +1913,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
     useEffect(() => {
         if (!mapRef.current || !clusterGroupRef.current || !window.L) return;
         clusterGroupRef.current.clearLayers();
-        courses.forEach(c => {
+        (courses || []).forEach(c => {
             if (!c.parsedCoords) return;
             const marker = window.L.marker(c.parsedCoords, {
                 icon: window.L.divIcon({
@@ -1991,7 +1987,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
-                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>
+                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-50`}>
                                           {c.name} <span className="ml-1 opacity-80">{c.flag}</span>
                                         </span>
                                     </div>
@@ -2008,7 +2004,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
 
 const SetterDisplay = ({ text, onSetterClick }) => {
     if (!text) return null;
-    const names = text.split(/[,&/]| and /i).map(n => n.trim()).filter(Boolean);
+    const names = String(text).split(/[,&/]| and /i).map(n => n.trim()).filter(Boolean);
     return (
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {names.map((n, index) => (
@@ -2024,7 +2020,7 @@ const SetterDisplay = ({ text, onSetterClick }) => {
 };
 
 const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
-    const displayAthletes = [...athletes.slice(0, 10)];
+    const displayAthletes = [...(athletes || []).slice(0, 10)];
     while (displayAthletes.length < 3) displayAthletes.push(null);
     return (
         <div className="space-y-4 overflow-visible">
@@ -2045,8 +2041,8 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                         );
                     }
                     const [pKey, time, videoUrl] = athleteRow;
-                    const meta = athleteMetadata[pKey] || {};
-                    const nameToDisplay = athleteDisplayNameMap[pKey] || pKey;
+                    const meta = (athleteMetadata || {})[pKey] || {};
+                    const nameToDisplay = (athleteDisplayNameMap || {})[pKey] || pKey;
                     const isPlaceholder = isPlaceholderPlayer(nameToDisplay);
                     const points = genderRecord && typeof time === 'number' && time !== 0 ? (genderRecord / time) * 100 : 0;
                     
@@ -2219,7 +2215,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
               </tr>
             </thead>
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'}`}>
-              {stats.medalCount.map((c) => (
+              {(stats.medalCount || []).map((c) => (
                 <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
                   <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
                     <ASRRankBadge rank={c.displayRank} theme={theme} />
@@ -2274,7 +2270,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
         return () => observer.disconnect();
     }, [data.length]);
     const visibleData = useMemo(() => {
-        const result = []; const baseData = data.slice(0, visibleCount);
+        const result = []; const baseData = (data || []).slice(0, visibleCount);
         const promoTypes = ['skool_training', 'shop_gear', 'pro_setter'];
         let rankedIdx = 0; let isUnranked = false;
         baseData.forEach((item, idx) => {
@@ -2347,7 +2343,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
             <div 
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" 
                 onClick={() => {
-                    setView('players');
+                    window.location.hash = '#/players';
                     setEventType('open');
                 }}
             >
@@ -2386,7 +2382,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
     );
 };
 
-const ASRBottomNav = ({ view, setView, theme, onOpenIntro }) => {
+const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
     { id: 'players', label: 'PLAYERS', icon: <Users className="w-5 h-5" /> },
     { id: 'map', label: 'COURSES', icon: <Globe className="w-5 h-5" /> },
@@ -2400,7 +2396,10 @@ const ASRBottomNav = ({ view, setView, theme, onOpenIntro }) => {
         {items.map(item => (
           <button
             key={item.id}
-            onClick={() => item.id === 'start' ? onOpenIntro() : setView(item.id)}
+            onClick={() => {
+                if (item.id === 'start') onOpenIntro();
+                else window.location.hash = `#/${item.id}`;
+            }}
             className={`flex flex-col items-center justify-center gap-1.5 flex-1 py-1 rounded-2xl transition-all duration-300 active:scale-95 ${view === item.id ? 'text-blue-600 scale-105' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
@@ -2460,25 +2459,35 @@ export default function App() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
+  
+  // --- CORE NAVIGATION STATE (Non-Destructive Chronological) ---
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const isInternalNavRef = useRef(false);
+  
+  // Persistence Refs for Syncing
+  const histRef = useRef([]);
+  const idxRef = useRef(-1);
+
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  // --- DATA PREPARATION ---
+  useEffect(() => {
+    histRef.current = modalHistory;
+    idxRef.current = historyIndex;
+  }, [modalHistory, historyIndex]);
 
+  // --- DERIVATION ---
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
       const athletesMAll = Object.entries((lbAT.M || {})[name] || {})
-        .map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl])
+        .map(([pKey, time]) => [pKey, time, (atRawBest || {})[pKey]?.[name]?.videoUrl])
         .sort((a, b) => a[1] - b[1]);
-        
       const athletesFAll = Object.entries((lbAT.F || {})[name] || {})
-        .map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl])
+        .map(([pKey, time]) => [pKey, time, (atRawBest || {})[pKey]?.[name]?.videoUrl])
         .sort((a, b) => a[1] - b[1]);
-
-      const meta = cMet[name] || {}; const contData = getContinentData(meta.country || 'UNKNOWN');
+      const meta = (cMet || {})[name] || {}; const contData = getContinentData(meta.country || 'UNKNOWN');
       const mRecs = athletesMAll.map(a => a[1]); const fRecs = athletesFAll.map(a => a[1]);
       const coordsMatch = meta.coordinates ? String(meta.coordinates).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) : null;
       return {
@@ -2494,7 +2503,7 @@ export default function App() {
 
   const settersWithImpact = useMemo(() => {
     return (settersData || []).map(s => {
-        const sName = s.name.trim();
+        const sName = s.name ? s.name.trim() : "";
         const leadCourses = masterCourseList.filter(c => isNameInList(sName, c.leadSetters));
         const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
         const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
@@ -2506,75 +2515,104 @@ export default function App() {
     }).filter(s => isAllTimeContext || s.sets > 0);
   }, [settersData, masterCourseList, isAllTimeContext]);
 
-  // --- ROUTER & HISTORY TRACKING REFS ---
-  // We use refs to keep history in sync with the hash listener without clobbering state asynchronously
-  const modalHistoryRef = useRef([]);
-  const historyIndexRef = useRef(-1);
+  // --- NAVIGATION LOGIC ---
 
-  useEffect(() => {
-    modalHistoryRef.current = modalHistory;
-    historyIndexRef.current = historyIndex;
-  }, [modalHistory, historyIndex]);
-
-  const navigate = useCallback((viewId, modal = null) => {
-    let hash = `#/${viewId}`;
-    if (modal) {
-      hash += `/${modal.type}/${normalizeName(modal.data.name)}`;
-    }
-    window.location.hash = hash;
+  const jumpToHistoryIndex = useCallback((idx) => {
+    if (idx < 0 || idx >= histRef.current.length) return;
+    isInternalNavRef.current = true;
+    setHistoryIndex(idx);
+    const item = histRef.current[idx];
+    window.location.hash = `#/${item.type}/${normalizeName(item.data.name)}`;
   }, []);
 
-  // Listen for Hash Changes (Fixed for infinite breadcrumbs)
+  const navigateToEntity = useCallback((type, data) => {
+    if (isLoading) return;
+    isInternalNavRef.current = true;
+    
+    const currentHist = histRef.current;
+    const currentIdx = idxRef.current;
+    
+    // Logic: If the next item in existing history is the same as where we're going, just move index forward.
+    const forwardItem = currentHist[currentIdx + 1];
+    if (forwardItem && forwardItem.type === type && normalizeName(forwardItem.data.name) === normalizeName(data.name)) {
+        setHistoryIndex(currentIdx + 1);
+    } else {
+        // Otherwise, it's a new branch: truncate the future and append new item.
+        const nextItem = { type, data };
+        setModalHistory(prev => {
+            const sliced = prev.slice(0, currentIdx + 1);
+            return [...sliced, nextItem];
+        });
+        setHistoryIndex(currentIdx + 1);
+    }
+
+    window.location.hash = `#/${type}/${normalizeName(data.name)}`;
+  }, [isLoading]);
+
+  const closeModals = useCallback(() => {
+    isInternalNavRef.current = true;
+    setModalHistory([]);
+    setHistoryIndex(-1);
+    window.location.hash = `#/${view}`;
+  }, [view]);
+
+  const goBack = useCallback(() => {
+    if (historyIndex > 0) {
+        jumpToHistoryIndex(historyIndex - 1);
+    } else {
+        closeModals();
+    }
+  }, [historyIndex, jumpToHistoryIndex, closeModals]);
+
+  const goForward = useCallback(() => {
+    if (historyIndex < modalHistory.length - 1) {
+        jumpToHistoryIndex(historyIndex + 1);
+    }
+  }, [historyIndex, modalHistory.length, jumpToHistoryIndex]);
+
+  // --- HASH LISTENER (External logic) ---
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash || '#/players';
-      const parts = hash.split('/').filter(Boolean);
-      const viewId = parts[1] || 'players';
-      
-      setView(viewId);
-
-      // Handle Modal Logic
-      if (parts.length >= 4 && !isLoading) {
-        const type = parts[2];
-        const slug = parts[3];
-        
-        // 1. Check if the URL slug already matches our CURRENT active modal
-        const currentIdx = historyIndexRef.current;
-        const currentModal = currentIdx >= 0 ? modalHistoryRef.current[currentIdx] : null;
-        
-        if (currentModal && normalizeName(currentModal.data.name) === slug) {
-          return; // Already matched, stop clobbering history
+        if (isInternalNavRef.current) {
+            isInternalNavRef.current = false;
+            return;
         }
 
-        // 2. Check if the URL slug matches the PREVIOUS modal (Browser BACK)
-        const prevModal = currentIdx > 0 ? modalHistoryRef.current[currentIdx - 1] : null;
-        if (prevModal && normalizeName(prevModal.data.name) === slug) {
-          setHistoryIndex(currentIdx - 1);
-          return;
-        }
+        const hash = window.location.hash || '#/players';
+        const cleanPath = hash.replace(/^#\/?/, '');
+        const parts = cleanPath.split('/').filter(Boolean);
+        const firstSegment = parts[0] || 'players';
+        const entityTypes = ['player', 'course', 'setter', 'region'];
 
-        // 3. Check if the URL slug matches the NEXT modal (Browser FORWARD)
-        const nextModal = currentIdx < modalHistoryRef.current.length - 1 ? modalHistoryRef.current[currentIdx + 1] : null;
-        if (nextModal && normalizeName(nextModal.data.name) === slug) {
-          setHistoryIndex(currentIdx + 1);
-          return;
-        }
+        if (entityTypes.includes(firstSegment) && parts.length >= 2) {
+            const type = firstSegment;
+            const slug = parts[1];
+            
+            // Try to find if this slug exists in our current trail (for browser back/forward)
+            const existingIdx = histRef.current.findIndex(h => h.type === type && normalizeName(h.data.name) === slug);
+            
+            if (existingIdx !== -1) {
+                setHistoryIndex(existingIdx);
+            } else {
+                // New entry from external source or direct link
+                let foundData = null;
+                if (type === 'player') foundData = Object.values(atMet).find(a => normalizeName(a.name) === slug);
+                if (type === 'course') foundData = masterCourseList.find(c => normalizeName(c.name) === slug);
+                if (type === 'setter') foundData = settersWithImpact.find(s => normalizeName(s.name) === slug);
+                if (type === 'region') foundData = { name: slug.toUpperCase(), type: 'country' };
 
-        // 4. Otherwise, it's a "New Landing" or manual slug change - Reconstruct ENRICHED data
-        let foundData = null;
-        if (type === 'player') foundData = Object.values(atMet).find(a => normalizeName(a.name) === slug);
-        if (type === 'course') foundData = masterCourseList.find(c => normalizeName(c.name) === slug);
-        if (type === 'setter') foundData = settersWithImpact.find(s => normalizeName(s.name) === slug);
-        if (type === 'region') foundData = { name: slug.toUpperCase(), type: 'country' };
-
-        if (foundData) {
-            setModalHistory([{ type, data: foundData }]);
-            setHistoryIndex(0);
+                if (foundData) {
+                    const index = idxRef.current;
+                    const nextItem = { type, data: foundData };
+                    setModalHistory(prev => [...prev.slice(0, index + 1), nextItem]);
+                    setHistoryIndex(index + 1);
+                }
+            }
+        } else {
+            setView(firstSegment);
+            setModalHistory([]);
+            setHistoryIndex(-1);
         }
-      } else if (parts.length < 3) {
-        setModalHistory([]);
-        setHistoryIndex(-1);
-      }
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -2582,76 +2620,10 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isLoading, atMet, masterCourseList, settersWithImpact]);
 
-  // Sync internal view changes to URL
-  useEffect(() => {
-    if (isLoading) return;
-    const currentHash = window.location.hash;
-    const targetHash = `#/${view}`;
-    if (!currentHash.startsWith(targetHash) && modalHistory.length === 0) {
-      window.location.hash = targetHash;
-    }
-  }, [view, isLoading, modalHistory.length]);
-
-  const openModal = useCallback((type, data, roleOverride = null) => {
-    if (type === 'player' && isPlaceholderPlayer(data.name)) return;
-    
-    const newModal = { type, data, roleOverride };
-    
-    // First, update internal state (Stacking the infinite history)
-    setModalHistory(p => {
-      const nextStack = [...p.slice(0, historyIndex + 1), newModal];
-      return nextStack;
-    });
-    setHistoryIndex(p => p + 1);
-
-    // Then, update the URL
-    navigate(view, newModal);
-  }, [historyIndex, view, navigate]);
-
-  const closeAllModals = useCallback(() => { 
-    navigate(view);
-    setHistoryIndex(-1); 
-    setModalHistory([]); 
-  }, [view, navigate]);
-
-  const goBackModal = useCallback(() => {
-    if (historyIndex > 0) {
-      const prev = modalHistory[historyIndex - 1];
-      navigate(view, prev); // URL change will trigger the index decrement via handleHashChange
-    } else {
-      closeAllModals();
-    }
-  }, [historyIndex, modalHistory, view, navigate, closeAllModals]);
-
-  const goForwardModal = useCallback(() => {
-    if (historyIndex < modalHistory.length - 1) {
-      const next = modalHistory[historyIndex + 1];
-      navigate(view, next);
-    }
-  }, [historyIndex, modalHistory, view, navigate]);
-
-  const jumpToHistory = useCallback((index) => {
-    const target = modalHistory[index];
-    navigate(view, target);
-  }, [modalHistory, view, navigate]);
-
-  const handleShare = useCallback(() => {
-    const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: 'Apex Speed Run', url }).catch(() => {});
-    } else {
-      const el = document.createElement('textarea');
-      el.value = url;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-    }
-  }, []);
-
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
   const canGoForward = historyIndex < modalHistory.length - 1;
 
+  // UI Derived state
   const [viewSorts, setViewSorts] = useState({
     players: { key: 'rating', direction: 'descending' },
     courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
@@ -2665,7 +2637,7 @@ export default function App() {
 
   const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
 
-  const rawCourseList = useMemo(() => masterCourseList.filter(c => isAllTimeContext || c.is2026), [masterCourseList, isAllTimeContext]);
+  const rawCourseList = useMemo(() => (masterCourseList || []).filter(c => isAllTimeContext || c.is2026), [masterCourseList, isAllTimeContext]);
   const filteredCourses = useFilteredData(rawCourseList, debouncedSearch, viewSorts.courses);
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
   const athletePool = isAllTimeContext ? data : openData;
@@ -2675,47 +2647,44 @@ export default function App() {
     if (filteredAthletes.length === 0) return [];
     let qual = filteredAthletes.filter(p => isQualifiedAthlete(p, isAllTimeContext));
     let unranked = filteredAthletes.filter(p => !isQualifiedAthlete(p, isAllTimeContext));
-    
     if (!isAllTimeContext) {
-      const allTimeRankedKeys = new Set(data.map(p => p.pKey));
+      const allTimeRankedKeys = new Set((data || []).map(p => p.pKey));
       unranked = unranked.filter(p => allTimeRankedKeys.has(p.pKey));
     }
-    
     const fQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true, shouldFade: false }));
-    const fUnranked = unranked.map(p => ({ 
-      ...p, 
-      currentRank: "UR", 
-      isQualified: false,
-      shouldFade: isAllTimeContext ? true : ((p.runs || 0) === 0)
-    }));
-    
-    let dividerLabel = "UNRANKED";
-    if (isAllTimeContext) {
-      dividerLabel = gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED";
-    } else {
-      dividerLabel = "RUN 3+ COURSES TO GET RANKED";
-    }
-
-    if (!isAllTimeContext && fQual.length === 0) {
-        return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
-    }
-
+    const fUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false, shouldFade: isAllTimeContext ? true : ((p.runs || 0) === 0) }));
+    let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
+    if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
   }, [filteredAthletes, isAllTimeContext, data, gen]);
 
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
-    try {
-        return calculateHofStats(data, atPerfs, lbAT, atMet, medalSort, settersWithImpact);
-    } catch (e) { return null; }
+    try { return calculateHofStats(data, atPerfs, lbAT, atMet, medalSort, settersWithImpact); } catch (e) { return null; }
   }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact, view]);
 
-  const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
+  const breadcrumbsArr = useMemo(() => {
+    return modalHistory.map(h => h.data.name || 'Detail');
+  }, [modalHistory]);
 
+  const handleShare = useCallback(() => {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: document.title, url }).catch(() => {});
+    } else {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+  }, []);
+
+  // --- HEADER RENDERER ---
   const getModalHeader = (modal) => {
     if (!modal) return null;
     const { type, data } = modal;
-    
     if (type === 'course') {
         let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
@@ -2726,23 +2695,11 @@ export default function App() {
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <div className="mb-2">
-                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
-                </div>
-                
-                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mb-3">
-                  {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
-                </div>
-
+                <div className="mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2></div>
+                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mb-3">{formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}</div>
                 <div className="flex items-center gap-2">
-                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}>
-                      <MapPin size={11} strokeWidth={3} /> MAP
-                    </a>
-                    {data.demoVideo ? (
-                      <a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
-                        <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
-                      </a>
-                    ) : null}
+                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}><MapPin size={11} strokeWidth={3} /> MAP</a>
+                    {data.demoVideo ? (<a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}><Play size={11} strokeWidth={3} fill="currentColor" /> RULES</a>) : null}
                 </div>
               </div>
             </div>
@@ -2750,15 +2707,12 @@ export default function App() {
           </div>
         );
     }
-    
     if (type === 'player' || type === 'setter') {
         return (
           <div className="flex items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left animate-in fade-in duration-300">
             <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
             <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
-                <div className="flex flex-col gap-1.5 mb-2 min-w-0 w-full">
-                  <h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2>
-                </div>
+                <div className="flex flex-col gap-1.5 mb-2 min-w-0 w-full"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
                 <div className="flex items-center gap-3 sm:gap-4 mt-0.5">
                     {data.region && <div className="text-2xl sm:text-3xl leading-none flex items-center gap-1.5 drop-shadow-sm">{data.region}</div>}
                     {data.igHandle && <a href={`https://instagram.com/${data.igHandle}`} target="_blank" rel="noopener noreferrer" className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`} title={`@${data.igHandle}`}><Instagram className="w-[18px] h-[18px] text-[#E1306C] transition-transform group-hover/ig:rotate-6" strokeWidth={2.5} /></a>}
@@ -2767,22 +2721,13 @@ export default function App() {
           </div>
         );
     }
-
     if (type === 'region') {
       return (
         <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
-          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
-            <FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" />
-          </div>
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
-            <div className="mb-1 sm:mb-2">
-                <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
-            </div>
-            {data.flag && (
-              <div className="text-xl sm:text-2xl leading-none drop-shadow-sm">
-                {data.flag}
-              </div>
-            )}
+            <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2></div>
+            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm">{data.flag}</div>}
           </div>
         </div>
       );
@@ -2794,23 +2739,32 @@ export default function App() {
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(100px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
-      <ASRNavBar 
-        theme={theme} setTheme={setTheme} view={view} setView={setView} 
-        eventType={eventType} setEventType={setEventType}
-      />
-      <ASRBottomNav view={view} setView={(v) => navigate(v)} theme={theme} onOpenIntro={() => setShowIntro(true)} />
+      <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
+      <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
       <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))] overflow-visible">
         <ASRBaseModal 
-          isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} onShare={handleShare}
-          theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
+          isOpen={historyIndex >= 0} 
+          onClose={closeModals} 
+          onBack={goBack} 
+          onForward={goForward} 
+          canGoForward={canGoForward} 
+          onShare={handleShare}
+          theme={theme} 
+          header={getModalHeader(activeModal)} 
+          breadcrumbs={breadcrumbsArr} 
+          onBreadcrumbClick={jumpToHistoryIndex}
           currentIndex={historyIndex}
         >
           <InspectorBody 
              activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
-             atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={openModal}
-             onSetterClick={(sName) => { const sObj = settersWithImpact.find(s => s.name.toLowerCase() === sName.toLowerCase()); if (sObj) openModal('setter', sObj); }}
+             atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={navigateToEntity}
+             onSetterClick={(setter) => { 
+                const sName = typeof setter === 'string' ? setter : setter.name;
+                const sObj = settersWithImpact.find(s => normalizeName(s.name) === normalizeName(sName)); 
+                if (sObj) navigateToEntity('setter', sObj); 
+             }}
           />
         </ASRBaseModal>
 
@@ -2821,28 +2775,17 @@ export default function App() {
             <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
           </div> : 
-           view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} /> : 
+            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => navigateToEntity('player', p)} onSetterClick={s => navigateToEntity('setter', s)} onRegionClick={r => navigateToEntity('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} /> : 
            <div className="space-y-4 overflow-visible">
-             <ASRSearchInput 
-               search={search} setSearch={setSearch} 
-               gen={gen} setGen={setGen} 
-               theme={theme} view={view} 
-               mapMode={mapMode} setMapMode={setMapMode} 
-             />
+             <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
 
              {view === 'map' ? (
                mapMode === 'map' ? (
-                 <ASRGlobalMap 
-                   courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} 
-                   cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} 
-                   theme={theme} onCourseClick={openModal} 
-                   onCountryClick={c => openModal('region', {...c, type: 'country'})} onCityClick={c => openModal('region', {...c, type: 'city'})} 
-                   onContinentClick={c => openModal('region', {...c, type: 'continent'})} 
-                 />
+                 <ASRGlobalMap courses={rawCourseList} continents={getAggregatedStats(rawCourseList, 'continent')} cities={getAggregatedStats(rawCourseList, 'city')} countries={getAggregatedStats(rawCourseList, 'country')} theme={theme} onCourseClick={navigateToEntity} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
                ) : (
                 <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
-                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => openModal('course', item)} showRules={true} />
+                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => navigateToEntity('course', item)} showRules={true} />
                   </div>
                 </div>
                )
@@ -2850,7 +2793,7 @@ export default function App() {
                 <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
                     {list.length > 0 ? (
-                      <ASRDataTable theme={theme} columns={PLAYER_COLS} sort={viewSorts.players} onSort={handleSort} data={list} onRowClick={item => openModal('player', item)} showRules={false} />
+                      <ASRDataTable theme={theme} columns={PLAYER_COLS} sort={viewSorts.players} onSort={handleSort} data={list} onRowClick={item => navigateToEntity('player', item)} showRules={false} />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
                         <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
