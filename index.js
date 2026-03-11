@@ -2653,7 +2653,7 @@ export default function App() {
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
           {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`}>
             <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
-            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">CONNECTING TO LIVE DATA SOURCE...</span>
+            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
           </div> : 
            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} /> : 
            <div className="space-y-4 overflow-visible">
@@ -2688,7 +2688,7 @@ export default function App() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
                         <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
-                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">DATA SYNC IN PROGRESS</h3>
+                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">SCANNING LIVE STATS</h3>
                       </div>
                     )}
                   </div>
