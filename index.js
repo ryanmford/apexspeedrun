@@ -1596,21 +1596,35 @@ const useASRData = () => {
         const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
         const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
         const openAthleteSetCount = {}; const athleteDisplayNameMap = {};
+        
         dataRows.forEach(vals => {
           const pName = (vals.athlete || "").trim();
           const rawCourse = (vals.course || "").trim();
           const numericValue = cleanNumeric(vals.result);
           if (!pName || !rawCourse || numericValue === null) return;
-          const pKey = normalizeName(pName);
+
+          // FIX: Correctly identify gender from Column E ("DIV")
+          const rawGenderValue = (vals.gender || "").toUpperCase().trim();
+          const baseKey = normalizeName(pName);
+          const pGender = athleteMetadata[baseKey]?.gender || 
+                         ((rawGenderValue.startsWith('W') || rawGenderValue.startsWith('F')) ? 'F' : 'M');
+
+          // FIX: Prevent collision for placeholder athletes
+          let pKey = baseKey;
+          if (isPlaceholderPlayer(pName)) {
+            pKey = `${baseKey}-${pGender.toLowerCase()}`;
+          }
+
           const normC = rawCourse.toUpperCase();
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
-          const pGender = athleteMetadata[pKey]?.gender || (((vals.gender || "").toUpperCase().startsWith('F')) ? 'F' : 'M');
+          
           if (!athleteMetadata[pKey]) {
               athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
           } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
               athleteMetadata[pKey].name = pName;
               athleteDisplayNameMap[pKey] = pName;
           }
+
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
           if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
             allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
