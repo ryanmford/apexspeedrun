@@ -6,7 +6,7 @@ import {
   Video, HelpCircle, Building2, Map as MapIcon, GraduationCap, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
-  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List
+  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share2
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
@@ -938,7 +938,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 };
 
 const ASRBaseModal = ({ 
-  isOpen, onClose, onBack, onForward, canGoForward, 
+  isOpen, onClose, onBack, onForward, canGoForward, onShare,
   theme, header, breadcrumbs, onBreadcrumbClick, currentIndex, children 
 }) => {
   const scrollContainerRef = useRef(null);
@@ -1008,9 +1008,14 @@ const ASRBaseModal = ({
                       </div>
                   )}
               </div>
-              <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
-                  <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Share Link">
+                    <Share2 className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                </button>
+                <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
+                    <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                </button>
+              </div>
           </div>
           <div className="w-full">{header}</div>
         </div>
@@ -1778,7 +1783,6 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
           if (!lb) return;
           Object.entries(lb).forEach(([courseName, athletes]) => {
             if (!athletes) return;
-            // Filter out placeholders before slicing for medal counts
             const filteredEntries = Object.entries(athletes).filter(([pKey]) => {
               const name = atMet[pKey]?.name || pKey;
               return !isPlaceholderPlayer(name);
@@ -2461,39 +2465,11 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  useEffect(() => { setSearch(''); }, [view, eventType, gen]);
-
-  const openModal = useCallback((type, data, roleOverride = null, contextOverride = null) => {
-    if (type === 'player' && isPlaceholderPlayer(data.name)) return;
-    const effectiveRole = roleOverride || (type === 'player' ? (isAllTimeContext ? 'all-time' : 'asr-open') : (type === 'setter' ? 'setter' : null));
-    setModalHistory(p => [...p.slice(0, historyIndex + 1), { type, data, roleOverride: effectiveRole, contextOverride }]);
-    setHistoryIndex(p => p + 1);
-  }, [historyIndex, isAllTimeContext]);
-
-  const closeAllModals = useCallback(() => { setHistoryIndex(-1); setModalHistory([]); }, []);
-  const goBackModal = useCallback(() => setHistoryIndex(c => Math.max(-1, c - 1)), []);
-  const goForwardModal = useCallback(() => setHistoryIndex(c => Math.min(modalHistory.length - 1, c + 1)), [modalHistory.length]);
-  const jumpToHistory = useCallback((index) => setHistoryIndex(index), []);
-  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
-  const canGoForward = historyIndex < modalHistory.length - 1;
-
-  const [viewSorts, setViewSorts] = useState({
-    players: { key: 'rating', direction: 'descending' },
-    courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
-    hof: { key: 'gold', direction: 'descending' }
-  });
-
-  const handleSort = (newSort) => {
-    const key = view === 'map' ? 'courses' : (view === 'players' ? 'players' : view);
-    setViewSorts(p => ({ ...p, [key]: typeof newSort === 'function' ? newSort(p[key]) : newSort }));
-  };
-
-  const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
+  // --- DATA PREPARATION ---
 
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
-      // Include all entries for leaderboards (including placeholders)
       const athletesMAll = Object.entries((lbAT.M || {})[name] || {})
         .map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl])
         .sort((a, b) => a[1] - b[1]);
@@ -2515,6 +2491,179 @@ export default function App() {
       };
     });
   }, [lbAT, cMet, atRawBest]);
+
+  const settersWithImpact = useMemo(() => {
+    return (settersData || []).map(s => {
+        const sName = s.name.trim();
+        const leadCourses = masterCourseList.filter(c => isNameInList(sName, c.leadSetters));
+        const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
+        const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
+        return { 
+            ...s, leads: leadCourses.length, assists: assistCourses.length,
+            sets: leadCourses.length + assistCourses.length,
+            impact: allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0)
+        };
+    }).filter(s => isAllTimeContext || s.sets > 0);
+  }, [settersData, masterCourseList, isAllTimeContext]);
+
+  // --- ROUTER & HISTORY TRACKING REFS ---
+  // We use refs to keep history in sync with the hash listener without clobbering state asynchronously
+  const modalHistoryRef = useRef([]);
+  const historyIndexRef = useRef(-1);
+
+  useEffect(() => {
+    modalHistoryRef.current = modalHistory;
+    historyIndexRef.current = historyIndex;
+  }, [modalHistory, historyIndex]);
+
+  const navigate = useCallback((viewId, modal = null) => {
+    let hash = `#/${viewId}`;
+    if (modal) {
+      hash += `/${modal.type}/${normalizeName(modal.data.name)}`;
+    }
+    window.location.hash = hash;
+  }, []);
+
+  // Listen for Hash Changes (Fixed for infinite breadcrumbs)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash || '#/players';
+      const parts = hash.split('/').filter(Boolean);
+      const viewId = parts[1] || 'players';
+      
+      setView(viewId);
+
+      // Handle Modal Logic
+      if (parts.length >= 4 && !isLoading) {
+        const type = parts[2];
+        const slug = parts[3];
+        
+        // 1. Check if the URL slug already matches our CURRENT active modal
+        const currentIdx = historyIndexRef.current;
+        const currentModal = currentIdx >= 0 ? modalHistoryRef.current[currentIdx] : null;
+        
+        if (currentModal && normalizeName(currentModal.data.name) === slug) {
+          return; // Already matched, stop clobbering history
+        }
+
+        // 2. Check if the URL slug matches the PREVIOUS modal (Browser BACK)
+        const prevModal = currentIdx > 0 ? modalHistoryRef.current[currentIdx - 1] : null;
+        if (prevModal && normalizeName(prevModal.data.name) === slug) {
+          setHistoryIndex(currentIdx - 1);
+          return;
+        }
+
+        // 3. Check if the URL slug matches the NEXT modal (Browser FORWARD)
+        const nextModal = currentIdx < modalHistoryRef.current.length - 1 ? modalHistoryRef.current[currentIdx + 1] : null;
+        if (nextModal && normalizeName(nextModal.data.name) === slug) {
+          setHistoryIndex(currentIdx + 1);
+          return;
+        }
+
+        // 4. Otherwise, it's a "New Landing" or manual slug change - Reconstruct ENRICHED data
+        let foundData = null;
+        if (type === 'player') foundData = Object.values(atMet).find(a => normalizeName(a.name) === slug);
+        if (type === 'course') foundData = masterCourseList.find(c => normalizeName(c.name) === slug);
+        if (type === 'setter') foundData = settersWithImpact.find(s => normalizeName(s.name) === slug);
+        if (type === 'region') foundData = { name: slug.toUpperCase(), type: 'country' };
+
+        if (foundData) {
+            setModalHistory([{ type, data: foundData }]);
+            setHistoryIndex(0);
+        }
+      } else if (parts.length < 3) {
+        setModalHistory([]);
+        setHistoryIndex(-1);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    if (!isLoading) handleHashChange();
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [isLoading, atMet, masterCourseList, settersWithImpact]);
+
+  // Sync internal view changes to URL
+  useEffect(() => {
+    if (isLoading) return;
+    const currentHash = window.location.hash;
+    const targetHash = `#/${view}`;
+    if (!currentHash.startsWith(targetHash) && modalHistory.length === 0) {
+      window.location.hash = targetHash;
+    }
+  }, [view, isLoading, modalHistory.length]);
+
+  const openModal = useCallback((type, data, roleOverride = null) => {
+    if (type === 'player' && isPlaceholderPlayer(data.name)) return;
+    
+    const newModal = { type, data, roleOverride };
+    
+    // First, update internal state (Stacking the infinite history)
+    setModalHistory(p => {
+      const nextStack = [...p.slice(0, historyIndex + 1), newModal];
+      return nextStack;
+    });
+    setHistoryIndex(p => p + 1);
+
+    // Then, update the URL
+    navigate(view, newModal);
+  }, [historyIndex, view, navigate]);
+
+  const closeAllModals = useCallback(() => { 
+    navigate(view);
+    setHistoryIndex(-1); 
+    setModalHistory([]); 
+  }, [view, navigate]);
+
+  const goBackModal = useCallback(() => {
+    if (historyIndex > 0) {
+      const prev = modalHistory[historyIndex - 1];
+      navigate(view, prev); // URL change will trigger the index decrement via handleHashChange
+    } else {
+      closeAllModals();
+    }
+  }, [historyIndex, modalHistory, view, navigate, closeAllModals]);
+
+  const goForwardModal = useCallback(() => {
+    if (historyIndex < modalHistory.length - 1) {
+      const next = modalHistory[historyIndex + 1];
+      navigate(view, next);
+    }
+  }, [historyIndex, modalHistory, view, navigate]);
+
+  const jumpToHistory = useCallback((index) => {
+    const target = modalHistory[index];
+    navigate(view, target);
+  }, [modalHistory, view, navigate]);
+
+  const handleShare = useCallback(() => {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: 'Apex Speed Run', url }).catch(() => {});
+    } else {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+  }, []);
+
+  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
+  const canGoForward = historyIndex < modalHistory.length - 1;
+
+  const [viewSorts, setViewSorts] = useState({
+    players: { key: 'rating', direction: 'descending' },
+    courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
+    hof: { key: 'gold', direction: 'descending' }
+  });
+
+  const handleSort = (newSort) => {
+    const key = view === 'map' ? 'courses' : (view === 'players' ? 'players' : view);
+    setViewSorts(p => ({ ...p, [key]: typeof newSort === 'function' ? newSort(p[key]) : newSort }));
+  };
+
+  const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
 
   const rawCourseList = useMemo(() => masterCourseList.filter(c => isAllTimeContext || c.is2026), [masterCourseList, isAllTimeContext]);
   const filteredCourses = useFilteredData(rawCourseList, debouncedSearch, viewSorts.courses);
@@ -2547,27 +2696,12 @@ export default function App() {
       dividerLabel = "RUN 3+ COURSES TO GET RANKED";
     }
 
-    // Logic for Open Mode: Divider above rank 1 if empty
     if (!isAllTimeContext && fQual.length === 0) {
         return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     }
 
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
   }, [filteredAthletes, isAllTimeContext, data, gen]);
-
-  const settersWithImpact = useMemo(() => {
-    return (settersData || []).map(s => {
-        const sName = s.name.trim();
-        const leadCourses = masterCourseList.filter(c => isNameInList(sName, c.leadSetters));
-        const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
-        const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
-        return { 
-            ...s, leads: leadCourses.length, assists: assistCourses.length,
-            sets: leadCourses.length + assistCourses.length,
-            impact: allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0)
-        };
-    }).filter(s => isAllTimeContext || s.sets > 0);
-  }, [settersData, masterCourseList, isAllTimeContext]);
 
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
@@ -2664,12 +2798,12 @@ export default function App() {
         theme={theme} setTheme={setTheme} view={view} setView={setView} 
         eventType={eventType} setEventType={setEventType}
       />
-      <ASRBottomNav view={view} setView={setView} theme={theme} onOpenIntro={() => setShowIntro(true)} />
+      <ASRBottomNav view={view} setView={(v) => navigate(v)} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
       <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))] overflow-visible">
         <ASRBaseModal 
-          isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} 
+          isOpen={historyIndex >= 0} onClose={closeAllModals} onBack={goBackModal} onForward={goForwardModal} canGoForward={canGoForward} onShare={handleShare}
           theme={theme} header={getModalHeader(activeModal)} breadcrumbs={breadcrumbsArr} onBreadcrumbClick={jumpToHistory}
           currentIndex={historyIndex}
         >
