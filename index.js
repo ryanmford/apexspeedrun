@@ -6,11 +6,11 @@ import {
   Video, HelpCircle, Building2, Map as MapIcon, GraduationCap, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
-  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share2
+  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share2, Eye, Camera, Award, Star, Medal
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v25_launch'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v27_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -372,6 +372,20 @@ const CustomStyles = () => (
     }
 
     .stat-card-container { overflow: visible !important; }
+
+    .cert-badge-glow {
+      filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3));
+    }
+
+    .setter-master-gradient {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
+    }
+    .setter-pro-gradient {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .setter-l3-gradient {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
   `}</style>
 );
 
@@ -419,11 +433,74 @@ const ASRSectionHeading = ({ children, theme, className = "" }) => (
     </h3>
 );
 
+const SetterCertificationBadge = ({ level, theme }) => {
+  if (!level || level === '0' || level === '-') return null;
+  
+  const norm = String(level).toUpperCase().trim();
+  
+  const levels = {
+    'L1': { 
+      label: 'LEVEL 1 SETTER', 
+      color: 'text-zinc-400', 
+      bg: 'bg-zinc-900/50', 
+      border: 'border-zinc-800' 
+    },
+    'L2': { 
+      label: 'LEVEL 2 SETTER', 
+      color: 'text-blue-500', 
+      bg: 'bg-blue-950/20', 
+      border: 'border-blue-900/50' 
+    },
+    'L3': { 
+      label: 'LEVEL 3 SETTER', 
+      color: 'text-amber-500', 
+      bg: 'bg-amber-950/30', 
+      border: 'border-amber-600/50', 
+      glow: true 
+    },
+    'MASTER': { 
+      label: 'MASTER COURSE SETTER', 
+      color: 'text-white', 
+      bg: 'setter-master-gradient', 
+      border: 'border-blue-400', 
+      glow: true,
+      premium: true
+    },
+    'PRO': { 
+      label: 'PROFESSIONAL SETTER', 
+      color: 'text-white', 
+      bg: 'setter-pro-gradient', 
+      border: 'border-zinc-600', 
+      glow: true,
+      premium: true
+    }
+  };
+
+  const cfg = levels[norm] || { label: norm, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30' };
+
+  return (
+    <div className={`group relative flex flex-col items-center gap-2 animate-in zoom-in-95 duration-700`}>
+      <div className={`relative flex items-center gap-2.5 px-8 py-3.5 rounded-2xl border-2 transition-all duration-500 ${cfg.bg} ${cfg.border} ${cfg.glow ? 'cert-badge-glow shadow-[0_0_25px_rgba(37,99,235,0.2)]' : ''} ${cfg.premium ? 'scale-105 hover:scale-110' : ''}`}>
+        <span className={`text-[12px] font-black uppercase tracking-[0.3em] ${cfg.color} whitespace-nowrap`}>
+          {cfg.label}
+        </span>
+        {cfg.premium && <Sparkles size={12} className={`absolute -top-2 -right-2 text-white animate-pulse shadow-2xl`} />}
+      </div>
+      
+      {cfg.premium && (
+        <span className="text-[8px] font-black uppercase tracking-widest opacity-40 animate-pulse">
+          TOP 0.1% GLOBAL NETWORK
+        </span>
+      )}
+    </div>
+  );
+};
+
 const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
   const GRADIENTS = [
     'from-blue-600 to-indigo-700', 'from-emerald-600 to-cyan-700',
     'from-cyan-600 to-blue-700', 'from-teal-600 to-emerald-700',
-    'from-violet-700 to-purple-700', 'from-blue-500 to-indigo-500',
+    'from-violet-700 to-purple-700', 'from-blue-50 to-indigo-500',
     'from-sky-600 to-blue-700', 'from-indigo-600 to-purple-700'
   ];
   
@@ -503,7 +580,12 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     '🪙': { desc: "CONTRIBUTION COINS EARNED THROUGH RUNS, WINS, AND SETS." },
     'IMPACT': { desc: "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER." },
     'WINS': { desc: "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD." },
-    'WIN %': { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." }
+    'WIN %': { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." },
+    'FILMS': { desc: "TOTAL RUN VIDEOS OFFICIALLY FILMED BY THIS INDIVIDUAL." },
+    'AVG LENGTH': { desc: "AVERAGE DISTANCE OF COURSES IN THIS DATASET." },
+    'AVG TIME': { desc: "AVERAGE RUN TIME ACROSS ALL VERIFIED RUNS." },
+    'AVG CR': { desc: "AVERAGE OVERALL COURSE RECORD OF EACH COURSE SET BY THIS INDIVIDUAL." },
+    'LEVEL': { desc: "OFFICIAL CERTIFICATION LEVEL FROM THE APEX NETWORK." }
   };
 
   const info = statInfo[label] || (tooltip ? { desc: tooltip } : null);
@@ -648,7 +730,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
     setter: {
       title: "COURSE SETTER CERTIFICATION",
       subtitle: "Become an Apex certified speed parkour course setter.",
-      icon: <GraduationCap className="text-white" size={24} />,
+      icon: <Eye className="text-white" size={24} />,
       link: SKOOL_LINK,
       btnText: "GET STARTED"
     },
@@ -872,7 +954,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       onClick={onClose}
     >
       <div 
-        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix`}
+        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`}
         onClick={e => e.stopPropagation()}
       >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
@@ -1120,13 +1202,16 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
 
         const setterStats = [
+            { l: 'LEVEL', v: setterData.certLevel || '-' },
             { l: 'IMPACT', v: impact, c: 'text-blue-600' },
-            { l: 'AVG IMPACT', v: avgImpact },
+            { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' },
             { l: 'SETS', v: setsCount },
             { l: 'LEADS', v: setterData.leads || 0 },
             { l: 'ASSISTS', v: setterData.assists || 0 },
-            { l: 'CITIES', v: new Set(setterCourses.map(c => c.city).filter(Boolean)).size || 0 },
+            { l: 'CITIES', v: setterData.citiesCount || 0 },
             { l: 'COUNTRIES', v: new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0 },
+            { l: 'FILMS', v: setterData.films || 0 },
+            { l: 'AVG LENGTH', v: setterData.avgLength ? `${setterData.avgLength.toFixed(1)}m` : '0m' },
             { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0 }
         ];
 
@@ -1150,7 +1235,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                         />
                       )) : (
                           <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
-                              <Building2 className="w-10 h-10" /><span className="text-[10px] font-black uppercase">No verified sets found</span>
+                            <Building2 className="w-10 h-10" /><span className="text-[10px] font-black uppercase">No verified sets found</span>
                           </div>
                       )}
                   </div>
@@ -1174,7 +1259,8 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         city: matched?.city, 
         mRecord: matched?.allTimeMRecord, 
         fRecord: matched?.allTimeFRecord,
-        rulesVideo: matched?.demoVideo 
+        rulesVideo: matched?.demoVideo,
+        length: cleanNumeric(matched?.length) || 0
       };
     }).sort((a, b) => {
         const aGold = a.rank === 1;
@@ -1198,12 +1284,19 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
     const currentRankValue = isQualifiedInProfile ? (isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank) : "UR";
 
+    const totalRunTime = courseData.reduce((sum, run) => sum + (run.num || 0), 0);
+    const avgRunTime = runsInContext > 0 ? (totalRunTime / runsInContext).toFixed(2) : '0.00';
+    const totalLengthInRuns = courseData.reduce((sum, run) => sum + (run.length || 0), 0);
+    const avgRunLength = runsInContext > 0 ? (totalLengthInRuns / runsInContext).toFixed(1) : '0';
+
     const playerStats = [
         { l: 'RANK', v: currentRankValue },
         { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: runsInContext }, 
         { l: 'WINS', v: metaSource.wins || 0 }, 
+        { l: 'AVG TIME', v: avgRunTime },
+        { l: 'AVG LENGTH', v: `${avgRunLength}m` },
         { l: 'WIN %', v: ((metaSource.wins / (runsInContext || 1)) * 100).toFixed(2) + '%' }, 
         { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
         { l: 'COUNTRIES', v: new Set(courseData.map(c => c.country).filter(Boolean)).size || 0 },
@@ -1451,7 +1544,8 @@ const useASRData = () => {
         contribution: ['🪙', 'contribution'],
         fire: ['🔥', 'fire'],
         ig: ['ig', 'instagram', 'social'],
-        avg: ['avg time', 'average', 'avg']
+        avg: ['avg time', 'average', 'avg'],
+        cert: ['cert', 'level', 'certification']
       };
 
       const SET_LIST_MAPPING = {
@@ -1479,7 +1573,8 @@ const useASRData = () => {
         country: ['country', 'nation'],
         flag: ['flag', 'emoji', 'region'],
         ig: ['ig', 'instagram'],
-        contribution: ['🪙', 'contribution']
+        contribution: ['🪙', 'contribution'],
+        cert: ['cert', 'level', 'certification']
       };
 
       const LIVE_FEED_MAPPING = {
@@ -1489,7 +1584,8 @@ const useASRData = () => {
         gender: ['div', 'gender', 'sex'],
         date: ['date', 'day', 'timestamp'],
         tag: ['tag', 'event', 'category', 'season'],
-        proof: ['proof', 'link', 'video', 'url']
+        proof: ['proof', 'link', 'video', 'url'],
+        filmer: ['filmer', 'videographer', 'filmed by']
       };
 
       const processRankingData = (csv, gender) => {
@@ -1514,6 +1610,7 @@ const useASRData = () => {
             contributionScore: cleanNumeric(vals.contribution) || 0, 
             allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0),
             avgTime: cleanNumeric(vals.avg) || 0,
+            certLevel: (vals.__raw[17] || vals.cert || "").trim().toUpperCase(),
             searchKey
           };
         }).filter(Boolean);
@@ -1571,7 +1668,9 @@ const useASRData = () => {
                   sets: cleanNumeric(vals.sets) || 0,
                   leads: cleanNumeric(vals.leads) || 0,
                   assists: cleanNumeric(vals.assists) || 0,
-                  contributionScore: cleanNumeric(vals.contribution) || 0
+                  contributionScore: cleanNumeric(vals.contribution) || 0,
+                  certLevel: (vals.__raw[17] || vals.cert || "").trim().toUpperCase(),
+                  searchKey: `${name} ${fixed.name}`.toLowerCase()
               };
           }).filter(Boolean);
       };
@@ -1581,7 +1680,7 @@ const useASRData = () => {
           allTimePerformances: {}, openPerformances: {}, openRankings: [], 
           allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, 
           athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, 
-          atRawBest: {}, opRawBest: {} 
+          atRawBest: {}, opRawBest: {}, filmerCredits: {}
         };
         if (!csv) return result;
         const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
@@ -1590,12 +1689,14 @@ const useASRData = () => {
           if (/athlete|name|course|track|pb|result/i.test(lines[i])) { hIdx = i; break; }
         }
         if (hIdx === -1) return result;
+        
         const dataRows = csvToObjects(csv, LIVE_FEED_MAPPING, hIdx);
         const OPEN_START = new Date('2026-03-02T00:00:00Z');
         const OPEN_END = new Date('2026-05-31T23:59:59Z');
         const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
         const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
         const openAthleteSetCount = {}; const athleteDisplayNameMap = {};
+        const filmerCreditsCount = {};
         
         dataRows.forEach(vals => {
           const pName = (vals.athlete || "").trim();
@@ -1603,13 +1704,11 @@ const useASRData = () => {
           const numericValue = cleanNumeric(vals.result);
           if (!pName || !rawCourse || numericValue === null) return;
 
-          // FIX: Correctly identify gender from Column E ("DIV")
           const rawGenderValue = (vals.gender || "").toUpperCase().trim();
           const baseKey = normalizeName(pName);
           const pGender = athleteMetadata[baseKey]?.gender || 
-                         ((rawGenderValue.startsWith('W') || rawGenderValue.startsWith('F')) ? 'F' : 'M');
+                          ((rawGenderValue.startsWith('W') || rawGenderValue.startsWith('F')) ? 'F' : 'M');
 
-          // FIX: Prevent collision for placeholder athletes
           let pKey = baseKey;
           if (isPlaceholderPlayer(pName)) {
             pKey = `${baseKey}-${pGender.toLowerCase()}`;
@@ -1617,6 +1716,16 @@ const useASRData = () => {
 
           const normC = rawCourse.toUpperCase();
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
+
+          // Process Filmer Data (Column I, Index 8)
+          const rawFilmer = (vals.filmer || vals.__raw[8] || "").trim();
+          if (rawFilmer) {
+            const filmerKey = normalizeName(rawFilmer);
+            filmerCreditsCount[filmerKey] = (filmerCreditsCount[filmerKey] || 0) + 1;
+            if (courseSetMap[normC]) {
+                courseSetMap[normC].filmer = rawFilmer;
+            }
+          }
           
           if (!athleteMetadata[pKey]) {
               athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
@@ -1672,6 +1781,7 @@ const useASRData = () => {
               } else {
                 athleteMetadata[pKey].openFireCount = fireTotal;
               }
+              athleteMetadata[pKey].films = filmerCreditsCount[pKey] || 0;
             }
           });
           return res;
@@ -1684,6 +1794,7 @@ const useASRData = () => {
         result.athleteDisplayNameMap = athleteDisplayNameMap;
         result.atRawBest = allTimeAthleteBestTimes;
         result.opRawBest = openAthleteBestTimes;
+        result.filmerCredits = filmerCreditsCount;
         result.openRankings = Object.keys(athleteMetadata).map(pKey => {
           const meta = athleteMetadata[pKey];
           const perfs = result.openPerformances[pKey] || [];
@@ -1703,6 +1814,7 @@ const useASRData = () => {
       pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
+      
       const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")]
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
@@ -2144,7 +2256,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         <div className={`transition-opacity shrink-0 ${medalSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-          <ChevronDown className={`w-4 h-4 ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
+          <label className="cursor-pointer">
+            <ChevronDown className={`w-4 h-4 ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
+          </label>
         </div>
       </div>
     </th>
@@ -2277,7 +2391,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip,
   );
 };
 
-const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRules = true }) => {
+const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRules = true, statKeys = [] }) => {
     const [visibleCount, setVisibleCount] = useState(50);
     const observerTarget = useRef(null);
     useEffect(() => { setVisibleCount(50); }, [data, sort]);
@@ -2328,13 +2442,12 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                 {visibleData.map((item, idx) => {
                     if (item.isDivider) return <div key={idx} className="py-14 text-center opacity-60 text-[11px] font-black uppercase tracking-[0.5em]">{item.label}</div>;
                     if (item.isUtility) return <div key={idx} className="px-6 py-10"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
-                    const athleteStats = [
-                      { value: typeof item.rating === 'number' ? item.rating.toFixed(2) : '--.--' },
-                      { value: item.runs || 0 }
-                    ];
-                    const courseStats = [
-                      { value: item.totalAthletes || 0 }
-                    ];
+                    
+                    const rowStats = statKeys.map(k => {
+                      const val = item[k];
+                      return { value: typeof val === 'number' ? (Number.isInteger(val) ? val : val.toFixed(2)) : val || 0 };
+                    });
+
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
@@ -2342,7 +2455,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           showRules={showRules}
-                          stats={columns.some(c => c.key === 'rating') ? athleteStats : courseStats}
+                          stats={rowStats}
                           videoUrl={item.demoVideo}
                           onClick={() => onRowClick?.(item)}
                         />
@@ -2371,7 +2484,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
                 </div>
             </div>
 
-            {view !== 'hof' && (
+            {view !== 'hof' && view !== 'setters' && (
               <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
                 <button 
                   onClick={() => setEventType('open')} 
@@ -2405,8 +2518,9 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
     { id: 'players', label: 'PLAYERS', icon: <Users className="w-5 h-5" /> },
     { id: 'map', label: 'COURSES', icon: <Globe className="w-5 h-5" /> },
-    { id: 'hof', label: 'HOF', icon: <Trophy className="w-5 h-5" /> },
-    { id: 'start', label: 'START', icon: <Play className="w-5 h-5 fill-current" /> }
+    { id: 'start', label: 'START', icon: <Play className="w-5 h-5 fill-current" /> },
+    { id: 'setters', label: 'SETTERS', icon: <GraduationCap className="w-5 h-5" /> },
+    { id: 'hof', label: 'HOF', icon: <Trophy className="w-5 h-5" /> }
   ];
 
   return (
@@ -2463,6 +2577,13 @@ const PLAYER_COLS = [
     { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
 ];
 
+const SETTER_COLS = [
+    { isRank: true },
+    { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
+    { label: 'IMPACT', type: 'number', key: 'impact', align: 'right', width: 'w-20 sm:w-40' },
+    { label: 'SETS', type: 'number', key: 'sets', align: 'right', width: 'w-16 sm:w-32' }
+];
+
 const COURSE_COLS = [
     { isRank: true },
     { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full' },
@@ -2479,12 +2600,10 @@ export default function App() {
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
   
-  // --- CORE NAVIGATION STATE (Non-Destructive Chronological) ---
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isInternalNavRef = useRef(false);
   
-  // Persistence Refs for Syncing
   const histRef = useRef([]);
   const idxRef = useRef(-1);
 
@@ -2526,13 +2645,32 @@ export default function App() {
         const leadCourses = masterCourseList.filter(c => isNameInList(sName, c.leadSetters));
         const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
         const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
+        const athleteMeta = atMet[normalizeName(sName)];
+        
+        const totalCourses = allSetCourses.length;
+        const totalLength = allSetCourses.reduce((sum, c) => sum + (cleanNumeric(c.length) || 0), 0);
+        const totalDifficulty = allSetCourses.reduce((sum, c) => sum + (cleanNumeric(c.difficulty) || 0), 0);
+        const citiesSet = new Set(allSetCourses.map(c => c.city).filter(Boolean));
+
+        const totalCR = allSetCourses.reduce((sum, c) => {
+            const crM = typeof c.allTimeMRecord === 'number' ? c.allTimeMRecord : Infinity;
+            const crF = typeof c.allTimeFRecord === 'number' ? c.allTimeFRecord : Infinity;
+            const fastest = Math.min(crM, crF);
+            return sum + (fastest === Infinity ? 0 : fastest);
+        }, 0);
+
         return { 
             ...s, leads: leadCourses.length, assists: assistCourses.length,
             sets: leadCourses.length + assistCourses.length,
-            impact: allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0)
+            impact: allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0),
+            films: athleteMeta?.films || 0,
+            avgLength: totalCourses > 0 ? (totalLength / totalCourses) : 0,
+            avgDifficulty: totalCourses > 0 ? (totalDifficulty / totalCourses) : 0,
+            avgCR: totalCourses > 0 ? (totalCR / totalCourses) : 0,
+            citiesCount: citiesSet.size
         };
     }).filter(s => isAllTimeContext || s.sets > 0);
-  }, [settersData, masterCourseList, isAllTimeContext]);
+  }, [settersData, masterCourseList, isAllTimeContext, atMet]);
 
   // --- METADATA & PREVIEW LOGIC ---
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
@@ -2542,27 +2680,10 @@ export default function App() {
     if (activeModal) {
       title = `${activeModal.data.name.toUpperCase()} | ASR`;
     } else {
-      const viewNames = { players: 'Players', map: 'Courses', hof: 'Hall of Fame' };
+      const viewNames = { players: 'Players', setters: 'Setters', map: 'Courses', hof: 'Hall of Fame' };
       title = `${viewNames[view] || 'Home'} | Apex Speed Run`;
     }
     document.title = title;
-    
-    // Attempt to update meta tags for link previews
-    const updateMeta = (name, content) => {
-      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
-      if (!meta) {
-        meta = document.createElement('meta');
-        if (name.startsWith('og:')) meta.setAttribute('property', name);
-        else meta.setAttribute('name', name);
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', content);
-    };
-
-    updateMeta('og:title', title);
-    updateMeta('og:description', 'Live statistics, rankings and verified courses for the worldwide parkour speed run network.');
-    updateMeta('og:image', 'https://apexspeedrun.com/og-image.png'); // Main site preview image
-    updateMeta('twitter:card', 'summary_large_image');
   }, [activeModal, view]);
 
   // --- NAVIGATION LOGIC ---
@@ -2575,24 +2696,19 @@ export default function App() {
     window.location.hash = `#/${item.type}/${normalizeName(item.data.name)}`;
   }, []);
 
-  const navigateToEntity = useCallback((type, data) => {
+  const navigateToEntity = useCallback((type, data, roleOverride = null) => {
     if (isLoading) return;
     isInternalNavRef.current = true;
     
     const currentHist = histRef.current;
     const currentIdx = idxRef.current;
     
-    const forwardItem = currentHist[currentIdx + 1];
-    if (forwardItem && forwardItem.type === type && normalizeName(forwardItem.data.name) === normalizeName(data.name)) {
-        setHistoryIndex(currentIdx + 1);
-    } else {
-        const nextItem = { type, data };
-        setModalHistory(prev => {
-            const sliced = prev.slice(0, currentIdx + 1);
-            return [...sliced, nextItem];
-        });
-        setHistoryIndex(currentIdx + 1);
-    }
+    const nextItem = { type, data, roleOverride };
+    setModalHistory(prev => {
+        const sliced = prev.slice(0, currentIdx + 1);
+        return [...sliced, nextItem];
+    });
+    setHistoryIndex(currentIdx + 1);
 
     window.location.hash = `#/${type}/${normalizeName(data.name)}`;
   }, [isLoading]);
@@ -2671,6 +2787,7 @@ export default function App() {
   // UI Derived state
   const [viewSorts, setViewSorts] = useState({
     players: { key: 'rating', direction: 'descending' },
+    setters: { key: 'impact', direction: 'descending' },
     courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
     hof: { key: 'gold', direction: 'descending' }
   });
@@ -2685,10 +2802,15 @@ export default function App() {
   const rawCourseList = useMemo(() => (masterCourseList || []).filter(c => isAllTimeContext || c.is2026), [masterCourseList, isAllTimeContext]);
   const filteredCourses = useFilteredData(rawCourseList, debouncedSearch, viewSorts.courses);
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
+  
   const athletePool = isAllTimeContext ? data : openData;
   const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name), [gen]));
   
+  const filteredSetters = useFilteredData(settersWithImpact, debouncedSearch, viewSorts.setters);
+  const settersList = useMemo(() => filteredSetters.map((s, i) => ({ ...s, currentRank: i + 1 })), [filteredSetters]);
+
   const list = useMemo(() => {
+    if (view === 'setters') return settersList;
     if (filteredAthletes.length === 0) return [];
     let qual = filteredAthletes.filter(p => isQualifiedAthlete(p, isAllTimeContext));
     let unranked = filteredAthletes.filter(p => !isQualifiedAthlete(p, isAllTimeContext));
@@ -2701,7 +2823,7 @@ export default function App() {
     let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
     if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
-  }, [filteredAthletes, isAllTimeContext, data, gen]);
+  }, [filteredAthletes, settersList, isAllTimeContext, data, gen, view]);
 
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
@@ -2726,7 +2848,6 @@ export default function App() {
     }
   }, []);
 
-  // --- HEADER RENDERER ---
   const getModalHeader = (modal) => {
     if (!modal) return null;
     const { type, data } = modal;
@@ -2740,11 +2861,32 @@ export default function App() {
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <div className="mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2></div>
-                <div className="text-[10px] sm:text-[14px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mb-3">{formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}</div>
-                <div className="flex items-center gap-2">
-                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}><MapPin size={11} strokeWidth={3} /> MAP</a>
-                    {data.demoVideo ? (<a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}><Play size={11} strokeWidth={3} fill="currentColor" /> RULES</a>) : null}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} 
+                      target="_blank" 
+                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-blue-500' : 'bg-white border-slate-300 text-blue-600'} ios-clip-fix`} 
+                      title="View on Map"
+                    >
+                      <MapPin className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                    </a>
+                    {data.demoVideo && (
+                      <a 
+                        href={data.demoVideo} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-rose-500' : 'bg-white border-slate-300 text-rose-600'} ios-clip-fix`} 
+                        title="View Rules"
+                      >
+                        <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={2.5} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mb-1">
+                    {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
                 </div>
               </div>
             </div>
@@ -2830,7 +2972,7 @@ export default function App() {
                ) : (
                 <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
-                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => navigateToEntity('course', item)} showRules={true} />
+                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => navigateToEntity('course', item)} showRules={true} statKeys={['totalAthletes']} />
                   </div>
                 </div>
                )
@@ -2838,7 +2980,16 @@ export default function App() {
                 <div className={`relative border border-subtle rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
                     {list.length > 0 ? (
-                      <ASRDataTable theme={theme} columns={PLAYER_COLS} sort={viewSorts.players} onSort={handleSort} data={list} onRowClick={item => navigateToEntity('player', item)} showRules={false} />
+                      <ASRDataTable 
+                        theme={theme} 
+                        columns={view === 'setters' ? SETTER_COLS : PLAYER_COLS} 
+                        sort={view === 'setters' ? viewSorts.setters : viewSorts.players} 
+                        onSort={handleSort} 
+                        data={list} 
+                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : 'player', item, view === 'setters' ? 'setter' : null)} 
+                        showRules={false} 
+                        statKeys={view === 'setters' ? ['impact', 'sets'] : ['rating', 'runs']}
+                      />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
                         <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
@@ -2850,7 +3001,7 @@ export default function App() {
              )}
 
              <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pb-20 pt-8">
-                {view === 'map' && <ASRPromotionBanner type="setter" theme={theme} />}
+                {(view === 'map' || view === 'setters') && <ASRPromotionBanner type="setter" theme={theme} />}
                 {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
              </div>
            </div>}
