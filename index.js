@@ -586,7 +586,7 @@ const ASRListItem = ({
             })}
             {showRules && (
               <div className="w-12 sm:w-16 flex items-center justify-center shrink-0">
-                {videoUrl ? (
+                {videoUrl && (
                   <a 
                     href={videoUrl} target="_blank" rel="noopener noreferrer" 
                     onClick={e => e.stopPropagation()} 
@@ -594,10 +594,6 @@ const ASRListItem = ({
                   >
                     <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                   </a>
-                ) : (
-                  <div className="p-2 sm:p-2.5 opacity-20 cursor-not-allowed">
-                    <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
-                  </div>
                 )}
               </div>
             )}
@@ -649,7 +645,7 @@ const ASRListItem = ({
           ))}
         </div>
         <div className="w-10 sm:w-16 flex items-center justify-center shrink-0">
-          {videoUrl ? (
+          {videoUrl && (
             <a 
               href={videoUrl} target="_blank" rel="noopener noreferrer" 
               onClick={e => e.stopPropagation()} 
@@ -657,10 +653,6 @@ const ASRListItem = ({
             >
               <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
             </a>
-          ) : (
-            <div className="p-2.5 opacity-20 cursor-not-allowed">
-              <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
-            </div>
           )}
         </div>
       </div>
@@ -729,8 +721,16 @@ const ASRPromotionBanner = ({ type, theme }) => {
 };
 
 const ASRPatronPill = ({ course, theme, compact = false }) => {
-    const isMillennium = course.name?.toUpperCase() === 'MILLENNIUM';
+    const hasSponsor = !!course.sponsorName;
+    const sponsorName = course.sponsorName;
+    const sponsorLink = course.sponsorLink || `mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`;
     
+    const getInitials = (n) => {
+      if (!n) return 'A';
+      const clean = n.trim();
+      return clean.length > 0 ? clean[0].toUpperCase() : 'A';
+    };
+
     const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10' : 'bg-gradient-to-br from-amber-100 to-amber-50';
     const goldBorder = theme === 'dark' ? 'border-amber-500/60' : 'border-amber-500/50';
     const goldTextPrimary = theme === 'dark' ? 'text-amber-500' : 'text-amber-700';
@@ -744,29 +744,35 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     const fadedTextSecondary = theme === 'dark' ? 'text-zinc-500' : 'text-slate-400';
 
     if (!compact) {
-      if (isMillennium) {
+      if (hasSponsor) {
         return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`w-full flex items-center gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
-              <div className="relative">
-                <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform`}>JB</div>
+          <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform uppercase tracking-tighter`}>
+                    {getInitials(sponsorName)}
+                  </div>
+                </div>
+                <div className="flex flex-col text-left">
+                    <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.25em] ${goldTextSecondary} opacity-90 leading-none`}>OFFICIAL COURSE SPONSOR</span>
+                    <span className={`text-[12px] sm:text-[14px] font-black uppercase tracking-tighter ${goldTextPrimary} mt-0.5`}>{sponsorName}</span>
+                </div>
               </div>
-              <div className="flex flex-col flex-1 text-left">
-                  <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.25em] ${goldTextSecondary} opacity-90 leading-none`}>OFFICIAL SPONSOR</span>
-                  <span className={`text-[12px] sm:text-[14px] font-black uppercase tracking-tighter ${goldTextPrimary} mt-0.5`}>Juicebox.money | Fund Your Thing</span>
+              <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-amber-500/40 text-amber-500 group-hover:bg-amber-500 group-hover:text-white' : 'border-amber-500 text-amber-600 group-hover:bg-amber-600 group-hover:text-white'} whitespace-nowrap`}>
+                LEARN MORE
               </div>
           </a>
         );
       }
       
       return (
-        <a href={`mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
+        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
               <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
                 <Building2 className="w-4 h-4" />
               </div>
               <div className="flex flex-col text-left">
-                <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] ${fadedTextSecondary} leading-tight`}>Partnership Available</span>
-                <span className={`text-[10px] sm:text-[12px] font-black uppercase whitespace-normal break-words ${fadedTextPrimary} group-hover:text-amber-500 transition-colors leading-tight`}>ADOPT A COURSE, SUPPORT THE PROJECT</span>
+                <span className={`text-[10px] sm:text-[12px] font-black uppercase whitespace-normal break-words ${fadedTextPrimary} group-hover:text-amber-500 transition-colors leading-tight`}>ADOPT THIS COURSE, SUPPORT THE PROJECT</span>
               </div>
             </div>
             <div className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-xl border-2 text-[8px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-zinc-800 text-zinc-500 group-hover:border-amber-500 group-hover:text-amber-500' : 'border-slate-300 text-slate-400 group-hover:border-amber-500 group-hover:text-amber-500'} whitespace-nowrap`}>
@@ -776,13 +782,15 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       );
     }
 
-    if (isMillennium) {
+    if (hasSponsor) {
       return (
-          <a href="https://juicebox.money" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
-              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)]`}>JB</div>
+          <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
+              <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)] uppercase tracking-tighter`}>
+                {getInitials(sponsorName)}
+              </div>
               <div className="flex flex-col text-left">
-                  <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>Sponsor</span>
-                  <span className={`text-[10px] font-black uppercase whitespace-normal break-words ${goldTextPrimary}`}>Juicebox.money</span>
+                  <span className={`text-[7px] font-black uppercase tracking-widest ${goldTextSecondary} opacity-80 leading-none`}>SPONSOR</span>
+                  <span className={`text-[10px] font-black uppercase whitespace-normal break-words ${goldTextPrimary}`}>{sponsorName}</span>
               </div>
           </a>
       );
@@ -1246,7 +1254,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                           key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                           icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
                           stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
-                          videoUrl={c.rulesVideo}
+                          videoUrl={c.videoUrl} // Linked to personal run video (Column H)
                           badgeContent={<>{c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}{c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}</>}
                           onClick={() => { if(target) openModal('course', target); }}
                         />
@@ -1533,6 +1541,10 @@ const useASRData = () => {
                   const valAG = String(vals.__raw[32] || "").toUpperCase().trim();
                   // AF is index 31: Course Rules Video
                   const rulesVideoFromCol = String(vals.__raw[31] || "").trim();
+                  // AI/AJ are indices 34/35: Sponsor Name/Link
+                  const sponsorName = (vals.__raw[34] || "").trim();
+                  const sponsorLink = (vals.__raw[35] || "").trim();
+                  
                   const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
                   map[course] = { 
                       is2026, flag: fixed.flag || '🏳️',
@@ -1549,6 +1561,8 @@ const useASRData = () => {
                       assistantsetters: (vals.assists || "").trim(),
                       demoVideo: rulesVideoFromCol || (vals.demo || "").trim(),
                       coordinates: (vals.coords || "").trim(),
+                      sponsorName,
+                      sponsorLink,
                       searchKey: `${course} ${vals.city} ${fixed.name}`.toLowerCase()
                   };
               }
@@ -2144,7 +2158,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
       return (
           <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
               <Trophy className="w-14 h-14 mb-6" />
-              <h3 className="text-xl font-black uppercase tracking-[0.3em]">RECALIBRATING LEGENDS...</h3>
+              <h3 className="text-xl font-black uppercase tracking-[0.3em]">SCANNING FOR RECORDS...</h3>
           </div>
       );
   }
@@ -2590,11 +2604,7 @@ export default function App() {
                       <a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
                         <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
                       </a>
-                    ) : (
-                      <div className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest opacity-20 cursor-not-allowed ${theme === 'dark' ? 'border-zinc-700 text-zinc-500' : 'border-slate-300 text-slate-400'} whitespace-nowrap`}>
-                        <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
-                      </div>
-                    )}
+                    ) : null}
                 </div>
               </div>
             </div>
@@ -2658,7 +2668,7 @@ export default function App() {
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
           {isLoading && data.length === 0 ? <div className={`border-2 border-subtle rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950' : 'bg-slate-200'}`}>
             <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
-            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">CALIBRATING DATA...</span>
+            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">CONNECTING TO LIVE DATA SOURCE...</span>
           </div> : 
            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={viewSorts.hof} setMedalSort={handleSort} /> : 
            <div className="space-y-4 overflow-visible">
