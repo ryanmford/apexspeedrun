@@ -119,7 +119,7 @@ const fixCountryEntity = (name, flag) => {
     const n = (name || "").toUpperCase().trim();
     const f = (flag || "").trim();
 
-    const flagFallbackMap = {
+    const flagMandatoryMap = {
       "USA": "🇺🇸", "UNITED STATES": "🇺🇸", "UNITED STATES OF AMERICA": "🇺🇸",
       "UK": "🇬🇧", "UNITED KINGDOM": "🇬🇧", "GREAT BRITAIN": "🇬🇧",
       "CANADA": "🇨🇦", "MEXICO": "🇲🇽", "FRANCE": "🇫🇷", "GERMANY": "🇩🇪",
@@ -131,7 +131,7 @@ const fixCountryEntity = (name, flag) => {
     };
 
     const finalName = n || "UNKNOWN";
-    const finalFlag = (f && f !== "🏳️") ? f : (flagFallbackMap[finalName] || "🏳️");
+    const finalFlag = flagMandatoryMap[finalName] || (f && f !== "🏳️" ? f : "🏳️");
 
     return { name: finalName, flag: finalFlag };
 };
@@ -231,9 +231,7 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
-    * {
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { -webkit-tap-highlight-color: transparent; }
 
     button, a {
       user-select: none;
@@ -259,9 +257,7 @@ const CustomStyles = () => (
         background: #000 !important;
     }
 
-    .leaflet-marker-pane {
-        pointer-events: none !important;
-    }
+    .leaflet-marker-pane { pointer-events: none !important; }
 
     .leaflet-marker-icon, 
     .leaflet-marker-shadow,
@@ -272,9 +268,7 @@ const CustomStyles = () => (
         -webkit-user-select: none;
     }
 
-    .asr-marker-outer:active {
-        transform: scale(0.9);
-    }
+    .asr-marker-outer:active { transform: scale(0.9); }
 
     .asr-cluster {
       background: rgba(37, 99, 235, 0.9) !important;
@@ -292,10 +286,7 @@ const CustomStyles = () => (
       z-index: 1000 !important;
     }
 
-    .asr-marker-outer {
-        cursor: pointer !important;
-        z-index: 1000 !important;
-    }
+    .asr-marker-outer { cursor: pointer !important; z-index: 1000 !important; }
 
     .btn-blue-gradient {
       background: rgba(37, 99, 235, 0.08);
@@ -359,24 +350,11 @@ const CustomStyles = () => (
       background: #000;
     }
 
-    .modal-container-fixed {
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-
     .hero-glow {
       position: absolute; top: 0; left: 0;
       width: 100%; max-width: 1200px; height: 500px;
       background: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.1), transparent 70%);
       pointer-events: none; z-index: 0;
-    }
-
-    .segmented-pill-container {
-      display: flex;
-      padding: 4px;
-      border-radius: 1.25rem;
-      border-width: 2px;
     }
 
     .bottom-nav-dock {
@@ -388,16 +366,13 @@ const CustomStyles = () => (
       width: 100%;
     }
 
-    /* Stat card override to prevent clipping tooltips */
-    .stat-card-container {
-      overflow: visible !important;
-    }
+    .stat-card-container { overflow: visible !important; }
   `}</style>
 );
 
 // --- ATOMIC UI COMPONENTS ---
 
-const ASRStatTooltip = ({ title, desc, children, theme, position = "top" }) => {
+const ASRStatTooltip = ({ desc, children, theme, position = "top" }) => {
   const getPositionClasses = () => {
     switch (position) {
       case "bottom": return "top-full mt-2 left-1/2 -translate-x-1/2";
@@ -527,8 +502,6 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   };
 
   const info = statInfo[label] || (tooltip ? { desc: tooltip } : null);
-  
-  // Intelligence for Player Profile cards: First row (0,1,2) pop downwards
   const finalPos = index < 3 ? "bottom" : tooltipPosition;
 
   return (
@@ -741,7 +714,6 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     const fadedBg = theme === 'dark' ? 'bg-zinc-800/20' : 'bg-slate-100/80';
     const fadedBorder = theme === 'dark' ? 'border-zinc-800' : 'border-slate-300';
     const fadedTextPrimary = theme === 'dark' ? 'text-zinc-400' : 'text-slate-600';
-    const fadedTextSecondary = theme === 'dark' ? 'text-zinc-500' : 'text-slate-400';
 
     if (!compact) {
       if (hasSponsor) {
@@ -848,7 +820,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      setStep(0); // Reset to first slide on open
+      setStep(0);
     } else {
       document.body.style.overflow = '';
     }
@@ -887,11 +859,11 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
   return (
     <div 
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500"
-      onClick={onClose} // Allow clicking outside to close
+      onClick={onClose}
     >
       <div 
         className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix`}
-        onClick={e => e.stopPropagation()} // Prevent closing when clicking inside
+        onClick={e => e.stopPropagation()}
       >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
         
@@ -963,7 +935,6 @@ const ASRBaseModal = ({
   const historyScrollPositions = useRef({});
   const prevIndexRef = useRef(-1);
 
-  // Background Stability Logic
   useEffect(() => {
     if (isOpen) {
       mainPageScrollRef.current = window.scrollY;
@@ -972,28 +943,20 @@ const ASRBaseModal = ({
       document.body.style.overflow = '';
       historyScrollPositions.current = {};
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  // Internal Navigation Scroll Memory
   useLayoutEffect(() => {
     if (!isOpen) return;
-
-    // Capture position of outgoing view before it changes
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
-
-    // Use a small delay for WebKit layout stabilization on Brave/Safari
     const timer = setTimeout(() => {
       if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
         scrollContainerRef.current.scrollTo(0, targetScroll);
       }
     }, 10);
-
     prevIndexRef.current = currentIndex;
     return () => clearTimeout(timer);
   }, [currentIndex, isOpen]);
@@ -1006,7 +969,6 @@ const ASRBaseModal = ({
         className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-28px)] sm:h-[85dvh] relative z-20 overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Header: Rigid Height with increased padding for PWA safe area */}
         <div className={`shrink-0 flex flex-col p-6 sm:p-10 pt-8 sm:pt-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-[130]`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
@@ -1042,7 +1004,6 @@ const ASRBaseModal = ({
           <div className="w-full">{header}</div>
         </div>
 
-        {/* Modal Content: Scrollable flex area with rigid parent constraint */}
         <div 
           ref={scrollContainerRef} 
           className={`flex-1 min-h-0 overflow-y-auto px-6 py-2 sm:px-12 sm:py-4 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}
@@ -1254,7 +1215,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                           key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                           icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
                           stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
-                          videoUrl={c.videoUrl} // Linked to personal run video (Column H)
+                          videoUrl={c.videoUrl} 
                           badgeContent={<>{c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}{c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}</>}
                           onClick={() => { if(target) openModal('course', target); }}
                         />
@@ -1302,37 +1263,51 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
       (region.type === 'continent' && c.continent === region.name)
   ).sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0));
 
-  const regionalPlayers = allPlayers.filter(p => {
+  const totalRuns = regionalCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
+
+  const regionalPlayersTotal = allPlayers.filter(p => {
       if (region.type === 'city') {
           return (playerPerformances[p.pKey] || []).some(perf => {
               const matched = allCourses.find(c => c.name.toUpperCase() === perf.label.toUpperCase());
               return matched?.city === region.name;
-          }) && isQualifiedAthlete(p);
+          });
       }
       const countryTerm = normalizeCountryName(region.name);
       const playerCountries = (p.countryName || "").split(/[,\/]/).map(c => normalizeCountryName(c));
-      const isMatch = (region.type === 'country' && playerCountries.includes(countryTerm)) ||
-                    (region.type === 'continent' && playerCountries.some(pc => getContinentData(pc).name === region.name));
-      return isMatch && isQualifiedAthlete(p);
-  }).sort((a, b) => b.rating - a.rating);
+      return (region.type === 'country' && playerCountries.includes(countryTerm)) ||
+             (region.type === 'continent' && playerCountries.some(pc => getContinentData(pc).name === region.name));
+  });
+
+  const regionalPlayersQualified = regionalPlayersTotal.filter(p => isQualifiedAthlete(p)).sort((a, b) => b.rating - a.rating);
+
+  const regionalStats = [
+    { label: "PLAYERS", value: regionalPlayersTotal.length },
+    { label: "COURSES", value: regionalCourses.length },
+    { label: "RUNS", value: totalRuns }
+  ];
 
   return (
     <div className="space-y-12 overflow-visible">
-      <div className="grid grid-cols-2 gap-6 overflow-visible">
-          <ASRStatCard label="RANKED PLAYERS" value={regionalPlayers.length} theme={theme} tooltipPosition="left" />
-          <ASRStatCard label="ACTIVE COURSES" value={regionalCourses.length} theme={theme} tooltipPosition="left" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
+          {regionalStats.map((s, i) => (
+            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} tooltipPosition="left" />
+          ))}
       </div>
       <div className="space-y-12 text-left overflow-visible">
           <div className="space-y-6 overflow-visible">
-              <ASRSectionHeading theme={theme} className="!mb-0">TOP ATHLETES</ASRSectionHeading>
+              <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
-                  {regionalPlayers.slice(0, 10).map((p, i) => (
+                  {regionalPlayersQualified.length > 0 ? regionalPlayersQualified.slice(0, 10).map((p, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
                         stats={[{ value: typeof p.rating === 'number' ? p.rating.toFixed(2) : '--.--' }]}
                         onClick={() => openModal('player', p)}
                       />
-                  ))}
+                  )) : (
+                    <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                        <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No ranked players found</span>
+                    </div>
+                  )}
               </div>
           </div>
           <div className="space-y-6 overflow-visible">
@@ -1343,6 +1318,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                         key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                         icon={<MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} />}
                         stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
+                        videoUrl={c.demoVideo}
                         onClick={() => openModal('course', c)}
                       />
                   ))}
@@ -1539,9 +1515,7 @@ const useASRData = () => {
               if (course) {
                   const fixed = fixCountryEntity(vals.country, vals.flag);
                   const valAG = String(vals.__raw[32] || "").toUpperCase().trim();
-                  // AF is index 31: Course Rules Video
                   const rulesVideoFromCol = String(vals.__raw[31] || "").trim();
-                  // AI/AJ are indices 34/35: Sponsor Name/Link
                   const sponsorName = (vals.__raw[34] || "").trim();
                   const sponsorLink = (vals.__raw[35] || "").trim();
                   
@@ -2347,7 +2321,6 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
 const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) => {
     return (
         <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
-            {/* BRANDING LEFT */}
             <div 
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" 
                 onClick={() => {
@@ -2360,7 +2333,6 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
                 </div>
             </div>
 
-            {/* EVENT TOGGLE CENTER */}
             {view !== 'hof' && (
               <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
                 <button 
@@ -2378,7 +2350,6 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
               </div>
             )}
 
-            {/* UTILS RIGHT */}
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3 h-full">
                 <button 
                   onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
@@ -2497,6 +2468,8 @@ export default function App() {
     setViewSorts(p => ({ ...p, [key]: typeof newSort === 'function' ? newSort(p[key]) : newSort }));
   };
 
+  const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
+
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
@@ -2567,17 +2540,16 @@ export default function App() {
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
     try {
-        return calculateHofStats(data, atPerfs, lbAT, atMet, viewSorts.hof, settersWithImpact);
-    } catch (e) {
-        return null;
-    }
-  }, [data, lbAT, atMet, atPerfs, viewSorts.hof, settersWithImpact, view]);
+        return calculateHofStats(data, atPerfs, lbAT, atMet, medalSort, settersWithImpact);
+    } catch (e) { return null; }
+  }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact, view]);
 
   const breadcrumbsArr = useMemo(() => (historyIndex < 0) ? [] : modalHistory.slice(0, historyIndex + 1).map(h => h.data.name || 'Detail'), [modalHistory, historyIndex]);
 
   const getModalHeader = (modal) => {
     if (!modal) return null;
     const { type, data } = modal;
+    
     if (type === 'course') {
         let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
@@ -2612,6 +2584,7 @@ export default function App() {
           </div>
         );
     }
+    
     if (type === 'player' || type === 'setter') {
         return (
           <div className="flex items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left animate-in fade-in duration-300">
@@ -2628,11 +2601,23 @@ export default function App() {
           </div>
         );
     }
+
     if (type === 'region') {
       return (
-        <div className="flex items-center gap-6 sm:gap-10 text-left animate-in fade-in duration-300">
-            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-2xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-slate-300'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} /></div>
-            <div className="flex flex-col"><h2 className="text-xl sm:text-5xl lg:text-7xl font-black uppercase leading-tight text-inherit whitespace-normal break-words">{data.name}</h2><div className="text-3xl sm:text-5xl mt-4">{data.flag}</div></div>
+        <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+            <FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" />
+          </div>
+          <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
+            <div className="mb-1 sm:mb-2">
+                <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
+            </div>
+            {data.flag && (
+              <div className="text-xl sm:text-2xl leading-none drop-shadow-sm">
+                {data.flag}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -2670,7 +2655,7 @@ export default function App() {
             <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
             <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">CONNECTING TO LIVE DATA SOURCE...</span>
           </div> : 
-           view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={viewSorts.hof} setMedalSort={handleSort} /> : 
+           view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => openModal('player', p, 'all-time')} onSetterClick={s => openModal('setter', s, 'setter')} onRegionClick={r => openModal('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} /> : 
            <div className="space-y-4 overflow-visible">
              <ASRSearchInput 
                search={search} setSearch={setSearch} 
