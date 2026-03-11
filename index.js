@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v23_launch'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v25_launch'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -43,6 +43,12 @@ const THEME = {
 };
 
 // --- UTILITIES & HELPERS ---
+
+const isPlaceholderPlayer = (name) => {
+  if (!name) return false;
+  const n = String(name).toUpperCase();
+  return n.includes("INTERIM") || n.includes("TOP TIME") || n.includes("PLACEHOLDER");
+};
 
 const normalizeName = (n) => {
   if (!n) return "";
@@ -158,7 +164,7 @@ const useDebounce = (value, delay) => {
 
 // Threshold Logic
 const isQualifiedAthlete = (p, isAllTime = true) => {
-    if (!p) return false;
+    if (!p || isPlaceholderPlayer(p.name)) return false;
     const runs = p.runs || 0;
     if (isAllTime) {
       return p.gender === 'M' ? (runs >= 4) : (runs >= 2);
@@ -532,14 +538,17 @@ const ASRListItem = ({
     return (
       <div 
         onClick={onClick} 
-        className={`group flex items-center transition-all cursor-pointer active:scale-[0.98] ios-clip-fix py-6 sm:py-8 px-0 ${theme === 'dark' ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-200/40'} ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
+        className={`group flex items-center transition-all ios-clip-fix py-6 sm:py-8 px-0 
+          ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'} 
+          ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-200/40') : ''} 
+          ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
         <div className="w-20 sm:w-24 pl-4 sm:pl-10 shrink-0">
             <ASRRankBadge rank={rank} theme={theme} />
         </div>
         <div className="flex-1 flex min-w-0 h-full items-center">
             <div className="flex-1 flex flex-col min-w-[120px] pr-2 pl-4 sm:pl-8 text-left">
-              <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors overflow-hidden line-clamp-2`}>
+              <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors overflow-hidden line-clamp-2`}>
                 {title}
               </span>
               <div className="opacity-70 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
@@ -578,16 +587,18 @@ const ASRListItem = ({
   return (
     <div 
       onClick={onClick} 
-      className={`group flex items-center justify-between transition-all cursor-pointer active:scale-[0.98] ios-clip-fix 
+      className={`group flex items-center justify-between transition-all ios-clip-fix 
         p-4 rounded-3xl border h-auto min-h-[72px] py-4
+        ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}
         ${theme === 'dark' 
-          ? 'bg-zinc-900/30 border-zinc-800/80 hover:bg-zinc-900/60' 
-          : 'bg-white border-slate-300 shadow-md hover:bg-slate-50'}
+          ? 'bg-zinc-900/30 border-zinc-800/80' 
+          : 'bg-white border-slate-300 shadow-md'}
+        ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/60' : 'hover:bg-slate-50') : ''}
         ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
     >
       <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
         {icon ? (
-          <div className="p-2.5 rounded-xl text-zinc-500 group-hover:text-blue-600 transition-colors shrink-0">
+          <div className={`p-2.5 rounded-xl text-zinc-500 ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors shrink-0`}>
             {icon}
           </div>
         ) : (
@@ -597,7 +608,7 @@ const ASRListItem = ({
         )}
         <div className="flex flex-col min-w-0 text-left">
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors`}>
+            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors`}>
               {title}
             </span>
           </div>
@@ -1767,7 +1778,13 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
           if (!lb) return;
           Object.entries(lb).forEach(([courseName, athletes]) => {
             if (!athletes) return;
-            const sorted = Object.entries(athletes).sort((a,b) => a[1]-b[1]);
+            // Filter out placeholders before slicing for medal counts
+            const filteredEntries = Object.entries(athletes).filter(([pKey]) => {
+              const name = atMet[pKey]?.name || pKey;
+              return !isPlaceholderPlayer(name);
+            });
+            const sorted = filteredEntries.sort((a,b) => a[1]-b[1]);
+            
             sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
               const athlete = atMet[pKey] || {};
               const names = athlete.countryName ? athlete.countryName.split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean) : ["UNKNOWN"];
@@ -2025,6 +2042,8 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     }
                     const [pKey, time, videoUrl] = athleteRow;
                     const meta = athleteMetadata[pKey] || {};
+                    const nameToDisplay = athleteDisplayNameMap[pKey] || pKey;
+                    const isPlaceholder = isPlaceholderPlayer(nameToDisplay);
                     const points = genderRecord && typeof time === 'number' && time !== 0 ? (genderRecord / time) * 100 : 0;
                     
                     const fireCount = getFireCountForRun(time, meta.gender);
@@ -2034,10 +2053,10 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
 
                     return (
                         <ASRListItem 
-                          key={pKey} variant="card" theme={theme} rank={i + 1} title={athleteDisplayNameMap[pKey] || pKey} subtitle={emojiLine}
+                          key={pKey} variant="card" theme={theme} rank={i + 1} title={nameToDisplay} subtitle={emojiLine}
                           stats={[{ value: typeof time === 'number' ? time.toFixed(2) : '--.--' }, { value: typeof points === 'number' ? points.toFixed(2) : '--.--' }]}
                           videoUrl={videoUrl}
-                          onClick={() => onPlayerClick?.({ ...meta, pKey, name: athleteDisplayNameMap[pKey] || pKey })}
+                          onClick={isPlaceholder ? null : () => onPlayerClick?.({ ...meta, pKey, name: nameToDisplay })}
                         />
                     );
                 })}
@@ -2445,6 +2464,7 @@ export default function App() {
   useEffect(() => { setSearch(''); }, [view, eventType, gen]);
 
   const openModal = useCallback((type, data, roleOverride = null, contextOverride = null) => {
+    if (type === 'player' && isPlaceholderPlayer(data.name)) return;
     const effectiveRole = roleOverride || (type === 'player' ? (isAllTimeContext ? 'all-time' : 'asr-open') : (type === 'setter' ? 'setter' : null));
     setModalHistory(p => [...p.slice(0, historyIndex + 1), { type, data, roleOverride: effectiveRole, contextOverride }]);
     setHistoryIndex(p => p + 1);
@@ -2473,10 +2493,17 @@ export default function App() {
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
-      const athletesMAll = Object.entries((lbAT.M || {})[name] || {}).map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl]).sort((a, b) => a[1] - b[1]);
-      const athletesFAll = Object.entries((lbAT.F || {})[name] || {}).map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl]).sort((a, b) => a[1] - b[1]);
+      // Include all entries for leaderboards (including placeholders)
+      const athletesMAll = Object.entries((lbAT.M || {})[name] || {})
+        .map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl])
+        .sort((a, b) => a[1] - b[1]);
+        
+      const athletesFAll = Object.entries((lbAT.F || {})[name] || {})
+        .map(([pKey, time]) => [pKey, time, atRawBest?.[pKey]?.[name]?.videoUrl])
+        .sort((a, b) => a[1] - b[1]);
+
       const meta = cMet[name] || {}; const contData = getContinentData(meta.country || 'UNKNOWN');
-      const mRecs = Object.values((lbAT.M || {})[name] || {}); const fRecs = Object.values((lbAT.F || {})[name] || {});
+      const mRecs = athletesMAll.map(a => a[1]); const fRecs = athletesFAll.map(a => a[1]);
       const coordsMatch = meta.coordinates ? String(meta.coordinates).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) : null;
       return {
         name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️', continent: contData.name, continentFlag: contData.flag,
@@ -2493,7 +2520,7 @@ export default function App() {
   const filteredCourses = useFilteredData(rawCourseList, debouncedSearch, viewSorts.courses);
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
   const athletePool = isAllTimeContext ? data : openData;
-  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen, [gen]));
+  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name), [gen]));
   
   const list = useMemo(() => {
     if (filteredAthletes.length === 0) return [];
@@ -2517,7 +2544,12 @@ export default function App() {
     if (isAllTimeContext) {
       dividerLabel = gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED";
     } else {
-      dividerLabel = "RUN 3 COURSES TO GET RANKED";
+      dividerLabel = "RUN 3+ COURSES TO GET RANKED";
+    }
+
+    // Logic for Open Mode: Divider above rank 1 if empty
+    if (!isAllTimeContext && fQual.length === 0) {
+        return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     }
 
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
@@ -2569,11 +2601,11 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}>
+                    <a href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} target="_blank" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-blue-600/40 bg-blue-600/5 text-blue-500 hover:bg-blue-600 hover:text-white' : 'border-blue-600 bg-blue-50/20 text-blue-600 hover:bg-blue-600 hover:text-white'} whitespace-nowrap`}>
                       <MapPin size={11} strokeWidth={3} /> MAP
                     </a>
                     {data.demoVideo ? (
-                      <a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-5 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
+                      <a href={data.demoVideo} target="_blank" rel="noopener noreferrer" className={`w-24 h-11 flex items-center justify-center gap-2 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-rose-600/40 bg-rose-600/5 text-rose-500 hover:bg-rose-600 hover:text-white' : 'border-rose-600 bg-rose-50/20 text-rose-600 hover:bg-rose-600 hover:text-white'} whitespace-nowrap`}>
                         <Play size={11} strokeWidth={3} fill="currentColor" /> RULES
                       </a>
                     ) : null}
