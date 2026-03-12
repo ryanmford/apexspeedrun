@@ -236,7 +236,34 @@ const CustomStyles = () => (
     
     .num-col { font-variant-numeric: tabular-nums; }
     
-    * { -webkit-tap-highlight-color: transparent; }
+    * { 
+      -webkit-tap-highlight-color: transparent; 
+      -webkit-touch-callout: none;
+    }
+
+    /* Fix for iOS viewport and content bleed */
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --announcement-height: 28px;
+      --nav-height-mobile: 68px;
+      --nav-height-desktop: 76px;
+      --bottom-nav-height: 84px;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background: #000;
+      min-height: 100%;
+      /* Critical fix for iOS PWA address bar ghost height */
+      height: -webkit-fill-available;
+    }
+
+    #root {
+      height: 100%;
+    }
 
     button, a {
       user-select: none;
@@ -337,22 +364,6 @@ const CustomStyles = () => (
     .border-subtle { border-color: rgba(0,0,0,0.1); }
     .dark .border-subtle { border-color: rgba(255,255,255,0.08); }
 
-    :root {
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --announcement-height: 28px;
-      --nav-height-mobile: 68px;
-      --nav-height-desktop: 76px;
-      --bottom-nav-height: 84px;
-    }
-    
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-      background: #000;
-    }
-
     .hero-glow {
       position: absolute; top: 0; left: 0;
       width: 100%; max-width: 1200px; height: 500px;
@@ -367,6 +378,9 @@ const CustomStyles = () => (
       right: 0;
       z-index: 100;
       width: 100%;
+      /* Fix for iOS Safari Tall Bar: Use dvh for dynamic heights */
+      height: auto;
+      background: transparent;
     }
 
     .stat-card-container { overflow: visible !important; }
@@ -2361,6 +2375,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
         return result;
     }, [data, visibleCount]);
 
+    // Updated offset logic for iPhone scroll fixes
     const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))]";
 
     return (
@@ -2506,6 +2521,13 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
           </span>
         </div>
       </div>
+    );
+};
+
+// iPhone Status Bar Shield: Extension of Announcement bar background to absolute top
+const ASRTopShield = ({ theme }) => {
+    return (
+        <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-[#1e40af]' : 'bg-blue-600'}`} />
     );
 };
 
@@ -2909,6 +2931,7 @@ export default function App() {
   return (
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(100px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
+      <ASRTopShield theme={theme} />
       <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
