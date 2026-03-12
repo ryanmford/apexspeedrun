@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v27_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v28_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -1199,12 +1199,10 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         
         const impact = setterData.impact || setterCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
         const setsCount = setterData.sets || setterCourses.length;
-        const avgImpact = setsCount > 0 ? (impact / setsCount).toFixed(2) : '0.00';
 
         const setterStats = [
             { l: 'LEVEL', v: setterData.certLevel || '-' },
             { l: 'IMPACT', v: impact, c: 'text-blue-600' },
-            { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' },
             { l: 'SETS', v: setsCount },
             { l: 'LEADS', v: setterData.leads || 0 },
             { l: 'ASSISTS', v: setterData.assists || 0 },
@@ -1212,6 +1210,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
             { l: 'COUNTRIES', v: new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0 },
             { l: 'FILMS', v: setterData.films || 0 },
             { l: 'AVG LENGTH', v: setterData.avgLength ? `${setterData.avgLength.toFixed(1)}m` : '0m' },
+            { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' }, // Moved after AVG LENGTH
             { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0 }
         ];
 
@@ -1295,11 +1294,11 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: runsInContext }, 
         { l: 'WINS', v: metaSource.wins || 0 }, 
-        { l: 'AVG TIME', v: avgRunTime },
-        { l: 'AVG LENGTH', v: `${avgRunLength}m` },
         { l: 'WIN %', v: ((metaSource.wins / (runsInContext || 1)) * 100).toFixed(2) + '%' }, 
         { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
         { l: 'COUNTRIES', v: new Set(courseData.map(c => c.country).filter(Boolean)).size || 0 },
+        { l: 'AVG LENGTH', v: `${avgRunLength}m` }, // Moved to before 🔥
+        { l: 'AVG TIME', v: avgRunTime }, // Moved to before 🔥
         { l: '🔥', v: isAllTime ? (identity.allTimeFireCount || 0) : (identity.openStats?.openFireCount || 0), g: 'glow-blue' }
     ];
 
@@ -1545,7 +1544,8 @@ const useASRData = () => {
         fire: ['🔥', 'fire'],
         ig: ['ig', 'instagram', 'social'],
         avg: ['avg time', 'average', 'avg'],
-        cert: ['cert', 'level', 'certification']
+        cert: ['cert', 'level', 'certification'],
+        location: ['location', 'city', 'region']
       };
 
       const SET_LIST_MAPPING = {
@@ -1574,7 +1574,8 @@ const useASRData = () => {
         flag: ['flag', 'emoji', 'region'],
         ig: ['ig', 'instagram'],
         contribution: ['🪙', 'contribution'],
-        cert: ['cert', 'level', 'certification']
+        cert: ['cert', 'level', 'certification'],
+        location: ['location', 'city']
       };
 
       const LIVE_FEED_MAPPING = {
@@ -1595,12 +1596,14 @@ const useASRData = () => {
           if (pName.length < 2) return null; 
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
-          const searchKey = `${pName} ${fixed.name} ${rawIg}`.toLowerCase();
+          const location = (vals.__raw[18] || vals.location || "").trim();
+          const searchKey = `${pName} ${fixed.name} ${rawIg} ${location}`.toLowerCase();
           return { 
             id: `${gender}-${normalizeName(pName)}-${i}`, 
             name: pName, pKey: normalizeName(pName), gender, 
             countryName: fixed.name, 
             region: fixed.flag, 
+            location,
             igHandle: rawIg,
             rating: cleanNumeric(vals.rating) || 0, 
             runs: Math.floor(cleanNumeric(vals.runs) || 0), 
@@ -1659,10 +1662,12 @@ const useASRData = () => {
               const name = vals.name;
               if (!name) return null;
               const fixed = fixCountryEntity(vals.country, vals.flag);
+              const location = (vals.__raw[18] || vals.location || "").trim();
               return {
                   id: `setter-${normalizeName(name)}-${i}`,
                   name: name.trim(),
                   region: fixed.flag || '🏳️',
+                  location,
                   countryName: fixed.name,
                   igHandle: (vals.ig || "").replace(/@/g, '').trim(),
                   sets: cleanNumeric(vals.sets) || 0,
@@ -1670,7 +1675,7 @@ const useASRData = () => {
                   assists: cleanNumeric(vals.assists) || 0,
                   contributionScore: cleanNumeric(vals.contribution) || 0,
                   certLevel: (vals.__raw[17] || vals.cert || "").trim().toUpperCase(),
-                  searchKey: `${name} ${fixed.name}`.toLowerCase()
+                  searchKey: `${name} ${fixed.name} ${location}`.toLowerCase()
               };
           }).filter(Boolean);
       };
@@ -1717,7 +1722,7 @@ const useASRData = () => {
           const normC = rawCourse.toUpperCase();
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
 
-          // Process Filmer Data (Column I, Index 8)
+          // Process Filmer Data
           const rawFilmer = (vals.filmer || vals.__raw[8] || "").trim();
           if (rawFilmer) {
             const filmerKey = normalizeName(rawFilmer);
@@ -1728,7 +1733,7 @@ const useASRData = () => {
           }
           
           if (!athleteMetadata[pKey]) {
-              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', countryName: '', searchKey: pName.toLowerCase() };
+              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', countryName: '', searchKey: pName.toLowerCase() };
           } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
               athleteMetadata[pKey].name = pName;
               athleteDisplayNameMap[pKey] = pName;
@@ -2451,7 +2456,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
-                          rank={item.currentRank} title={item.name} subtitle={`${item.city || ''} ${item.region || item.flag || ''}`}
+                          rank={item.currentRank} title={item.name} subtitle={item.region || item.flag || ''} // Removed item.location
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           showRules={showRules}
@@ -2854,39 +2859,40 @@ export default function App() {
     if (type === 'course') {
         let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
+        
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
-            <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full">
+            <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
               <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2>
-                  <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-1.5 min-w-0">
+                  <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
                     <a 
                       href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} 
-                      target="_blank" 
-                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-blue-500' : 'bg-white border-slate-300 text-blue-600'} ios-clip-fix`} 
-                      title="View on Map"
+                      target="_blank"
+                      className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md bg-blue-600/10 border-blue-600/30 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95"
+                      title="View Map"
                     >
-                      <MapPin className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                      <MapPin size={14} strokeWidth={3} />
                     </a>
-                    {data.demoVideo && (
-                      <a 
-                        href={data.demoVideo} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-rose-500' : 'bg-white border-slate-300 text-rose-600'} ios-clip-fix`} 
-                        title="View Rules"
-                      >
-                        <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={2.5} />
-                      </a>
-                    )}
+                    <a 
+                      href={data.demoVideo || '#'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md ${!data.demoVideo ? 'opacity-20 grayscale cursor-not-allowed' : 'bg-rose-600/10 border-rose-600/30 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 hover:scale-110 active:scale-95'}`}
+                      onClick={(e) => !data.demoVideo && e.preventDefault()}
+                      title="View Rules"
+                    >
+                      <Play size={14} strokeWidth={3} />
+                    </a>
                   </div>
                 </div>
-                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mb-1">
-                    {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
+                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mt-0.5">
+                  {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
                 </div>
               </div>
             </div>
@@ -2895,15 +2901,34 @@ export default function App() {
         );
     }
     if (type === 'player' || type === 'setter') {
+        const locSubtitle = data.location ? `${data.location.toUpperCase()} ` : '';
         return (
-          <div className="flex items-center gap-5 sm:gap-8 min-w-0 w-full pr-2 text-left animate-in fade-in duration-300">
-            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border flex items-center justify-center text-2xl sm:text-5xl font-black shadow-2xl shrink-0 uppercase overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 text-slate-400' : 'bg-white border-slate-400 text-slate-500'} ios-clip-fix`}><FallbackAvatar name={data.name} /></div>
-            <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
-                <div className="flex flex-col gap-1.5 mb-2 min-w-0 w-full"><h2 className="text-xl sm:text-3xl lg:text-5xl font-black tracking-tight uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2></div>
-                <div className="flex items-center gap-3 sm:gap-4 mt-0.5">
-                    {data.region && <div className="text-2xl sm:text-3xl leading-none flex items-center gap-1.5 drop-shadow-sm">{data.region}</div>}
-                    {data.igHandle && <a href={`https://instagram.com/${data.igHandle}`} target="_blank" rel="noopener noreferrer" className={`group/ig flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl transition-all hover:scale-110 shadow-sm border ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-slate-300 text-slate-900'} ios-clip-fix`} title={`@${data.igHandle}`}><Instagram className="w-[18px] h-[18px] text-[#E1306C] transition-transform group-hover/ig:rotate-6" strokeWidth={2.5} /></a>}
-                </div>
+          <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
+            <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+                <FallbackAvatar name={data.name} />
+              </div>
+              <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-1.5 min-w-0">
+                    <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2>
+                    {data.igHandle && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a 
+                          href={`https://instagram.com/${data.igHandle}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md bg-[#E1306C]/10 border-[#E1306C]/30 text-[#E1306C] hover:bg-[#E1306C] hover:text-white hover:border-[#E1306C] hover:scale-110 active:scale-95" 
+                          title={`@${data.igHandle}`}
+                        >
+                          <Instagram size={14} strokeWidth={3} />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mt-0.5">
+                    {locSubtitle}{data.region || ''}
+                  </div>
+              </div>
             </div>
           </div>
         );
