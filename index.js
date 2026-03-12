@@ -3,14 +3,14 @@ import {
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
   ChevronDown, Sun, Moon, MapPin, Globe, Instagram, Play, Trophy,
   Compass, Info, ChevronRight, Navigation, ShieldCheck,
-  Video, HelpCircle, Building2, Map as MapIcon, GraduationCap, 
+  Video, HelpCircle, Building2, Map as MapIcon, Waypoints, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
-  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share2, Eye, Camera, Award, Star, Medal
+  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share, Eye, Camera, Award, Star, Medal
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v28_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v29_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -347,8 +347,6 @@ const CustomStyles = () => (
     }
     
     html, body {
-      height: 100%;
-      height: 100dvh;
       margin: 0;
       padding: 0;
       overflow-x: hidden;
@@ -432,69 +430,6 @@ const ASRSectionHeading = ({ children, theme, className = "" }) => (
         {children}
     </h3>
 );
-
-const SetterCertificationBadge = ({ level, theme }) => {
-  if (!level || level === '0' || level === '-') return null;
-  
-  const norm = String(level).toUpperCase().trim();
-  
-  const levels = {
-    'L1': { 
-      label: 'LEVEL 1 SETTER', 
-      color: 'text-zinc-400', 
-      bg: 'bg-zinc-900/50', 
-      border: 'border-zinc-800' 
-    },
-    'L2': { 
-      label: 'LEVEL 2 SETTER', 
-      color: 'text-blue-500', 
-      bg: 'bg-blue-950/20', 
-      border: 'border-blue-900/50' 
-    },
-    'L3': { 
-      label: 'LEVEL 3 SETTER', 
-      color: 'text-amber-500', 
-      bg: 'bg-amber-950/30', 
-      border: 'border-amber-600/50', 
-      glow: true 
-    },
-    'MASTER': { 
-      label: 'MASTER COURSE SETTER', 
-      color: 'text-white', 
-      bg: 'setter-master-gradient', 
-      border: 'border-blue-400', 
-      glow: true,
-      premium: true
-    },
-    'PRO': { 
-      label: 'PROFESSIONAL SETTER', 
-      color: 'text-white', 
-      bg: 'setter-pro-gradient', 
-      border: 'border-zinc-600', 
-      glow: true,
-      premium: true
-    }
-  };
-
-  const cfg = levels[norm] || { label: norm, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30' };
-
-  return (
-    <div className={`group relative flex flex-col items-center gap-2 animate-in zoom-in-95 duration-700`}>
-      <div className={`relative flex items-center gap-2.5 px-8 py-3.5 rounded-2xl border-2 transition-all duration-500 ${cfg.bg} ${cfg.border} ${cfg.glow ? 'cert-badge-glow shadow-[0_0_25px_rgba(37,99,235,0.2)]' : ''} ${cfg.premium ? 'scale-105 hover:scale-110' : ''}`}>
-        <span className={`text-[12px] font-black uppercase tracking-[0.3em] ${cfg.color} whitespace-nowrap`}>
-          {cfg.label}
-        </span>
-        {cfg.premium && <Sparkles size={12} className={`absolute -top-2 -right-2 text-white animate-pulse shadow-2xl`} />}
-      </div>
-      
-      {cfg.premium && (
-        <span className="text-[8px] font-black uppercase tracking-widest opacity-40 animate-pulse">
-          TOP 0.1% GLOBAL NETWORK
-        </span>
-      )}
-    </div>
-  );
-};
 
 const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
   const GRADIENTS = [
@@ -881,7 +816,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
     pro_setter: {
         title: "Course Setter Certification",
         desc: "Take the course setter certification on Apex Skool app.",
-        icon: <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />,
+        icon: <Waypoints className="w-4 h-4 sm:w-5 sm:h-5" />,
         link: SKOOL_LINK,
         btn: "LEARN MORE"
     }
@@ -1036,19 +971,23 @@ const ASRBaseModal = ({
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
+  // Unified Scroll Reset for Modal Transitions
   useLayoutEffect(() => {
     if (!isOpen) return;
+    
+    // 1. Capture scroll of current (outgoing) page
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
-    const timer = setTimeout(() => {
-      if (scrollContainerRef.current) {
+
+    // 2. Apply scroll reset for incoming content (or restore for back button)
+    if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
-        scrollContainerRef.current.scrollTo(0, targetScroll);
-      }
-    }, 10);
+        // Instant reset for professional native feel
+        scrollContainerRef.current.scrollTo({ top: targetScroll, left: 0, behavior: 'instant' });
+    }
+    
     prevIndexRef.current = currentIndex;
-    return () => clearTimeout(timer);
   }, [currentIndex, isOpen]);
 
   if (!isOpen) return null;
@@ -1088,7 +1027,7 @@ const ASRBaseModal = ({
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Share Link">
-                    <Share2 className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                    <Share className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
                 </button>
                 <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
                     <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
@@ -1119,8 +1058,8 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
     { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
     { label: 'Diff', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
     { label: 'Players', value: course.totalAllTimeAthletes, icon: <Users className="w-3.5 h-3.5" /> },
-    { label: 'Length', value: course.length ? `${course.length}m` : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
-    { label: 'Elev', value: course.elevation ? `${course.elevation}m` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
+    { label: 'Length', value: course.length ? `${parseFloat(course.length).toFixed(2)}m` : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
+    { label: 'Elev', value: course.elevation ? `${parseFloat(course.elevation).toFixed(2)}m` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
     { label: 'Type', value: course.type || '-', icon: <Dna className="w-3.5 h-3.5" /> },
     { label: 'Date', value: course.dateSet || '-', icon: <Calendar className="w-3.5 h-3.5" /> }
   ];
@@ -1202,16 +1141,16 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
         const setterStats = [
             { l: 'LEVEL', v: setterData.certLevel || '-' },
-            { l: 'IMPACT', v: impact, c: 'text-blue-600' },
-            { l: 'SETS', v: setsCount },
-            { l: 'LEADS', v: setterData.leads || 0 },
-            { l: 'ASSISTS', v: setterData.assists || 0 },
-            { l: 'CITIES', v: setterData.citiesCount || 0 },
-            { l: 'COUNTRIES', v: new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0 },
-            { l: 'FILMS', v: setterData.films || 0 },
-            { l: 'AVG LENGTH', v: setterData.avgLength ? `${setterData.avgLength.toFixed(1)}m` : '0m' },
-            { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' }, // Moved after AVG LENGTH
-            { l: '🪙', v: setterData.contributionScore || identity.contributionScore || 0 }
+            { l: 'IMPACT', v: String(impact.toFixed(2)) },
+            { l: 'SETS', v: String(setsCount) },
+            { l: 'LEADS', v: String(setterData.leads || 0) },
+            { l: 'ASSISTS', v: String(setterData.assists || 0) },
+            { l: 'CITIES', v: String(setterData.citiesCount || 0) },
+            { l: 'COUNTRIES', v: String(new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0) },
+            { l: 'FILMS', v: String(setterData.films || 0) },
+            { l: 'AVG LENGTH', v: setterData.avgLength ? `${setterData.avgLength.toFixed(2)}m` : '0.00m' },
+            { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' },
+            { l: '🪙', v: (setterData.contributionScore || identity.contributionScore || 0).toFixed(2) }
         ];
 
         return (
@@ -1281,25 +1220,25 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
       isQualifiedInProfile = runsInContext >= 3;
     }
 
-    const currentRankValue = isQualifiedInProfile ? (isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank) : "UR";
+    const currentRankValue = String(isQualifiedInProfile ? (isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank) : "UR");
 
     const totalRunTime = courseData.reduce((sum, run) => sum + (run.num || 0), 0);
     const avgRunTime = runsInContext > 0 ? (totalRunTime / runsInContext).toFixed(2) : '0.00';
     const totalLengthInRuns = courseData.reduce((sum, run) => sum + (run.length || 0), 0);
-    const avgRunLength = runsInContext > 0 ? (totalLengthInRuns / runsInContext).toFixed(1) : '0';
+    const avgRunLength = runsInContext > 0 ? (totalLengthInRuns / runsInContext).toFixed(2) : '0.00';
 
     const playerStats = [
         { l: 'RANK', v: currentRankValue },
         { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
-        { l: 'RUNS', v: runsInContext }, 
-        { l: 'WINS', v: metaSource.wins || 0 }, 
-        { l: 'WIN %', v: ((metaSource.wins / (runsInContext || 1)) * 100).toFixed(2) + '%' }, 
-        { l: 'CITIES', v: new Set(courseData.map(c => c.city).filter(Boolean)).size || 0 },
-        { l: 'COUNTRIES', v: new Set(courseData.map(c => c.country).filter(Boolean)).size || 0 },
-        { l: 'AVG LENGTH', v: `${avgRunLength}m` }, // Moved to before 🔥
-        { l: 'AVG TIME', v: avgRunTime }, // Moved to before 🔥
-        { l: '🔥', v: isAllTime ? (identity.allTimeFireCount || 0) : (identity.openStats?.openFireCount || 0), g: 'glow-blue' }
+        { l: 'RUNS', v: String(runsInContext) }, 
+        { l: 'WINS', v: String(metaSource.wins || 0) }, 
+        { l: 'WIN %', v: ((metaSource.wins / (runsInContext || 1)) * 100).toFixed(2) }, 
+        { l: 'CITIES', v: String(new Set(courseData.map(c => c.city).filter(Boolean)).size || 0) },
+        { l: 'COUNTRIES', v: String(new Set(courseData.map(c => c.country).filter(Boolean)).size || 0) },
+        { l: 'AVG LENGTH', v: `${avgRunLength}m` },
+        { l: 'AVG TIME', v: avgRunTime },
+        { l: '🔥', v: String(isAllTime ? (identity.allTimeFireCount || 0) : (identity.openStats?.openFireCount || 0)), g: 'glow-blue' }
     ];
 
     return (
@@ -1385,9 +1324,9 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
   const regionalPlayersQualified = regionalPlayersTotal.filter(p => isQualifiedAthlete(p)).sort((a, b) => b.rating - a.rating);
 
   const regionalStats = [
-    { label: "PLAYERS", value: regionalPlayersTotal.length },
-    { label: "COURSES", value: regionalCourses.length },
-    { label: "RUNS", value: totalRuns }
+    { label: "PLAYERS", value: String(regionalPlayersTotal.length) },
+    { label: "COURSES", value: String(regionalCourses.length) },
+    { label: "RUNS", value: String(totalRuns) }
   ];
 
   return (
@@ -1404,7 +1343,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                   {regionalPlayersQualified.length > 0 ? regionalPlayersQualified.slice(0, 10).map((p, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
-                        stats={[{ value: typeof p.rating === 'number' ? p.rating.toFixed(2) : '--.--' }]}
+                        stats={[{ value: typeof p.rating === 'number' ? p.rating.toFixed(2) : '0.00' }]}
                         onClick={() => openModal('player', p)}
                       />
                   )) : (
@@ -2185,7 +2124,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     return (
                         <ASRListItem 
                           key={pKey} variant="card" theme={theme} rank={i + 1} title={nameToDisplay} subtitle={emojiLine}
-                          stats={[{ value: typeof time === 'number' ? time.toFixed(2) : '--.--' }, { value: typeof points === 'number' ? points.toFixed(2) : '--.--' }]}
+                          stats={[{ value: typeof time === 'number' ? String(time.toFixed(2)) : '0.00' }, { value: typeof points === 'number' ? String(points.toFixed(2)) : '0.00' }]}
                           videoUrl={videoUrl}
                           onClick={isPlaceholder ? null : () => onPlayerClick?.({ ...meta, pKey, name: nameToDisplay })}
                         />
@@ -2324,8 +2263,9 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                     
                     <span className={`text-xs ${highlightColor} ${THEME.VALUE} px-2 py-1 rounded-lg transition-colors`}>
                       {sec.k === 'rating' ? (p.rating?.toFixed(2) || '0.00') : 
-                      (sec.k === 'winPercentage' ? (p.winPercentage?.toFixed(1)+'%' || '0%') : 
-                      (sec.k === 'totalFireCount' ? p.allTimeFireCount : p[sec.k]))}
+                      (sec.k === 'winPercentage' ? (p.winPercentage?.toFixed(2) || '0.00') : 
+                      (sec.k === 'contributionScore' ? (p.contributionScore?.toFixed(2) || '0.00') :
+                      (sec.k === 'totalFireCount' ? p.allTimeFireCount : String(p[sec.k]))))}
                     </span>
                   </div>
                 ))}
@@ -2359,10 +2299,10 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                       <span className="text-xl sm:text-2xl shrink-0 leading-none">{c.flag}</span>
                     </div>
                   </td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{c.gold}</td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.silver}</td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.bronze}</td>
-                  <td className={`w-24 sm:w-36 pl-2 sm:pl-4 pr-4 sm:pr-12 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{c.total}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.gold)}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.silver)}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.bronze)}</td>
+                  <td className={`w-24 sm:w-36 pl-2 sm:pl-4 pr-4 sm:pr-12 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2450,13 +2390,17 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
-                      return { value: typeof val === 'number' ? (Number.isInteger(val) ? val : val.toFixed(2)) : val || 0 };
+                      const forceAlignment = ['rating', 'impact', 'avgCR', 'avgLength', 'avgTime', 'pts', 'contributionScore'].includes(k);
+                      if (forceAlignment || (typeof val === 'number' && !Number.isInteger(val))) {
+                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2) };
+                      }
+                      return { value: val !== undefined && val !== null ? String(val) : "0" };
                     });
 
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
-                          rank={item.currentRank} title={item.name} subtitle={item.region || item.flag || ''} // Removed item.location
+                          rank={item.currentRank} title={item.name} subtitle={item.region || item.flag || ''} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           showRules={showRules}
@@ -2524,7 +2468,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
     { id: 'players', label: 'PLAYERS', icon: <Users className="w-5 h-5" /> },
     { id: 'map', label: 'COURSES', icon: <Globe className="w-5 h-5" /> },
     { id: 'start', label: 'START', icon: <Play className="w-5 h-5 fill-current" /> },
-    { id: 'setters', label: 'SETTERS', icon: <GraduationCap className="w-5 h-5" /> },
+    { id: 'setters', label: 'SETTERS', icon: <Waypoints className="w-5 h-5" /> },
     { id: 'hof', label: 'HOF', icon: <Trophy className="w-5 h-5" /> }
   ];
 
@@ -2619,6 +2563,21 @@ export default function App() {
     histRef.current = modalHistory;
     idxRef.current = historyIndex;
   }, [modalHistory, historyIndex]);
+
+  // UNIFIED SCROLL RESET FOR MAIN VIEW TRANSITIONS
+  useLayoutEffect(() => {
+    // Reset window and document scroll immediately when view or event context changes
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.body.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+
+    resetScroll();
+    // Double-tap reset for edge cases where DOM reflow happens after effect
+    const timer = requestAnimationFrame(resetScroll);
+    return () => cancelAnimationFrame(timer);
+  }, [view, eventType]);
 
   // --- DERIVATION ---
   const masterCourseList = useMemo(() => {
