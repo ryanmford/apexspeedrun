@@ -547,7 +547,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   const statInfo = {
     'RATING': { desc: "OVERALL RATING = POINTS / RUNS" },
     '🔥': { desc: "FIRE BONUS FOR THE FASTEST RUNS." },
-    '🪙': { desc: "CONTRIBUTION COINS EARNED THROUGH RUNS, WINS, AND SETS." },
+    '🪙': { desc: "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS." },
     'IMPACT': { desc: "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER." },
     'WINS': { desc: "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD." },
     'WIN %': { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." },
@@ -555,7 +555,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     'AVG LENGTH': { desc: "AVERAGE DISTANCE OF COURSES IN THIS DATASET." },
     'AVG TIME': { desc: "AVERAGE RUN TIME ACROSS ALL VERIFIED RUNS." },
     'AVG CR': { desc: "AVERAGE OVERALL COURSE RECORD OF EACH COURSE SET BY THIS INDIVIDUAL." },
-    'LEVEL': { desc: "OFFICIAL CERTIFICATION LEVEL FROM THE APEX NETWORK." }
+    'LEVEL': { desc: "OFFICIAL ASR COURSE SETTER CERTIFICATION LEVEL" }
   };
 
   const info = statInfo[label] || (tooltip ? { desc: tooltip } : null);
