@@ -248,7 +248,7 @@ const CustomStyles = () => (
       --announcement-height: 28px;
       --nav-height-mobile: 68px;
       --nav-height-desktop: 76px;
-      --bottom-nav-height: 84px;
+      --bottom-nav-height: 72px; /* Reduced for sleeker feel */
     }
     
     html, body {
@@ -257,7 +257,6 @@ const CustomStyles = () => (
       overflow-x: hidden;
       background: #000;
       min-height: 100%;
-      /* Critical fix for iOS PWA address bar ghost height */
       height: -webkit-fill-available;
     }
 
@@ -378,7 +377,6 @@ const CustomStyles = () => (
       right: 0;
       z-index: 100;
       width: 100%;
-      /* Fix for iOS Safari Tall Bar: Use dvh for dynamic heights */
       height: auto;
       background: transparent;
     }
@@ -444,6 +442,29 @@ const ASRSectionHeading = ({ children, theme, className = "" }) => (
         {children}
     </h3>
 );
+
+const SetterCertificationBadge = ({ level, theme }) => {
+  if (!level || level === '0' || level === '-') return null;
+  
+  const levels = {
+    'L1': { label: 'LEVEL 1 COURSE SETTER', color: 'text-zinc-400', bg: 'bg-zinc-900', border: 'border-zinc-800' },
+    'L2': { label: 'LEVEL 2 COURSE SETTER', color: 'text-blue-500', bg: 'bg-blue-950/20', border: 'border-blue-900/50' },
+    'L3': { label: 'LEVEL 3 COURSE SETTER', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
+    'MASTER': { label: 'MASTER COURSE SETTER', color: 'text-white', bg: 'bg-gradient-to-br from-blue-600 to-indigo-700', border: 'border-blue-400', glow: true },
+    'PRO': { label: 'PROFESSIONAL SETTER', color: 'text-white', bg: 'bg-zinc-100 dark:bg-zinc-800', border: 'border-zinc-300 dark:border-zinc-600' }
+  };
+
+  const norm = String(level).toUpperCase().trim();
+  const cfg = levels[norm] || { label: norm, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30' };
+
+  return (
+    <div className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full border-2 transition-all ${cfg.bg} ${cfg.border} ${cfg.glow ? 'cert-badge-glow shadow-xl scale-105' : ''}`}>
+      <Award size={14} className={cfg.color} strokeWidth={2.5} />
+      <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${cfg.color}`}>{cfg.label}</span>
+      {norm === 'MASTER' && <Sparkles size={10} className="text-blue-200 animate-pulse" />}
+    </div>
+  );
+};
 
 const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
   const GRADIENTS = [
@@ -1041,7 +1062,7 @@ const ASRBaseModal = ({
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Share Link">
-                    <Share className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                    <Share size={18} strokeWidth={2.5} />
                 </button>
                 <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
                     <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
@@ -1169,6 +1190,11 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+                {setterData.certLevel && setterData.certLevel !== '-' && (
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <SetterCertificationBadge level={setterData.certLevel} theme={theme} />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
                       <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} tooltipPosition="left" />
@@ -2052,12 +2078,12 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
             <div ref={mapContainerRef} className="w-full h-full z-[10]" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40] pointer-events-none">
               <button onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
-                <Navigation className={`w-3 h-3 mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
+                <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
               </button>
             </div>
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
-                    <Globe className="w-3 h-3" /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
+                    <Globe size={12} /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
@@ -2153,7 +2179,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
   return (
     <div className="w-full flex items-center gap-2 sm:gap-4 my-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex-1 relative group w-full">
-            <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600`}><Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></div>
+            <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600`}><Search size={18} strokeWidth={2.5} /></div>
             <input 
               type="text" 
               aria-label="Search" 
@@ -2164,7 +2190,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
-                <X className="w-5 h-5" strokeWidth={2.5} />
+                <X size={20} strokeWidth={2.5} />
               </button>
             )}
         </div>
@@ -2187,14 +2213,14 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                       className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                       title="Map View"
                     >
-                      <MapIcon className="w-4 h-4" />
+                      <MapIcon size={16} />
                     </button>
                     <button 
                       onClick={() => setMapMode('list')} 
                       className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                       title="List View"
                     >
-                      <List className="w-4 h-4" />
+                      <List size={16} />
                     </button>
                 </div>
             </div>
@@ -2215,7 +2241,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         <div className={`transition-opacity shrink-0 ${medalSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
           <label className="cursor-pointer">
-            <ChevronDown className={`w-4 h-4 ${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
+            <ChevronDown size={16} strokeWidth={3} className={`${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
           </label>
         </div>
       </div>
@@ -2236,7 +2262,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
   if (!stats || !stats.topStats) {
       return (
           <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
-              <Trophy className="w-14 h-14 mb-6" />
+              <Trophy size={56} className="mb-6" />
               <h3 className="text-xl font-black uppercase tracking-[0.3em]">SCANNING FOR RECORDS...</h3>
           </div>
       );
@@ -2260,7 +2286,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                 <div className="flex items-center gap-2 w-full justify-between overflow-visible">
                   <span>{sec.l}</span>
                   <ASRStatTooltip desc={hofStatDetails[sec.k]?.desc} theme={theme} position={gridIdx % 4 === 3 ? "left" : (gridIdx % 4 === 0 ? "right" : "bottom")}>
-                    <Info className="w-3 h-3 opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
+                    <Info size={12} className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
                   </ASRStatTooltip>
                 </div>
               </div>
@@ -2341,7 +2367,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip,
         {sortable && (
           <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
             <label className="cursor-pointer">
-              <ChevronDown className={`w-4 h-4 ${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} strokeWidth={3} />
+              <ChevronDown size={16} strokeWidth={3} className={`${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
             </label>
           </div>
         )}
@@ -2375,7 +2401,6 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
         return result;
     }, [data, visibleCount]);
 
-    // Updated offset logic for iPhone scroll fixes
     const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))]";
 
     return (
@@ -2471,7 +2496,7 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
                   className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/30 border-zinc-800 text-zinc-400 hover:border-blue-500 hover:text-blue-500' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Toggle Theme"
                 >
-                  {theme === 'dark' ? <Sun className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Moon className="w-3.5 h-3.5" strokeWidth={2.5} />}
+                  {theme === 'dark' ? <Sun size={14} strokeWidth={2.5} /> : <Moon size={14} strokeWidth={2.5} />}
                 </button>
             </div>
         </nav>
@@ -2480,16 +2505,16 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
 
 const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
-    { id: 'players', label: 'PLAYERS', icon: <Users className="w-5 h-5" /> },
-    { id: 'map', label: 'COURSES', icon: <Globe className="w-5 h-5" /> },
-    { id: 'start', label: 'START', icon: <Play className="w-5 h-5 fill-current" /> },
-    { id: 'setters', label: 'SETTERS', icon: <Waypoints className="w-5 h-5" /> },
-    { id: 'hof', label: 'HOF', icon: <Trophy className="w-5 h-5" /> }
+    { id: 'players', label: 'PLAYERS', icon: <Users size={20} /> },
+    { id: 'map', label: 'COURSES', icon: <Globe size={20} /> },
+    { id: 'start', label: 'START', icon: <Play size={20} fill="currentColor" /> },
+    { id: 'setters', label: 'SETTERS', icon: <Waypoints size={20} /> },
+    { id: 'hof', label: 'HOF', icon: <Trophy size={20} /> }
   ];
 
   return (
     <div className="bottom-nav-dock">
-      <div className={`w-full px-4 pt-3 pb-[calc(12px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
+      <div className={`w-full px-4 pt-2 pb-[var(--safe-bottom)] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
         {items.map(item => (
           <button
             key={item.id}
@@ -2497,7 +2522,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 if (item.id === 'start') onOpenIntro();
                 else window.location.hash = `#/${item.id}`;
             }}
-            className={`flex flex-col items-center justify-center gap-1.5 flex-1 py-1 rounded-2xl transition-all duration-300 active:scale-95 ${view === item.id ? 'text-blue-600 scale-105' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all duration-300 active:scale-95 ${view === item.id ? 'text-blue-600 scale-105' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
             <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
@@ -2524,10 +2549,10 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     );
 };
 
-// iPhone Status Bar Shield: Extension of Announcement bar background to absolute top
+// iPhone Status Bar Shield: Extension of Document/Theme background to absolute top
 const ASRTopShield = ({ theme }) => {
     return (
-        <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-[#1e40af]' : 'bg-blue-600'}`} />
+        <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-black' : 'bg-[#f8fafc]'}`} />
     );
 };
 
@@ -2588,7 +2613,6 @@ export default function App() {
 
   // UNIFIED SCROLL RESET FOR MAIN VIEW TRANSITIONS
   useLayoutEffect(() => {
-    // Reset window and document scroll immediately when view or event context changes
     const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -2596,7 +2620,6 @@ export default function App() {
     };
 
     resetScroll();
-    // Double-tap reset for edge cases where DOM reflow happens after effect
     const timer = requestAnimationFrame(resetScroll);
     return () => cancelAnimationFrame(timer);
   }, [view, eventType]);
