@@ -6,26 +6,27 @@ import {
   Video, HelpCircle, Building2, Map as MapIcon, Waypoints, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, MessageSquare, TrendingUp, Fingerprint, Zap,
-  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share, Eye, Camera, Award, Star, Medal
+  Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share, Eye, Camera, Award, Star, Medal,
+  Clock
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v29_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v37_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
 const THEME = {
   CARD: (t) => t === 'dark' 
-    ? "bg-zinc-950/60 border-zinc-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.5)]" 
-    : "bg-white border-slate-300 shadow-premium",
+    ? "bg-zinc-950/60 border-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.5)]" 
+    : "bg-white border-slate-200 shadow-premium",
   
   GLASS: (t) => t === 'dark'
     ? "bg-zinc-900/80 border-zinc-700/50 backdrop-blur-xl shadow-2xl"
-    : "bg-white/80 border-slate-300 backdrop-blur-md shadow-xl",
+    : "bg-white/80 border-slate-200 backdrop-blur-md shadow-xl",
 
   MODAL_SURFACE: (t) => t === 'dark'
     ? "bg-[#080808] border-zinc-800 text-slate-100" 
-    : "bg-[#f1f5f9] border-slate-400 text-slate-900",
+    : "bg-[#f8fafc] border-slate-300 text-slate-900",
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
   HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter italic leading-none",
@@ -34,7 +35,7 @@ const THEME = {
   
   INPUT: (t) => t === 'dark'
     ? "bg-zinc-900/50 text-white focus:bg-zinc-900/80 border-zinc-800 focus:border-blue-600/60 shadow-2xl"
-    : "bg-white text-slate-900 border-slate-300 focus:border-blue-600 shadow-xl",
+    : "bg-white text-slate-900 border-slate-200 focus:border-blue-600 shadow-xl",
   
   BUTTON_ROUNDED: "rounded-[0.9rem] sm:rounded-[1.8rem] transition-all whitespace-nowrap",
   NAV_ITEM: "px-4 sm:px-10 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] transition-all text-inherit whitespace-nowrap active:scale-95",
@@ -230,8 +231,21 @@ const CustomStyles = () => (
       50% { opacity: 0.8; transform: scale(0.98); }
     }
     .animate-subtle-pulse { animation: subtle-pulse 3s infinite ease-in-out; }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .animate-marquee {
+      display: flex;
+      width: max-content;
+      animation: marquee 160s linear infinite;
+    }
+    .animate-marquee:hover { animation-play-state: paused; }
     
     .glow-gold { text-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+    .glow-silver { text-shadow: 0 0 12px rgba(161, 161, 170, 0.5); }
+    .glow-bronze { text-shadow: 0 0 12px rgba(206, 137, 70, 0.6); }
     .glow-blue { text-shadow: 0 0 15px rgba(37, 99, 235, 0.7); }
     
     .num-col { font-variant-numeric: tabular-nums; }
@@ -241,14 +255,14 @@ const CustomStyles = () => (
       -webkit-touch-callout: none;
     }
 
-    /* Fix for iOS viewport and content bleed */
     :root {
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --announcement-height: 28px;
+      --announcement-height: 32px;
+      --ticker-height: 32px;
       --nav-height-mobile: 68px;
       --nav-height-desktop: 76px;
-      --bottom-nav-height: 64px; /* Slightly tighter for Instagram look */
+      --bottom-nav-height: 64px;
     }
     
     html, body {
@@ -317,7 +331,6 @@ const CustomStyles = () => (
       z-index: 1000 !important;
     }
 
-    /* Updated single marker style using SVG pin */
     .asr-marker-pin-wrap {
       color: #2563eb;
       filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
@@ -400,14 +413,16 @@ const CustomStyles = () => (
       filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3));
     }
 
-    .setter-master-gradient {
-      background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
-    }
-    .setter-pro-gradient {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
-    .setter-l3-gradient {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    /* Fixed Width Emoji Wrapper for equal negative space */
+    .emoji-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4em;
+      height: 1.2em;
+      text-align: center;
+      line-height: 1;
+      flex-shrink: 0;
     }
   `}</style>
 );
@@ -456,29 +471,6 @@ const ASRSectionHeading = ({ children, theme, className = "" }) => (
     </h3>
 );
 
-const SetterCertificationBadge = ({ level, theme }) => {
-  if (!level || level === '0' || level === '-') return null;
-  
-  const levels = {
-    'L1': { label: 'LEVEL 1 COURSE SETTER', color: 'text-zinc-400', bg: 'bg-zinc-900', border: 'border-zinc-800' },
-    'L2': { label: 'LEVEL 2 COURSE SETTER', color: 'text-blue-500', bg: 'bg-blue-950/20', border: 'border-blue-900/50' },
-    'L3': { label: 'LEVEL 3 COURSE SETTER', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
-    'MASTER': { label: 'MASTER COURSE SETTER', color: 'text-white', bg: 'bg-gradient-to-br from-blue-600 to-indigo-700', border: 'border-blue-400', glow: true },
-    'PRO': { label: 'PROFESSIONAL SETTER', color: 'text-white', bg: 'bg-zinc-100 dark:bg-zinc-800', border: 'border-zinc-300 dark:border-zinc-600' }
-  };
-
-  const norm = String(level).toUpperCase().trim();
-  const cfg = levels[norm] || { label: norm, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30' };
-
-  return (
-    <div className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full border-2 transition-all ${cfg.bg} ${cfg.border} ${cfg.glow ? 'cert-badge-glow shadow-xl scale-105' : ''}`}>
-      <Award size={14} className={cfg.color} strokeWidth={2.5} />
-      <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${cfg.color}`}>{cfg.label}</span>
-      {norm === 'MASTER' && <span className="text-blue-200 animate-pulse text-[10px]">✨</span>}
-    </div>
-  );
-};
-
 const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
   const GRADIENTS = [
     'from-blue-600 to-indigo-700', 'from-emerald-600 to-cyan-700',
@@ -512,7 +504,7 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
 };
 
 const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
-    if (!namesStr && !flagsStr) return <div className="whitespace-normal text-inherit font-black">UNKNOWN 🏳️</div>;
+    if (!namesStr && !flagsStr) return <div className="whitespace-normal text-inherit font-black">UNKNOWN <span className="emoji-slot">🏳️</span></div>;
     if (!namesStr) return <div className="whitespace-normal text-inherit font-black">{flagsStr}</div>;
     const names = String(namesStr).split(/[,\/]/).map(s => s.trim()).filter(Boolean);
     const flagsMatch = String(flagsStr || '').match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|🏳️/g) || [];
@@ -521,7 +513,11 @@ const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
         <div className="whitespace-normal text-inherit font-black">
             {names.map((name, i) => {
                 const flag = flagsMatch[i] || flagsMatch[0] || '';
-                return <span key={i} className="text-inherit">{i > 0 ? ' / ' : prefix}{name} {flag}</span>;
+                return (
+                  <span key={i} className="text-inherit">
+                    {i > 0 ? ' / ' : prefix}{name} <span className="emoji-slot">{flag}</span>
+                  </span>
+                );
             })}
         </div>
     );
@@ -551,8 +547,8 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
 const ASRPerformanceBadge = ({ type, count = 1 }) => {
     const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
     const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-blue" };
-    return <span className={`inline-flex items-center gap-1 text-xs select-none shrink-0 ${glows[type]}`}>
-        {Array.from({ length: count }).map((_, i) => <span key={i}>{badges[type]}</span>)}
+    return <span className={`inline-flex items-center gap-0 select-none shrink-0 ${glows[type]}`}>
+        {Array.from({ length: count }).map((_, i) => <span key={i} className="emoji-slot">{badges[type]}</span>)}
     </span>;
 };
 
@@ -618,7 +614,7 @@ const ASRListItem = ({
               <div className="opacity-70 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
                 {subtitle}
               </div>
-              {badgeContent && <div className="mt-1 h-4 flex items-center gap-1">{badgeContent}</div>}
+              {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
             </div>
             {stats.map((s, idx) => {
                 const colDef = columns.filter(c => !c.isRank && c.type !== 'profile').filter(c => c.key !== 'rules')[idx];
@@ -656,7 +652,7 @@ const ASRListItem = ({
         ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}
         ${theme === 'dark' 
           ? 'bg-zinc-900/30 border-zinc-800/80' 
-          : 'bg-white border-slate-300 shadow-md'}
+          : 'bg-white border-slate-200 shadow-md'}
         ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/60' : 'hover:bg-slate-50') : ''}
         ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
     >
@@ -680,7 +676,7 @@ const ASRListItem = ({
             <div className="opacity-70 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words">
               {subtitle}
             </div>
-            {badgeContent && <div className="mt-1 h-4 flex items-center gap-1">{badgeContent}</div>}
+            {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
           </div>
         </div>
       </div>
@@ -748,7 +744,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
       href={config.link} 
       target="_blank" 
       rel="noopener noreferrer" 
-      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] transition-all duration-300 ios-clip-fix"
+      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] active:scale-95 transition-all duration-300 ios-clip-fix"
     >
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-5">
@@ -813,7 +809,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       }
       
       return (
-        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
+        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-95 group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
               <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
                 <Building2 className="w-4 h-4" />
@@ -872,7 +868,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
   const c = cards[type];
   if (!c) return null;
   return (
-    <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] textured-surface ${theme === 'dark' ? 'bg-blue-950/20 border-blue-900/50' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
+    <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] active:scale-95 textured-surface ${theme === 'dark' ? 'bg-blue-950/20 border-blue-900/50' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
       <div className="flex items-center gap-4">
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
@@ -885,6 +881,112 @@ const ASRInlineValueCard = ({ theme, type }) => {
       </a>
     </div>
   );
+};
+
+// --- LIVE TICKER COMPONENT ---
+
+const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
+  if (!feed || feed.length === 0) return null;
+
+  // Duplicate items for seamless loop
+  const tickerItems = [...feed, ...feed];
+
+  return (
+    <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[70] h-[var(--ticker-height)] flex items-center overflow-hidden border-b transition-all duration-500 bg-[#0a0a0a] border-zinc-800/50 text-white`}>
+      <div className="animate-marquee whitespace-nowrap flex items-center gap-16 px-12">
+        {tickerItems.map((item, idx) => {
+          const fires = item.fireCount || 0;
+          const rank = item.rank || 0;
+          
+          return (
+            <div key={`${item.id}-${idx}`} className="flex items-center gap-0 group cursor-default h-full">
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center`}>
+                <span className="opacity-30 mr-3 shrink-0">{item.timeString}</span>
+                
+                {/* Medal RESTORED to original position: right before player names */}
+                <span className="flex items-center mr-1.5 shrink-0">
+                  {rank === 1 && <span className="animate-bounce emoji-slot">🥇</span>}
+                  {rank === 2 && <span className="animate-bounce emoji-slot">🥈</span>}
+                  {rank === 3 && <span className="animate-bounce emoji-slot">🥉</span>}
+                </span>
+
+                <span 
+                  onClick={(e) => { e.stopPropagation(); onPlayerClick(item.athlete); }}
+                  className={`transition-colors cursor-pointer font-black hover:text-blue-500 mr-2 shrink-0`}
+                >
+                  {item.athleteName} {item.athlete?.region || ''}
+                </span>
+                
+                <span 
+                  onClick={(e) => { e.stopPropagation(); onCourseClick(item.course); }}
+                  className={`font-black transition-colors cursor-pointer hover:text-blue-400 shrink-0`}
+                >
+                  {item.courseName}
+                  {item.course?.city && item.course?.city !== 'UNKNOWN' ? `, ${item.course.city}` : ''}
+                  {item.course?.flag ? <span className="emoji-slot ml-1">{item.course.flag}</span> : ''}
+                </span>
+                
+                {/* Run Time: Enhanced visibility */}
+                <span className={`${THEME.VALUE} ml-3 text-white opacity-100 text-[11px] sm:text-[12px] font-black shrink-0`}>
+                  {item.result}
+                </span>
+
+                {/* Status Cluster: ONLY fire emojis here at the end of each record */}
+                {fires > 0 && (
+                  <span className="flex items-center ml-2 gap-0 shrink-0">
+                    {Array.from({ length: fires }).map((_, i) => (
+                      <span key={i} className="animate-pulse emoji-slot">🔥</span>
+                    ))}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// --- COUNTDOWN TIMER COMPONENT ---
+
+const ASRCountdownTimer = ({ className = "" }) => {
+    const targetDate = useMemo(() => new Date('2026-06-01T07:00:00Z'), []);
+    const [timeLeft, setTimeLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            const difference = targetDate.getTime() - now.getTime();
+            
+            if (difference <= 0) {
+                setTimeLeft({ d: 0, h: 0, m: 0, s: 0 });
+                clearInterval(timer);
+                return;
+            }
+
+            setTimeLeft({
+                d: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                h: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                m: Math.floor((difference / 1000 / 60) % 60),
+                s: Math.floor((difference / 1000) % 60)
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [targetDate]);
+
+    return (
+        <div className={`flex items-center gap-1 font-sans font-black tabular-nums tracking-normal ${className}`}>
+            <span>{String(timeLeft.d).padStart(2, '0')}D</span>
+            <span className="opacity-40">:</span>
+            <span>{String(timeLeft.h).padStart(2, '0')}H</span>
+            <span className="opacity-40">:</span>
+            <span>{String(timeLeft.m).padStart(2, '0')}M</span>
+            <span className="opacity-40">:</span>
+            <span className="text-inherit">{String(timeLeft.s).padStart(2, '0')}S</span>
+        </div>
+    );
 };
 
 // --- MODALS ---
@@ -949,7 +1051,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       onClick={onClose}
     >
       <div 
-        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-300'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`}
+        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-200'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
         onClick={e => e.stopPropagation()}
       >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
@@ -1006,7 +1108,6 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
                 </button>
               )}
             </div>
-            {/* Skip Button */}
             <button 
               onClick={onClose}
               className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-opacity"
@@ -1038,19 +1139,15 @@ const ASRBaseModal = ({
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  // Unified Scroll Reset for Modal Transitions
   useLayoutEffect(() => {
     if (!isOpen) return;
     
-    // 1. Capture scroll of current (outgoing) page
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
 
-    // 2. Apply scroll reset for incoming content (or restore for back button)
     if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
-        // Instant reset for professional native feel
         scrollContainerRef.current.scrollTo({ top: targetScroll, left: 0, behavior: 'instant' });
     }
     
@@ -1200,15 +1297,15 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     if (isSetter) {
         const setterData = identity.setterData || identity;
         const setterCourses = (allCourses || [])
-            .filter(c => isNameInList(identity.name, c.leadSetters) || isNameInList(identity.name, c.assistantsetters))
-            .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0));
+          .filter(c => isNameInList(identity.name, c.leadSetters) || isNameInList(identity.name, c.assistantsetters))
+          .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0));
         
         const impact = setterData.impact || setterCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
         const setsCount = setterData.sets || setterCourses.length;
 
         const setterStats = [
             { l: 'LEVEL', v: setterData.certLevel || '-' },
-            { l: 'IMPACT', v: String(Math.round(impact)) },
+            { l: 'IMPACT', v: String(Math.round(impact)), c: 'text-blue-600' }, 
             { l: 'SETS', v: String(setsCount) },
             { l: 'LEADS', v: String(setterData.leads || 0) },
             { l: 'ASSISTS', v: String(setterData.assists || 0) },
@@ -1326,7 +1423,12 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                           icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
                           stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
                           videoUrl={c.videoUrl} 
-                          badgeContent={<>{c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}{c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}</>}
+                          badgeContent={
+                            <div className="flex items-center gap-0">
+                              {c.rank > 0 && c.rank <= 3 && <ASRPerformanceBadge type={c.rank} />}
+                              {c.fireCount > 0 && <ASRPerformanceBadge type="fire" count={c.fireCount} />}
+                            </div>
+                          }
                           onClick={() => { if(target) openModal('course', target); }}
                         />
                       );
@@ -1447,8 +1549,8 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
     case 'setter': {
       const pKeyFromData = activeModal.data.pKey || normalizeName(activeModal.data.name);
       const athleteData = atMet[pKeyFromData] || 
-                        Object.values(atMet).find(a => normalizeName(a.name) === normalizeName(activeModal.data.name)) || 
-                        activeModal.data;
+                          Object.values(atMet).find(a => normalizeName(a.name) === normalizeName(activeModal.data.name)) || 
+                          activeModal.data;
       
       const pKey = athleteData.pKey || pKeyFromData;
       const openAthleteData = openRankings.find(p => p.pKey === pKey) || openRankings.find(p => normalizeName(p.name) === normalizeName(athleteData.name));
@@ -1499,7 +1601,7 @@ const useASRData = () => {
   const [state, setState] = useState({
     data: [], openData: [], atPerfs: {}, opPerfs: {},
     lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: [],
-    atRawBest: {}, opRawBest: {},
+    atRawBest: {}, opRawBest: {}, recentFeed: [],
     isLoading: true, hasError: false, hasPartialError: false
   });
 
@@ -1691,7 +1793,7 @@ const useASRData = () => {
           allTimePerformances: {}, openPerformances: {}, openRankings: [], 
           allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, 
           athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, 
-          atRawBest: {}, opRawBest: {}, filmerCredits: {}
+          atRawBest: {}, opRawBest: {}, filmerCredits: {}, recentFeed: []
         };
         if (!csv) return result;
         const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
@@ -1726,9 +1828,10 @@ const useASRData = () => {
           }
 
           const normC = rawCourse.toUpperCase();
+          const isCourseOpen = courseSetMap[normC]?.is2026;
+          
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
 
-          // Process Filmer Data
           const rawFilmer = (vals.filmer || vals.__raw[8] || "").trim();
           if (rawFilmer) {
             const filmerKey = normalizeName(rawFilmer);
@@ -1756,7 +1859,8 @@ const useASRData = () => {
           const runDate = vals.date ? new Date(vals.date) : null;
           const isASROpenTag = (vals.tag || "").toUpperCase().includes("OPEN");
           const isInOpenWindow = runDate && !isNaN(runDate.getTime()) && runDate >= OPEN_START && runDate <= OPEN_END;
-          if (isASROpenTag || isInOpenWindow) {
+          
+          if ((isASROpenTag || isInOpenWindow) && isCourseOpen) {
             if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
             if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
               openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
@@ -1765,7 +1869,7 @@ const useASRData = () => {
             if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
                 openCourseLeaderboards[pGender][normC][pKey] = numericValue;
             }
-            if (courseSetMap[normC]?.is2026) openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
+            openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
           }
         });
 
@@ -1806,6 +1910,41 @@ const useASRData = () => {
         result.atRawBest = allTimeAthleteBestTimes;
         result.opRawBest = openAthleteBestTimes;
         result.filmerCredits = filmerCreditsCount;
+        
+        // REFINED CHRONOLOGICAL FEED FOR TICKER
+        const chronologicalRuns = [...dataRows].sort((a, b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA; // Newest first
+        }).slice(0, 20); 
+
+        result.recentFeed = chronologicalRuns.map((run, i) => {
+          const pName = (run.athlete || "").trim();
+          const normC = (run.course || "").trim().toUpperCase();
+          const numericValue = cleanNumeric(run.result);
+          const pKey = normalizeName(pName);
+          const athleteMeta = athleteMetadata[pKey];
+          const pGender = athleteMeta?.gender || 'M';
+          
+          const courseRecords = (allTimeCourseLeaderboards[pGender] || {})[normC] || {};
+          const sortedResults = Object.entries(courseRecords).sort((a, b) => a[1] - b[1]);
+          const runRank = sortedResults.findIndex(entry => entry[1] === numericValue) + 1;
+          const fireCount = getFireCountForRun(numericValue, pGender);
+          
+          return {
+            id: `feed-${i}`,
+            athleteName: pName,
+            athlete: athleteMeta,
+            courseName: run.course,
+            course: { name: run.course, ...(courseSetMap[normC] || {}) },
+            result: run.result,
+            isCR: runRank === 1 && !isPlaceholderPlayer(pName),
+            rank: runRank,
+            fireCount: fireCount,
+            timeString: run.date || 'LATEST'
+          };
+        });
+
         result.openRankings = Object.keys(athleteMetadata).map(pKey => {
           const meta = athleteMetadata[pKey];
           const perfs = result.openPerformances[pKey] || [];
@@ -1832,6 +1971,7 @@ const useASRData = () => {
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
         atMet: processed.athleteMetadata, dnMap: processed.athleteDisplayNameMap, cMet: processed.courseMetadata,
         settersData: allSetters, atRawBest: processed.atRawBest, opRawBest: processed.opRawBest,
+        recentFeed: processed.recentFeed,
         isLoading: false, hasError: hasTotalError, hasPartialError
       };
       setState(nextState);
@@ -2093,7 +2233,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
 
     if (!isScriptsLoaded) {
         return (
-            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
+            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-white' : 'bg-slate-100 border-slate-200 text-slate-900'}`}>
                 <div className="animate-spin opacity-70 mb-4"><ChevronsRight className="w-6 h-6 text-blue-600" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} /></div>
                 <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP SOURCE...</div>
             </div>
@@ -2125,7 +2265,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
                                         <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-50`}>
-                                          {c.name} <span className="ml-1 opacity-80">{c.flag}</span>
+                                          {c.name} <span className="emoji-slot opacity-80">{c.flag}</span>
                                         </span>
                                     </div>
                                  </div>
@@ -2160,7 +2300,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     const displayAthletes = [...(athletes || []).slice(0, 10)];
     while (displayAthletes.length < 3) displayAthletes.push(null);
     return (
-        <div className="space-y-4 overflow-visible">
+        <div className="space-y-4 overflow-visible text-left">
             <ASRSectionHeading theme={theme} className="!mb-0">{title}</ASRSectionHeading>
             <div className="grid grid-cols-1 gap-3 overflow-visible">
                 {displayAthletes.map((athleteRow, i) => {
@@ -2186,7 +2326,14 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     const fireCount = getFireCountForRun(time, meta.gender);
                     const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
                     const fireArray = fireCount > 0 ? Array(fireCount).fill("🔥") : [];
-                    const emojiLine = [meta.region || '🏳️', medal, ...fireArray].filter(Boolean).join(" ");
+                    
+                    const emojiLine = (
+                      <div className="flex items-center gap-0">
+                        {meta.region && <span className="emoji-slot">{meta.region}</span>}
+                        {medal && <span className="emoji-slot">{medal}</span>}
+                        {fireArray.map((f, idx) => <span key={idx} className="emoji-slot">{f}</span>)}
+                      </div>
+                    );
 
                     return (
                         <ASRListItem 
@@ -2223,7 +2370,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 )}
             </div>
             {view === 'players' && (
-                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
+                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
                             <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
@@ -2234,7 +2381,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 </div>
             )}
             {view === 'map' && (
-                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-300 shadow-xl'} ios-clip-fix`}>
+                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         <button 
                           onClick={() => setMapMode('map')} 
@@ -2312,7 +2459,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ].map((sec, gridIdx) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border flex flex-col overflow-visible ${THEME.CARD(theme)}`}>
               <div className={`p-5 border-b border-inherit opacity-80 ${THEME.HEADING_SM} flex items-center justify-between overflow-visible group`}>
-                <div className="flex items-center gap-2 w-full justify-between overflow-visible">
+                <div className="flex items-center gap-2 w-full justify-between overflow-visible text-left">
                   <span>{sec.l}</span>
                   <ASRStatTooltip desc={hofStatDetails[sec.k]?.desc} theme={theme} position={gridIdx % 4 === 3 ? "left" : (gridIdx % 4 === 0 ? "right" : "bottom")}>
                     <Info size={12} className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
@@ -2324,7 +2471,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}>
                     <div className="flex items-center gap-3 text-left">
                       <ASRRankBadge rank={i + 1} theme={theme} />
-                      <div className="flex flex-col">
+                      <div className="flex flex-col text-left">
                         <span className="text-xs font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors">{p.name}</span>
                         <span className="text-sm mt-1">{p.region}</span>
                       </div>
@@ -2365,7 +2512,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   <td className="px-2 sm:px-4 py-6 text-left">
                     <div className="flex items-center gap-3 text-left">
                       <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors">{c.name}</span>
-                      <span className="text-xl sm:text-2xl shrink-0 leading-none">{c.flag}</span>
+                      <span className="emoji-slot text-xl sm:text-2xl shrink-0">{c.flag}</span>
                     </div>
                   </td>
                   <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.gold)}</td>
@@ -2430,11 +2577,11 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
         return result;
     }, [data, visibleCount]);
 
-    const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))]";
+    const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))]";
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
-            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b border-subtle flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-[#f1f5f9]/95 text-slate-700'}`}>
+            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b border-subtle flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-[#f8fafc]/95 text-slate-700'}`}>
                 <div className="w-20 sm:w-24 pl-4 sm:pl-10 py-8 text-left font-black text-[9px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
                   {columns.filter(c => !c.isRank).map((col, i) => (
@@ -2501,7 +2648,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
 
 const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) => {
     return (
-        <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-300 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
+        <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-800 text-slate-100' : 'bg-white/80 border-slate-200 text-slate-900'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)] shadow-sm`}>
             <div 
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" 
                 onClick={() => {
@@ -2555,7 +2702,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 
   return (
     <div className="bottom-nav-dock">
-      <div className={`w-full px-6 pt-3 pb-[calc(10px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
+      <div className={`w-full px-6 pt-3 pb-[calc(10px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
         {items.map(item => (
           <button
             key={item.id}
@@ -2573,23 +2720,26 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   );
 };
 
+// --- CENTERED ANNOUNCEMENT BAR ---
+
 const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     return (
       <div 
-        onClick={onOpenIntro}
-        className={`fixed top-[var(--safe-top)] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 cursor-pointer group/bar active:opacity-90 ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50 hover:bg-[#2563eb]' : 'bg-blue-600 border-blue-700 text-white hover:bg-blue-500'}`}
+        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 group/bar ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
-        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none">
-          <span className="animate-pulse text-xs leading-none">●</span>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
-            THE 2026 ASR OPEN IS LIVE, CLIPS DUE MAY 31
+        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black">
+          <span className="animate-pulse text-xs leading-none shrink-0">●</span>
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-hidden text-ellipsis">
+            2026 ASR OPEN CLIPS DUE IN:
           </span>
+          <div className="shrink-0">
+            <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
+          </div>
         </div>
       </div>
     );
 };
 
-// iPhone Status Bar Shield: Extension of Document/Theme background to absolute top
 const ASRTopShield = ({ theme }) => {
     return (
         <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-black' : 'bg-[#f8fafc]'}`} />
@@ -2643,7 +2793,7 @@ export default function App() {
   const histRef = useRef([]);
   const idxRef = useRef(-1);
 
-  const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, isLoading, hasError } = useASRData();
+  const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
   useEffect(() => {
@@ -2651,7 +2801,6 @@ export default function App() {
     idxRef.current = historyIndex;
   }, [modalHistory, historyIndex]);
 
-  // UNIFIED SCROLL RESET FOR MAIN VIEW TRANSITIONS
   useLayoutEffect(() => {
     const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -2720,20 +2869,6 @@ export default function App() {
         };
     }).filter(s => isAllTimeContext || s.sets > 0);
   }, [settersData, masterCourseList, isAllTimeContext, atMet]);
-
-  // --- METADATA & PREVIEW LOGIC ---
-  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
-
-  useEffect(() => {
-    let title = "Apex Speed Run";
-    if (activeModal) {
-      title = `${activeModal.data.name.toUpperCase()} | ASR`;
-    } else {
-      const viewNames = { players: 'Players', setters: 'Setters', map: 'Courses', hof: 'Hall of Fame' };
-      title = `${viewNames[view] || 'Home'} | Apex Speed Run`;
-    }
-    document.title = title;
-  }, [activeModal, view]);
 
   // --- NAVIGATION LOGIC ---
 
@@ -2843,7 +2978,11 @@ export default function App() {
 
   const handleSort = (newSort) => {
     const key = view === 'map' ? 'courses' : (view === 'players' ? 'players' : view);
-    setViewSorts(p => ({ ...p, [key]: typeof newSort === 'function' ? newSort(p[key]) : newSort }));
+    handleSortFunc(key, newSort);
+  };
+
+  const handleSortFunc = (viewKey, newSort) => {
+    setViewSorts(p => ({ ...p, [viewKey]: typeof newSort === 'function' ? newSort(p[viewKey]) : newSort }));
   };
 
   const [medalSort, setMedalSort] = useState({ key: 'gold', direction: 'descending' });
@@ -2897,6 +3036,8 @@ export default function App() {
     }
   }, []);
 
+  const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
+
   const getModalHeader = (modal) => {
     if (!modal) return null;
     const { type, data } = modal;
@@ -2907,7 +3048,7 @@ export default function App() {
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
-              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-300 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
@@ -2949,7 +3090,7 @@ export default function App() {
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
-              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'border-slate-400 bg-white'} ios-clip-fix`}>
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'border-slate-300 bg-white'} ios-clip-fix`}>
                 <FallbackAvatar name={data.name} />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
@@ -2970,7 +3111,7 @@ export default function App() {
                     )}
                   </div>
                   <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mt-0.5">
-                    {locSubtitle}{data.region || ''}
+                    {locSubtitle}<span className="emoji-slot">{data.region || ''}</span>
                   </div>
               </div>
             </div>
@@ -2980,10 +3121,10 @@ export default function App() {
     if (type === 'region') {
       return (
         <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
-          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-400 bg-white'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-300 bg-white'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
             <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2></div>
-            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm">{data.flag}</div>}
+            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{data.flag}</span></div>}
           </div>
         </div>
       );
@@ -3005,12 +3146,20 @@ export default function App() {
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(100px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRTopShield theme={theme} />
+      
+      <ASRLiveTicker 
+        feed={recentFeed} 
+        theme={theme} 
+        onPlayerClick={(p) => p && navigateToEntity('player', p)} 
+        onCourseClick={(c) => c && navigateToEntity('course', c)} 
+      />
       <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
+
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
-      <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height))] overflow-visible">
+      <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))] overflow-visible">
         <ASRBaseModal 
           isOpen={historyIndex >= 0} 
           onClose={closeModals} 
@@ -3038,9 +3187,8 @@ export default function App() {
         <ASRControlBar theme={theme} />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
-          {/* Unified Page Title Header */}
           <div className="w-full flex flex-col mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
-             <h1 className="text-white text-xl sm:text-2xl font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
+             <h1 className="text-inherit text-2xl sm:text-3xl font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
                 {currentTitle}
              </h1>
           </div>
