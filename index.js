@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v37_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v41_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -30,7 +30,7 @@ const THEME = {
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
   HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter italic leading-none",
-  LABEL: "text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-60",
+  LABEL: "text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-50",
   VALUE: "font-mono font-black tabular-nums num-col",
   
   INPUT: (t) => t === 'dark'
@@ -413,7 +413,6 @@ const CustomStyles = () => (
       filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3));
     }
 
-    /* Fixed Width Emoji Wrapper for equal negative space */
     .emoji-slot {
       display: inline-flex;
       align-items: center;
@@ -503,22 +502,25 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   );
 };
 
-const formatLocationSubtitle = (namesStr, flagsStr, prefix = '') => {
-    if (!namesStr && !flagsStr) return <div className="whitespace-normal text-inherit font-black">UNKNOWN <span className="emoji-slot">🏳️</span></div>;
-    if (!namesStr) return <div className="whitespace-normal text-inherit font-black">{flagsStr}</div>;
-    const names = String(namesStr).split(/[,\/]/).map(s => s.trim()).filter(Boolean);
-    const flagsMatch = String(flagsStr || '').match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|🏳️/g) || [];
+/**
+ * REFINED LOCATION FORMATTER
+ * Formats as: CITY, STATE, COUNTRY FLAG(S)
+ * Intelligent prioritizes Hometown column if available.
+ */
+const formatLocationSubtitle = (hometown, country, flags) => {
+    const h = String(hometown || "").trim();
+    const c = String(country || "").trim();
+    const f = String(flags || "").trim();
+
+    // Prioritize Hometown string. Use country only if hometown is empty.
+    let displayLoc = h || c;
     
+    if (!displayLoc && !f) return <span className="opacity-40 text-[9px] uppercase tracking-widest">LOCATION UNKNOWN <span className="emoji-slot">🏳️</span></span>;
+
     return (
-        <div className="whitespace-normal text-inherit font-black">
-            {names.map((name, i) => {
-                const flag = flagsMatch[i] || flagsMatch[0] || '';
-                return (
-                  <span key={i} className="text-inherit">
-                    {i > 0 ? ' / ' : prefix}{name} <span className="emoji-slot">{flag}</span>
-                  </span>
-                );
-            })}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-inherit font-black">
+            <span className="truncate max-w-full">{displayLoc.toUpperCase()}</span>
+            {f && <span className="flex items-center gap-0.5 shrink-0">{f}</span>}
         </div>
     );
 };
@@ -538,7 +540,7 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   };
   const current = isUnranked ? styles.unranked : (styles[rank] || styles.default);
   return (
-    <span className={`inline-flex items-center justify-center rounded-full font-mono font-black transition-all duration-500 shrink-0 ${dim} ${textClass} ${current.border} ${current.text} ${current.glow} ${isPodium ? 'border-[3px] animate-subtle-pulse' : 'border-0'} ios-clip-fix`}>
+    <span className={`inline-flex items-center justify-center rounded-full font-mono font-black transition-all duration-300 shrink-0 ${dim} ${textClass} ${current.border} ${current.text} ${current.glow} ${isPodium ? 'border-[3px] animate-subtle-pulse' : 'border-0'} ios-clip-fix`}>
       {rankNum}
     </span>
   );
@@ -571,7 +573,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   const finalPos = index < 3 ? "bottom" : tooltipPosition;
 
   return (
-    <div className={`stat-card-container relative flex flex-col border p-3 sm:p-5 rounded-3xl transition-all ${THEME.CARD(theme)}`}>
+    <div className={`stat-card-container relative flex flex-col border p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] transition-all duration-300 ${THEME.CARD(theme)}`}>
         <span className={`${THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible`}>
             {label} 
             {info && (
@@ -580,9 +582,9 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
               </ASRStatTooltip>
             )}
         </span>
-        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0 min-w-0">
+        <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
           {icon && <span className="text-xs sm:text-sm shrink-0 mb-0.5">{icon}</span>}
-          <span className={`text-[12px] sm:text-[18px] lg:text-[22px] leading-tight break-all ${THEME.VALUE} ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
+          <span className={`text-[14px] sm:text-[18px] lg:text-[22px] leading-none truncate ${THEME.VALUE} ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
         </div>
     </div>
   );
@@ -598,8 +600,8 @@ const ASRListItem = ({
     return (
       <div 
         onClick={onClick} 
-        className={`group flex items-center transition-all ios-clip-fix py-6 sm:py-8 px-0 
-          ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'} 
+        className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 
+          ${onClick ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'} 
           ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-200/40') : ''} 
           ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
@@ -611,7 +613,7 @@ const ASRListItem = ({
               <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors overflow-hidden line-clamp-2`}>
                 {title}
               </span>
-              <div className="opacity-70 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
+              <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
                 {subtitle}
               </div>
               {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
@@ -647,9 +649,9 @@ const ASRListItem = ({
   return (
     <div 
       onClick={onClick} 
-      className={`group flex items-center justify-between transition-all ios-clip-fix 
+      className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix 
         p-4 rounded-3xl border h-auto min-h-[72px] py-4
-        ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}
+        ${onClick ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'}
         ${theme === 'dark' 
           ? 'bg-zinc-900/30 border-zinc-800/80' 
           : 'bg-white border-slate-200 shadow-md'}
@@ -658,7 +660,7 @@ const ASRListItem = ({
     >
       <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
         {icon ? (
-          <div className={`p-2.5 rounded-xl text-zinc-500 ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors shrink-0`}>
+          <div className={`p-0 rounded-xl transition-colors shrink-0`}>
             {icon}
           </div>
         ) : (
@@ -673,7 +675,7 @@ const ASRListItem = ({
             </span>
           </div>
           <div className="flex flex-col mt-0.5">
-            <div className="opacity-70 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words">
+            <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words">
               {subtitle}
             </div>
             {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
@@ -693,7 +695,7 @@ const ASRListItem = ({
             <a 
               href={videoUrl} target="_blank" rel="noopener noreferrer" 
               onClick={e => e.stopPropagation()} 
-              className="p-2.5 rounded-xl transition-all hover:scale-120 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
             >
               <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
             </a>
@@ -743,8 +745,8 @@ const ASRPromotionBanner = ({ type, theme }) => {
     <a 
       href={config.link} 
       target="_blank" 
-      rel="noopener noreferrer" 
-      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] active:scale-95 transition-all duration-300 ios-clip-fix"
+      rel="noopener noreferrer"
+      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-2xl hover:scale-[0.99] active:scale-[0.97] transition-all duration-300 ios-clip-fix"
     >
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-5">
@@ -809,9 +811,9 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       }
       
       return (
-        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-95 group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
+        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
-              <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500`}>
+              <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500 group-hover:bg-amber-500/10`}>
                 <Building2 className="w-4 h-4" />
               </div>
               <div className="flex flex-col text-left">
@@ -827,7 +829,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 
     if (hasSponsor) {
       return (
-        <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-95 group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
+        <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-[0.98] group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
             <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)] uppercase tracking-tighter`}>
               {getInitials(sponsorName)}
             </div>
@@ -868,7 +870,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
   const c = cards[type];
   if (!c) return null;
   return (
-    <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] active:scale-95 textured-surface ${theme === 'dark' ? 'bg-blue-950/20 border-blue-900/50' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
+    <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] textured-surface ${theme === 'dark' ? 'bg-blue-950/20 border-blue-900/50' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
       <div className="flex items-center gap-4">
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
@@ -888,7 +890,6 @@ const ASRInlineValueCard = ({ theme, type }) => {
 const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
   if (!feed || feed.length === 0) return null;
 
-  // Duplicate items for seamless loop
   const tickerItems = [...feed, ...feed];
 
   return (
@@ -903,7 +904,6 @@ const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center`}>
                 <span className="opacity-30 mr-3 shrink-0">{item.timeString}</span>
                 
-                {/* Medal RESTORED to original position: right before player names */}
                 <span className="flex items-center mr-1.5 shrink-0">
                   {rank === 1 && <span className="animate-bounce emoji-slot">🥇</span>}
                   {rank === 2 && <span className="animate-bounce emoji-slot">🥈</span>}
@@ -926,12 +926,10 @@ const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
                   {item.course?.flag ? <span className="emoji-slot ml-1">{item.course.flag}</span> : ''}
                 </span>
                 
-                {/* Run Time: Enhanced visibility */}
                 <span className={`${THEME.VALUE} ml-3 text-white opacity-100 text-[11px] sm:text-[12px] font-black shrink-0`}>
                   {item.result}
                 </span>
 
-                {/* Status Cluster: ONLY fire emojis here at the end of each record */}
                 {fires > 0 && (
                   <span className="flex items-center ml-2 gap-0 shrink-0">
                     {Array.from({ length: fires }).map((_, i) => (
@@ -1047,11 +1045,11 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500"
+      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-3xl animate-in fade-in duration-500 ${theme === 'dark' ? 'bg-black/95' : 'bg-white/95'}`}
       onClick={onClose}
     >
       <div 
-        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800' : 'bg-white border-slate-200'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
+        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-900'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
         onClick={e => e.stopPropagation()}
       >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
@@ -1318,7 +1316,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         ];
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
                       <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} tooltipPosition="left" />
@@ -1330,7 +1328,20 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                       {setterCourses.length > 0 ? setterCourses.map((c, i) => (
                         <ASRListItem 
                           key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                          icon={<MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} />}
+                          icon={c.coordinates ? (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                              title="View Map"
+                            >
+                              <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
+                            </a>
+                          ) : (
+                            <div className="p-2.5 opacity-20"><MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /></div>
+                          )}
                           stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
                           videoUrl={c.demoVideo}
                           onClick={() => openModal('course', c)}
@@ -1374,7 +1385,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     });
 
     const currentOpenRankIndex = openRankings?.findIndex(p => p.pKey === pKey);
-    const currentOpenRank = currentOpenRankIndex !== -1 ? currentOpenRankIndex + 1 : "UR";
+    const currentOpenRank = (currentOpenRankIndex !== undefined && currentOpenRankIndex !== -1) ? currentOpenRankIndex + 1 : "UR";
     
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
@@ -1406,7 +1417,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     ];
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
                   <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} tooltipPosition="left" />
@@ -1420,7 +1431,20 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                       return (
                         <ASRListItem 
                           key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                          icon={target?.coordinates ? <MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} /> : <div className="p-2.5 opacity-20"><MapPin className="w-[22px] h-[22px]" /></div>}
+                          icon={target?.coordinates ? (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target.coordinates)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                              title="View Map"
+                            >
+                              <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
+                            </a>
+                          ) : (
+                            <div className="p-2.5 opacity-20"><MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /></div>
+                          )}
                           stats={[{ value: (c.points || 0).toFixed(2) }, { value: (c.num || 0).toFixed(2) }]}
                           videoUrl={c.videoUrl} 
                           badgeContent={
@@ -1528,7 +1552,20 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                   {regionalCourses.slice(0, 10).map((c, i) => (
                       <ASRListItem 
                         key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
-                        icon={<MapPin className="w-[22px] h-[22px]" strokeWidth={2.5} />}
+                        icon={c.coordinates ? (
+                          <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                            title="View Map"
+                          >
+                            <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
+                          </a>
+                        ) : (
+                          <div className="p-2.5 opacity-20"><MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /></div>
+                        )}
                         stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
                         videoUrl={c.demoVideo}
                         onClick={() => openModal('course', c)}
@@ -1911,11 +1948,10 @@ const useASRData = () => {
         result.opRawBest = openAthleteBestTimes;
         result.filmerCredits = filmerCreditsCount;
         
-        // REFINED CHRONOLOGICAL FEED FOR TICKER
         const chronologicalRuns = [...dataRows].sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
-            return dateB - dateA; // Newest first
+            return dateB - dateA; 
         }).slice(0, 20); 
 
         result.recentFeed = chronologicalRuns.map((run, i) => {
@@ -2408,21 +2444,26 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
   const highlightColor = 'text-blue-600';
 
-  const MedalHeader = ({ l, k, a = 'left', w = "" }) => (
-    <th 
-      className={`${w} px-2 sm:px-4 py-8 cursor-pointer group select-none transition-all ${medalSort.key === k ? 'bg-current/[0.08]' : 'hover:bg-current/[0.05]'} border-b-2 border-transparent`}
-      onClick={() => setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
-    >
-      <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
-        <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
-        <div className={`transition-opacity shrink-0 ${medalSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-          <label className="cursor-pointer">
-            <ChevronDown size={16} strokeWidth={3} className={`${medalSort.key === k && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
-          </label>
+  const MedalHeader = ({ l, k, a = 'left', w = "", sortable = true }) => {
+    const isActive = medalSort.key === k;
+    return (
+      <th 
+        className={`${w} px-2 sm:px-4 py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} border-b-2 border-transparent`}
+        onClick={() => sortable && setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
+      >
+        <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
+          <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
+          {sortable && (
+            <div className={`transition-all duration-300 shrink-0 ${isActive ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
+              <label className="cursor-pointer">
+                <ChevronDown size={16} strokeWidth={3} className={`${isActive && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
+              </label>
+            </div>
+          )}
         </div>
-      </div>
-    </th>
-  );
+      </th>
+    );
+  };
 
   const hofStatDetails = {
     rating: { desc: "OVERALL RATING = POINTS / RUNS" },
@@ -2496,7 +2537,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-white/95 text-slate-700'}`}>
               <tr className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest h-20">
                 <th className="w-20 sm:w-24 pl-4 sm:pl-10 text-left">RANK</th>
-                <MedalHeader l="COUNTRY" k="name" a="left" />
+                <MedalHeader l="COUNTRY" k="name" a="left" sortable={false} />
                 <MedalHeader l="🥇" k="gold" a="right" w="w-12 sm:w-24" />
                 <MedalHeader l="🥈" k="silver" a="right" w="w-12 sm:w-24" />
                 <MedalHeader l="🥉" k="bronze" a="right" w="w-12 sm:w-24" />
@@ -2533,17 +2574,18 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
 };
 
 const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip, paddingClass = "px-2", sortable = true }) => {
+  const isActive = activeSort && activeSort.key === k;
   return (
     <div 
-        className={`${w} ${paddingClass} py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && activeSort.key === k ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
+        className={`${w} ${paddingClass} py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
         onClick={() => sortable && handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
     >
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         {sortable && (
-          <div className={`transition-opacity shrink-0 ${activeSort.key === k ? 'text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
+          <div className={`transition-all duration-300 shrink-0 ${isActive ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
             <label className="cursor-pointer">
-              <ChevronDown size={16} strokeWidth={3} className={`${activeSort.key === k && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
+              <ChevronDown size={16} strokeWidth={3} className={`${isActive && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
             </label>
           </div>
         )}
@@ -2604,7 +2646,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     if (item.isDivider) return (
                       <div 
                         key={idx} 
-                        className="py-14 text-center opacity-60 text-[11px] font-black uppercase tracking-[0.5em] transition-all duration-300 hover:opacity-100 hover:bg-blue-600/5 hover:scale-[1.005] cursor-default border-y border-transparent hover:border-blue-600/10"
+                        className="py-14 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.5em] cursor-default border-y border-transparent hover:border-blue-600/10 hover:bg-blue-600/5"
                       >
                         {item.label}
                       </div>
@@ -2613,13 +2655,13 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
-                      const forceAlignment = ['rating', 'avgCR', 'pts'].includes(k);
-                      const forceRound = ['impact', 'avgLength', 'contributionScore'].includes(k);
+                      const forceAlignment = ['rating', 'avgCR', 'pts'];
+                      const forceRound = ['impact', 'avgLength', 'contributionScore'];
 
-                      if (forceRound) {
+                      if (forceRound.includes(k)) {
                         return { value: Math.round(parseFloat(val) || 0) };
                       }
-                      if (forceAlignment || (typeof val === 'number' && !Number.isInteger(val))) {
+                      if (forceAlignment.includes(k) || (typeof val === 'number' && !Number.isInteger(val))) {
                         return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2) };
                       }
                       return { value: val !== undefined && val !== null ? String(val) : "0" };
@@ -2710,7 +2752,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 if (item.id === 'start') onOpenIntro();
                 else window.location.hash = `#/${item.id}`;
             }}
-            className={`flex flex-col items-center justify-center gap-0.5 px-2 transition-all duration-300 active:scale-90 ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            className={`flex flex-col items-center justify-center gap-0.5 px-2 transition-all duration-300 active:scale-[0.85] ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
           </button>
@@ -2720,19 +2762,17 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   );
 };
 
-// --- CENTERED ANNOUNCEMENT BAR ---
-
 const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     return (
       <div 
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 group/bar ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
-        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black">
+        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap">
           <span className="animate-pulse text-xs leading-none shrink-0">●</span>
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-hidden text-ellipsis">
-            2026 ASR OPEN CLIPS DUE IN:
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0">
+            ASR OPEN CLIPS DUE IN:
           </span>
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center">
             <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
           </div>
         </div>
@@ -3042,8 +3082,10 @@ export default function App() {
     if (!modal) return null;
     const { type, data } = modal;
     if (type === 'course') {
-        let locStr = data.city && data.city !== 'UNKNOWN' ? data.city : '';
-        if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) locStr += `, ${data.stateProv}`;
+        let cityProv = data.city && data.city !== 'UNKNOWN' ? data.city : '';
+        if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) {
+          cityProv += cityProv ? `, ${data.stateProv}` : data.stateProv;
+        }
         
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
@@ -3076,8 +3118,8 @@ export default function App() {
                     </a>
                   </div>
                 </div>
-                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mt-0.5">
-                  {formatLocationSubtitle(data.country, data.flag, locStr ? locStr + ', ' : '')}
+                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
+                  {formatLocationSubtitle(cityProv, data.country, data.flag)}
                 </div>
               </div>
             </div>
@@ -3086,7 +3128,7 @@ export default function App() {
         );
     }
     if (type === 'player' || type === 'setter') {
-        const locSubtitle = data.location ? `${data.location.toUpperCase()} ` : '';
+        const htown = data.location || "";
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
@@ -3110,8 +3152,8 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-80 text-inherit whitespace-normal break-words mt-0.5">
-                    {locSubtitle}<span className="emoji-slot">{data.region || ''}</span>
+                  <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
+                    {formatLocationSubtitle(htown, data.countryName, data.region)}
                   </div>
               </div>
             </div>
@@ -3188,7 +3230,7 @@ export default function App() {
         
         <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
           <div className="w-full flex flex-col mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
-             <h1 className="text-inherit text-2xl sm:text-3xl font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
+             <h1 className="text-inherit text-3xl sm:text-[42px] leading-tight font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
                 {currentTitle}
              </h1>
           </div>
