@@ -502,17 +502,11 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   );
 };
 
-/**
- * REFINED LOCATION FORMATTER
- * Formats as: CITY, STATE, COUNTRY FLAG(S)
- * Intelligent prioritizes Hometown column if available.
- */
 const formatLocationSubtitle = (hometown, country, flags) => {
     const h = String(hometown || "").trim();
     const c = String(country || "").trim();
     const f = String(flags || "").trim();
 
-    // Prioritize Hometown string. Use country only if hometown is empty.
     let displayLoc = h || c;
     
     if (!displayLoc && !f) return <span className="opacity-40 text-[9px] uppercase tracking-widest">LOCATION UNKNOWN <span className="emoji-slot">🏳️</span></span>;
@@ -634,7 +628,7 @@ const ASRListItem = ({
                   <a 
                     href={videoUrl} target="_blank" rel="noopener noreferrer" 
                     onClick={e => e.stopPropagation()} 
-                    className="p-2 sm:p-2.5 rounded-xl transition-all hover:scale-120 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                    className="p-2 sm:p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                   >
                     <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                   </a>
@@ -1584,6 +1578,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
   switch (activeModal.type) {
     case 'player':
     case 'setter': {
+      // FIX: Ensure we use the most complete athlete meta by looking it up from atMet
       const pKeyFromData = activeModal.data.pKey || normalizeName(activeModal.data.name);
       const athleteData = atMet[pKeyFromData] || 
                           Object.values(atMet).find(a => normalizeName(a.name) === normalizeName(activeModal.data.name)) || 
@@ -1607,10 +1602,14 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
         />
       );
     }
-    case 'course':
+    case 'course': {
+      // FIX: Ensure we use the "rich" course object from masterCourseList (allCourses) 
+      // which contains calculated leaderboards, rather than the "thin" object from the live ticker.
+      const richCourse = allCourses.find(c => c.name.toUpperCase() === activeModal.data.name?.toUpperCase()) || activeModal.data;
+      
       return (
         <CourseDetails 
-          course={activeModal.data} 
+          course={richCourse} 
           theme={theme} 
           athleteMetadata={atMet} 
           athleteDisplayNameMap={dnMap} 
@@ -1618,6 +1617,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
           onSetterClick={onSetterClick} 
         />
       );
+    }
     case 'region':
       return (
         <RegionDetails 
@@ -2143,8 +2143,6 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
         return null;
     }
 };
-
-// --- VIEW COMPONENTS ---
 
 const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
@@ -2685,8 +2683,6 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
         </div>
     );
 };
-
-// --- REFINED BRANDING & NAV COMPONENTS ---
 
 const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) => {
     return (
