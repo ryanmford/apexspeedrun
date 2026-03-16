@@ -1,0 +1,1122 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Layout, Play, Pause, ArrowLeft, Plus, Trash2, VolumeX, Volume2, 
+  Download, X, Video, Clock,
+  Settings2, ChevronLeft, ZoomIn, MoveHorizontal, MoveVertical, Speaker, Loader2,
+  RotateCcw, Pipette, Sun, Moon, FileVideo
+} from 'lucide-react';
+
+const HIGHLIGHT_COLOR = '#1ca3ec';
+
+const ASPECT_RATIOS = [
+  { id: 'vertical', name: '9:16', styleRatio: '9 / 16' },
+  { id: 'portrait', name: '4:5', styleRatio: '4 / 5' },
+  { id: 'square', name: '1:1', styleRatio: '1 / 1' },
+  { id: 'horizontal', name: '16:9', styleRatio: '16 / 9' },
+];
+
+const TEMPLATES = [
+  { id: '1x2', sections: 2, cols: 1, rows: 2, layout: [{x:0,y:0,w:1,h:0.5}, {x:0,y:0.5,w:1,h:0.5}] },
+  { id: '2x1', sections: 2, cols: 2, rows: 1, layout: [{x:0,y:0,w:0.5,h:1}, {x:0.5,y:0,w:0.5,h:1}] },
+  { id: '2x2', sections: 4, cols: 2, rows: 2, layout: [{x:0,y:0,w:0.5,h:0.5}, {x:0.5,y:0,w:0.5,h:0.5}, {x:0,y:0.5,w:0.5,h:0.5}, {x:0.5,y:0.5,w:0.5,h:0.5}] },
+  { id: '1x3', sections: 3, cols: 1, rows: 3, layout: [{x:0,y:0,w:1,h:1/3}, {x:0,y:1/3,w:1,h:1/3}, {x:0,y:2/3,w:1,h:1/3}] },
+  { id: '1top2bot', sections: 3, cols: 2, rows: 2, customSpans: { 0: { gridColumn: 'span 2' } }, layout: [{x:0,y:0,w:1,h:0.5}, {x:0,y:0.5,w:0.5,h:0.5}, {x:0.5,y:0.5,w:0.5,h:0.5}] },
+  { id: '1left2right', sections: 3, cols: 2, rows: 2, customSpans: { 0: { gridRow: 'span 2' } }, layout: [{x:0,y:0,w:0.5,h:1}, {x:0.5,y:0,w:0.5,h:0.5}, {x:0.5,y:0.5,w:0.5,h:0.5}] },
+  { id: '3x1', sections: 3, cols: 3, rows: 1, layout: [{x:0,y:0,w:1/3,h:1}, {x:1/3,y:0,w:1/3,h:1}, {x:2/3,y:0,w:1/3,h:1}] },
+  { id: '1x4', sections: 4, cols: 1, rows: 4, layout: [{x:0,y:0,w:1,h:0.25}, {x:0,y:0.25,w:1,h:0.25}, {x:0,y:0.5,w:1,h:0.25}, {x:0,y:0.75,w:1,h:0.25}] },
+  { id: '1top3bot', sections: 4, cols: 3, rows: 2, customSpans: { 0: { gridColumn: 'span 3' } }, layout: [{x:0,y:0,w:1,h:0.5}, {x:0,y:0.5,w:1/3,h:0.5}, {x:1/3,y:0.5,w:1/3,h:0.5}, {x:2/3,y:0.5,w:1/3,h:0.5}] },
+  { id: '2x3', sections: 6, cols: 2, rows: 3, layout: [{x:0,y:0,w:0.5,h:1/3}, {x:0.5,y:0,w:0.5,h:1/3}, {x:0,y:1/3,w:0.5,h:1/3}, {x:0.5,y:1/3,w:0.5,h:1/3}, {x:0,y:2/3,w:0.5,h:1/3}, {x:0.5,y:2/3,w:0.5,h:1/3}] },
+  { id: '1big5small', sections: 6, cols: 3, rows: 3, customSpans: { 0: { gridColumn: 'span 2', gridRow: 'span 2' } }, layout: [{x:0,y:0,w:2/3,h:2/3}, {x:2/3,y:0,w:1/3,h:1/3}, {x:2/3,y:1/3,w:1/3,h:1/3}, {x:0,y:2/3,w:1/3,h:1/3}, {x:1/3,y:2/3,w:1/3,h:1/3}, {x:2/3,y:2/3,w:1/3,h:1/3}] },
+  { id: '3x3', sections: 9, cols: 3, rows: 3, layout: [{x:0,y:0,w:1/3,h:1/3}, {x:1/3,y:0,w:1/3,h:1/3}, {x:2/3,y:0,w:1/3,h:1/3}, {x:0,y:1/3,w:1/3,h:1/3}, {x:1/3,y:1/3,w:1/3,h:1/3}, {x:2/3,y:1/3,w:1/3,h:1/3}, {x:0,y:2/3,w:1/3,h:1/3}, {x:1/3,y:2/3,w:1/3,h:1/3}, {x:2/3,y:2/3,w:1/3,h:1/3}] },
+];
+
+const FILTERS = [
+  { id: 'none', name: 'None', css: 'none' },
+  { id: 'grayscale', name: 'B&W', css: 'grayscale(100%)' },
+  { id: 'sepia', name: 'Vintage', css: 'sepia(80%)' },
+  { id: 'contrast', name: 'Punchy', css: 'contrast(130%) saturate(120%)' },
+  { id: 'warm', name: 'Warm', css: 'sepia(25%) saturate(135%) hue-rotate(-5deg)' },
+  { id: 'cool', name: 'Cool', css: 'saturate(110%) hue-rotate(15deg) brightness(105%)' },
+];
+
+const GeometricIcon = ({ id, active, isDarkMode }) => {
+  const baseSize = 14;
+  let width = baseSize;
+  let height = baseSize;
+
+  switch (id) {
+    case 'vertical': width = baseSize * (9 / 16); break;
+    case 'portrait': width = baseSize * (4 / 5); break;
+    case 'square': width = baseSize; break;
+    case 'horizontal': height = baseSize * (9 / 16); break;
+    default: break;
+  }
+
+  return (
+    <div 
+      className={`rounded-[2px] border-2 transition-all duration-300`} 
+      style={{ 
+        width: `${width}px`, 
+        height: `${height}px`,
+        borderColor: active ? HIGHLIGHT_COLOR : (isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.8)'),
+        transform: active ? 'scale(1.1)' : 'scale(1)'
+      }} 
+    />
+  );
+};
+
+// --- DATABASE UTILS ---
+const initDB = () => new Promise((resolve, reject) => {
+  const req = indexedDB.open('StitchProDB', 3); 
+  req.onupgradeneeded = (e) => {
+    const db = e.target.result;
+    if (!db.objectStoreNames.contains('assets')) db.createObjectStore('assets');
+    if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+    if (!db.objectStoreNames.contains('audioChunks')) db.createObjectStore('audioChunks');
+  };
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+const saveToIDB = async (store, key, value) => {
+  try { const db = await initDB(); db.transaction(store, 'readwrite').objectStore(store).put(value, key); } catch (e) {}
+};
+const removeFromIDB = async (store, key) => {
+  try { const db = await initDB(); db.transaction(store, 'readwrite').objectStore(store).delete(key); } catch (e) {}
+};
+const clearStoreIDB = async (store) => {
+  try { const db = await initDB(); db.transaction(store, 'readwrite').objectStore(store).clear(); } catch (e) {}
+};
+
+const formatTime = (seconds) => {
+  if (typeof seconds !== 'number' || isNaN(seconds) || !isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+// --- INLINE WORKER CODE (OFFSCREEN EDITION) ---
+const EXPORT_WORKER_BLOB = URL.createObjectURL(new Blob([`
+  importScripts('https://unpkg.com/mp4-muxer');
+
+  let muxer;
+  let videoEncoder;
+  let audioEncoder;
+  let canvas;
+  let ctx;
+
+  self.onmessage = async (e) => {
+    const { type, data } = e.data;
+
+    if (type === 'INIT') {
+      const { width, height, fps, bitrate, sampleRate, numberOfChannels, offscreenCanvas } = data;
+      
+      canvas = offscreenCanvas;
+      ctx = canvas.getContext('2d', { alpha: false, colorSpace: 'srgb' });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      muxer = new Mp4Muxer.Muxer({
+        target: new Mp4Muxer.ArrayBufferTarget(),
+        video: { codec: 'avc', width, height },
+        audio: { codec: 'aac', sampleRate, numberOfChannels },
+        fastStart: 'in-memory'
+      });
+
+      videoEncoder = new VideoEncoder({
+        output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
+        error: (e) => self.postMessage({ type: 'ERROR', data: e.message })
+      });
+
+      videoEncoder.configure({
+        codec: 'avc1.640034',
+        width, height,
+        bitrate,
+        framerate: fps,
+        hardwareAcceleration: 'prefer-hardware',
+        latencyMode: 'quality',
+        contentHint: 'detail'
+      });
+
+      audioEncoder = new AudioEncoder({
+        output: (chunk, metadata) => muxer.addAudioChunk(chunk, metadata),
+        error: (e) => self.postMessage({ type: 'ERROR', data: e.message })
+      });
+
+      audioEncoder.configure({
+        codec: 'mp4a.40.2',
+        numberOfChannels,
+        sampleRate,
+        bitrate: 192000
+      });
+
+      self.postMessage({ type: 'READY' });
+    }
+
+    if (type === 'ENCODE_FRAME') {
+      const { 
+        timestamp, 
+        sourceFrames, 
+        audioData, 
+        keyFrame,
+        layoutConfig,
+        bgColor,
+        spacing,
+        radius
+      } = data;
+
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      layoutConfig.forEach((item) => {
+        const frame = sourceFrames[item.slotId];
+        if (!frame) return;
+
+        const cellW = (canvas.width * item.w) - spacing;
+        const cellH = (canvas.height * item.h) - spacing;
+        const cellX = (canvas.width * item.x) + (spacing / 2);
+        const cellY = (canvas.height * item.y) + (spacing / 2);
+
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cellX, cellY, cellW, cellH, radius);
+        else ctx.rect(cellX, cellY, cellW, cellH);
+        ctx.clip();
+
+        const vw = frame.displayWidth;
+        const vh = frame.displayHeight;
+        const transform = item.transform;
+        const baseScale = Math.max(cellW / vw, cellH / vh);
+        const drawW = vw * baseScale * transform.zoom;
+        const drawH = vh * baseScale * transform.zoom;
+        const drawX = cellX + ((cellW - drawW) * ((50 - transform.x) / 100));
+        const drawY = cellY + ((cellH - drawH) * ((50 + transform.y) / 100));
+
+        if (item.filter !== 'none') ctx.filter = item.filter;
+        ctx.drawImage(frame, drawX, drawY, drawW, drawH);
+        ctx.restore();
+        frame.close(); 
+      });
+
+      const compositeFrame = new VideoFrame(canvas, { timestamp });
+      videoEncoder.encode(compositeFrame, { keyFrame });
+      compositeFrame.close();
+      
+      audioEncoder.encode(audioData);
+      audioData.close();
+    }
+
+    if (type === 'FINALIZE') {
+      await videoEncoder.flush();
+      await audioEncoder.flush();
+      muxer.finalize();
+      const { buffer } = muxer.target;
+      self.postMessage({ type: 'FINISHED', data: buffer }, [buffer]);
+    }
+  };
+`], { type: 'application/javascript' }));
+
+export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [slots, setSlots] = useState({}); 
+  const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0]);
+  const [spacing, setSpacing] = useState(6);
+  const [radius, setRadius] = useState(12);
+  const [bgColor, setBgColor] = useState('#000000');
+  
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeEditIndex, setActiveEditIndex] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportRes, setExportRes] = useState('1080p');
+  const [exportFps, setExportFps] = useState(30);
+  
+  const [exportStatus, setExportStatus] = useState({ active: false, phase: '', progress: 0 });
+  const [muxerLoaded, setMuxerLoaded] = useState(false);
+
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const uploadIndexRef = useRef(null);
+  const videoRefs = useRef({});
+  const fileInputRef = useRef(null);
+  const colorInputRef = useRef(null);
+  const exportCanvasRef = useRef(null); 
+  const panRef = useRef({ isDragging: false, startX: 0, startY: 0, initPanX: 0, initPanY: 0, rect: null });
+
+  useEffect(() => {
+    const loadMuxer = async () => {
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/mp4-muxer';
+        script.onload = () => setMuxerLoaded(true);
+        document.head.appendChild(script);
+      } catch (err) {
+        console.error("Failed to load mp4-muxer", err);
+      }
+    };
+    loadMuxer();
+  }, []);
+
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const db = await initDB();
+        const metaReq = db.transaction('meta').objectStore('meta').get('projectState');
+        metaReq.onsuccess = (e) => {
+          const meta = e.target.result;
+          if (!meta) { setIsLoaded(true); return; }
+          if (meta.templateId) setSelectedTemplate(TEMPLATES.find(t => t.id === meta.templateId));
+          setAspectRatio(ASPECT_RATIOS.find(r => r.id === meta.aspectRatioId) || ASPECT_RATIOS[0]);
+          setSpacing(meta.spacing ?? 6);
+          setRadius(meta.radius ?? 12);
+          setBgColor(meta.bgColor ?? '#000000');
+
+          const assetsReq = db.transaction('assets').objectStore('assets').getAllKeys();
+          assetsReq.onsuccess = (e) => {
+            const keys = e.target.result;
+            const restoredSlots = meta.slots || {};
+            let loadedCount = 0;
+            if (keys.length === 0) { setIsLoaded(true); return; }
+            keys.forEach(key => {
+              const getReq = db.transaction('assets').objectStore('assets').get(key);
+              getReq.onsuccess = (ev) => {
+                const blob = ev.target.result;
+                if (blob && restoredSlots[key]) {
+                  const url = URL.createObjectURL(blob);
+                  restoredSlots[key].url = url;
+                }
+                loadedCount++;
+                if (loadedCount === keys.length) { setSlots(restoredSlots); setIsLoaded(true); }
+              };
+            });
+          };
+        };
+        metaReq.onerror = () => setIsLoaded(true);
+      } catch (e) { setIsLoaded(true); }
+    };
+    loadProject();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    const t = setTimeout(() => {
+      const cleanSlots = {};
+      Object.entries(slots).forEach(([id, data]) => {
+          const { url, ...rest } = data;
+          cleanSlots[id] = rest;
+      });
+      const meta = {
+        templateId: selectedTemplate?.id, aspectRatioId: aspectRatio.id,
+        spacing, radius, bgColor, slots: cleanSlots
+      };
+      saveToIDB('meta', 'projectState', meta);
+    }, 800); 
+    return () => clearTimeout(t);
+  }, [selectedTemplate, aspectRatio, spacing, radius, bgColor, slots, isLoaded]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        toggleGlobalPlay();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, slots]);
+
+  const updateSlot = (id, partial) => {
+    setSlots(prev => ({ ...prev, [id]: { ...prev[id], ...partial } }));
+  };
+
+  const clearSlotMemory = (id) => {
+    if (slots[id]?.url) URL.revokeObjectURL(slots[id].url);
+  };
+
+  const handleTemplateSelect = (template) => {
+    Object.keys(slots).forEach(clearSlotMemory);
+    setSelectedTemplate(template);
+    setSlots({});
+    setActiveEditIndex(null);
+    setIsPlaying(false);
+    clearStoreIDB('assets');
+  };
+
+  const handleBack = () => {
+    Object.keys(slots).forEach(clearSlotMemory);
+    setSelectedTemplate(null);
+    setSlots({});
+    setActiveEditIndex(null);
+    setIsPlaying(false);
+    clearStoreIDB('assets');
+  };
+
+  const triggerUpload = (index = null) => {
+    uploadIndexRef.current = index;
+    if (fileInputRef.current) { 
+      fileInputRef.current.value = ''; 
+      fileInputRef.current.click(); 
+    }
+  };
+
+  const processFiles = (files, targetIndex = null) => {
+    const fileArray = Array.from(files).filter(f => f.type.startsWith('video/'));
+    if (fileArray.length === 0) return;
+
+    setSlots(prev => {
+      let nextSlots = { ...prev };
+      let currentIndex = targetIndex !== null ? targetIndex : 0;
+      for (const file of fileArray) {
+        if (targetIndex === null || fileArray.indexOf(file) > 0) {
+          while (currentIndex < selectedTemplate.sections && nextSlots[currentIndex] && fileArray.length > 1) { 
+            currentIndex++; 
+          }
+        }
+        if (currentIndex >= selectedTemplate.sections) break;
+        if (nextSlots[currentIndex]?.url) URL.revokeObjectURL(nextSlots[currentIndex].url);
+        nextSlots[currentIndex] = {
+          url: URL.createObjectURL(file),
+          duration: 0, muted: false, volume: 1,
+          filterId: 'none',
+          transform: { zoom: 1, x: 0, y: 0, startTime: 0 }
+        };
+        saveToIDB('assets', currentIndex, file); 
+        currentIndex++;
+      }
+      return nextSlots;
+    });
+    uploadIndexRef.current = null;
+  };
+
+  const handleFileChange = (e) => processFiles(e.target.files, uploadIndexRef.current);
+
+  const swapSlots = (idxA, idxB) => {
+    setSlots(prev => {
+      const next = { ...prev };
+      const temp = next[idxA];
+      next[idxA] = next[idxB];
+      next[idxB] = temp;
+      return next;
+    });
+    const doSwap = async () => {
+      try {
+        const db = await initDB();
+        const tx = db.transaction('assets', 'readwrite');
+        const store = tx.objectStore('assets');
+        const fileA = await new Promise(r => store.get(idxA).onsuccess = e => r(e.target.result));
+        const fileB = await new Promise(r => store.get(idxB).onsuccess = e => r(e.target.result));
+        if (fileA) store.put(fileA, idxB); else store.delete(idxB);
+        if (fileB) store.put(fileB, idxA); else store.delete(idxA);
+      } catch(e){}
+    };
+    doSwap();
+    if (activeEditIndex === idxA) setActiveEditIndex(idxB);
+    else if (activeEditIndex === idxB) setActiveEditIndex(idxA);
+  };
+
+  const handleOSDrop = (e, overrideIndex = null) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files, overrideIndex);
+    }
+  };
+
+  const handleCellDragStart = (e, i) => {
+    if (activeEditIndex === i) return e.preventDefault();
+    e.dataTransfer.setData('text/plain', i.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCellDrop = (e, targetIndex) => {
+    e.preventDefault(); e.stopPropagation(); 
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files, targetIndex); 
+      return;
+    }
+    const sourceIndexStr = e.dataTransfer.getData('text/plain');
+    const sourceIndex = parseInt(sourceIndexStr, 10);
+    if (!isNaN(sourceIndex) && sourceIndex !== targetIndex) swapSlots(sourceIndex, targetIndex);
+  };
+
+  const handlePanStart = (e, i) => {
+    if (activeEditIndex !== i) return;
+    e.preventDefault(); 
+    panRef.current = {
+        isDragging: true, startX: e.clientX, startY: e.clientY,
+        initPanX: slots[i]?.transform.x || 0, initPanY: slots[i]?.transform.y || 0,
+        rect: e.currentTarget.getBoundingClientRect()
+    };
+  };
+
+  const handlePanMove = (e, i) => {
+    if (!panRef.current.isDragging || activeEditIndex !== i) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    const rect = panRef.current.rect;
+    const zoom = slots[i]?.transform.zoom || 1;
+    const percentX = (dx / rect.width) * 100 / zoom;
+    const percentY = (dy / rect.height) * 100 / zoom;
+    let newX = Math.max(-100, Math.min(100, panRef.current.initPanX + percentX));
+    let newY = Math.max(-100, Math.min(100, panRef.current.initPanY - percentY));
+    updateSlot(i, { transform: { ...slots[i].transform, x: newX, y: newY } });
+  };
+
+  const handlePanEnd = () => { panRef.current.isDragging = false; };
+
+  const toggleGlobalPlay = () => {
+    const nextPlayState = !isPlaying;
+    setIsPlaying(nextPlayState);
+    Object.entries(videoRefs.current).forEach(([index, videoEl]) => {
+      if (videoEl && slots[index]) {
+        if (nextPlayState) {
+          videoEl.currentTime = slots[index].transform.startTime || 0;
+          videoEl.play().catch(()=>{});
+        } else videoEl.pause();
+      }
+    });
+  };
+
+  const handleStartExportBtn = async () => {
+    if (Object.keys(slots).length === 0 || !muxerLoaded) return;
+    setIsPreparing(true); setShowExportModal(false);
+    
+    let maxDuration = 0;
+    Object.entries(slots).forEach(([id, data]) => {
+        const d = data.duration; const start = data.transform.startTime || 0;
+        if (d && isFinite(d)) { const len = d - start; if (len > maxDuration) maxDuration = len; }
+    });
+    const targetDuration = maxDuration > 0 ? maxDuration : 5;
+
+    Object.values(videoRefs.current).forEach(v => { if (v) v.pause(); });
+    
+    setExportStatus({ active: true, phase: 'decoding', progress: 0 });
+    
+    try {
+      await clearStoreIDB('audioChunks');
+      await decodeAndPersistAudio();
+      
+      setIsPreparing(false); 
+      setExportStatus({ active: true, phase: 'encoding', progress: 0 });
+      await performMp4Export({ 
+        res: exportRes, 
+        fps: exportFps, 
+        duration: targetDuration
+      });
+    } catch (err) {
+      console.error("Export failed:", err);
+      setExportStatus({ active: false, phase: '', progress: 0 });
+    }
+  };
+
+  const decodeAndPersistAudio = async () => {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+    const slotsToDecode = Object.entries(slots).filter(([id, data]) => !data.muted);
+
+    for (let i = 0; i < slotsToDecode.length; i++) {
+      const [slotId, data] = slotsToDecode[i];
+      setExportStatus({ active: true, phase: 'decoding', progress: Math.round(((i + 0.1) / slotsToDecode.length) * 100) });
+      
+      try {
+        const response = await fetch(data.url);
+        const arrayBuffer = await response.arrayBuffer();
+        const fullBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        const totalChunks = Math.ceil(fullBuffer.duration);
+        const db = await initDB();
+        const tx = db.transaction('audioChunks', 'readwrite');
+        const store = tx.objectStore('audioChunks');
+
+        for (let c = 0; c < totalChunks; c++) {
+          const startSample = c * 44100;
+          const endSample = Math.min((c + 1) * 44100, fullBuffer.length);
+          const chunkLength = endSample - startSample;
+          const pcmData = new Float32Array(chunkLength * 2); 
+          pcmData.set(fullBuffer.getChannelData(0).subarray(startSample, endSample), 0);
+          const rChan = fullBuffer.numberOfChannels > 1 ? fullBuffer.getChannelData(1) : fullBuffer.getChannelData(0);
+          pcmData.set(rChan.subarray(startSample, endSample), chunkLength);
+          await new Promise((res) => {
+            const req = store.put(pcmData, `slot_${slotId}_chunk_${c}`);
+            req.onsuccess = res;
+          });
+        }
+      } catch (err) {
+        console.warn(`Could not persist audio for slot ${slotId}:`, err);
+      }
+    }
+  };
+
+  const performMp4Export = async (config) => {
+    let width = 1920, height = 1080;
+    if (config.res === '720p') { width = 1280; height = 720; }
+    else if (config.res === '4k') { width = 3840; height = 2160; }
+    
+    if (aspectRatio.id === 'vertical') { [width, height] = [height, width]; }
+    else if (aspectRatio.id === 'portrait') { width = Math.floor(height * 0.8); }
+    else if (aspectRatio.id === 'square') { width = height = (config.res === '4k' ? 2160 : (config.res === '1080p' ? 1080 : 720)); }
+    
+    width = Math.floor(width / 2) * 2;
+    height = Math.floor(height / 2) * 2;
+
+    const bitrate = config.res === '4k' ? 60_000_000 : (config.res === '1080p' ? 20_000_000 : 10_000_000);
+    const SAMPLE_RATE = 44100;
+    const CHANNELS = 2;
+
+    const dummyCanvas = document.createElement('canvas');
+    dummyCanvas.width = width; dummyCanvas.height = height;
+    const offscreenCanvas = dummyCanvas.transferControlToOffscreen();
+
+    const worker = new Worker(EXPORT_WORKER_BLOB);
+    worker.postMessage({
+      type: 'INIT',
+      data: { 
+        width, height, fps: config.fps, bitrate, 
+        sampleRate: SAMPLE_RATE, numberOfChannels: CHANNELS,
+        offscreenCanvas
+      }
+    }, [offscreenCanvas]);
+
+    const finishExport = new Promise((resolve) => {
+      worker.onmessage = (e) => {
+        const { type, data } = e.data;
+        if (type === 'FINISHED') {
+          const mp4Blob = new Blob([data], { type: 'video/mp4' });
+          downloadFinalMp4(mp4Blob, config);
+          worker.terminate();
+          resolve();
+        }
+        if (type === 'ERROR') {
+          setExportStatus({ active: false, phase: '', progress: 0 });
+          worker.terminate();
+          resolve();
+        }
+      };
+    });
+
+    const totalFrames = Math.ceil(config.duration * config.fps);
+    const frameInterval = 1 / config.fps;
+    const scaleFactor = width / 1080;
+    const scaledSpacing = spacing * scaleFactor;
+    const scaledRadius = radius * scaleFactor;
+
+    const seekVideo = (video, time) => new Promise((resolve) => {
+      if (!video) return resolve();
+      const onSeeked = () => { video.removeEventListener('seeked', onSeeked); resolve(); };
+      video.addEventListener('seeked', onSeeked);
+      video.currentTime = Math.min(time % video.duration, video.duration - 0.01);
+      setTimeout(resolve, 800);
+    });
+
+    let totalSamplesProcessed = 0;
+    const audioChunkCache = {}; 
+
+    for (let i = 0; i < totalFrames; i++) {
+      const virtualTime = i * frameInterval;
+      setExportStatus(prev => ({ ...prev, progress: Math.round((i / totalFrames) * 100) }));
+
+      const seekPromises = Object.entries(slots).map(([id, slot]) => {
+        const video = videoRefs.current[id];
+        if (!video || !video.src) return Promise.resolve();
+        return seekVideo(video, (slot.transform.startTime || 0) + virtualTime);
+      });
+      await Promise.all(seekPromises);
+
+      const sourceFrames = {};
+      const transferList = [];
+
+      selectedTemplate.layout.forEach((layout, idx) => {
+        const video = videoRefs.current[idx];
+        if (video && video.readyState >= 2) {
+          const frame = new VideoFrame(video);
+          sourceFrames[idx] = frame;
+          transferList.push(frame);
+        }
+      });
+
+      const layoutData = selectedTemplate.layout.map((item, idx) => {
+        const slotData = slots[idx];
+        if (!slotData) return null;
+        return {
+          slotId: idx,
+          x: item.x, y: item.y, w: item.w, h: item.h,
+          transform: slotData.transform,
+          filter: (slotData.filterId && slotData.filterId !== 'none' ? FILTERS.find(f => f.id === slotData.filterId)?.css : 'none')
+        };
+      }).filter(Boolean);
+
+      const nextTotalSamples = Math.floor((i + 1) * frameInterval * SAMPLE_RATE);
+      const samplesNeeded = nextTotalSamples - totalSamplesProcessed;
+      const mixedBuffer = new Float32Array(samplesNeeded * CHANNELS);
+      const leftPlane = mixedBuffer.subarray(0, samplesNeeded);
+      const rightPlane = mixedBuffer.subarray(samplesNeeded, samplesNeeded * 2);
+
+      const db = await initDB();
+      const tx = db.transaction('audioChunks', 'readonly');
+      const store = tx.objectStore('audioChunks');
+
+      for (const [slotId, slotData] of Object.entries(slots)) {
+        if (slotData.muted) continue;
+        const absoluteVideoTime = (slotData.transform.startTime || 0) + (totalSamplesProcessed / SAMPLE_RATE);
+        const chunkIndex = Math.floor(absoluteVideoTime);
+        const chunkOffset = Math.floor((absoluteVideoTime - chunkIndex) * SAMPLE_RATE);
+        const cacheKey = `slot_${slotId}_chunk_${chunkIndex}`;
+        let pcmChunk = audioChunkCache[cacheKey] || await new Promise(res => store.get(cacheKey).onsuccess = e => res(e.target.result));
+        if (pcmChunk) {
+          audioChunkCache[cacheKey] = pcmChunk;
+          const chunkActualLength = pcmChunk.length / 2;
+          for (let s = 0; s < samplesNeeded; s++) {
+            const idx = chunkOffset + s;
+            if (idx < chunkActualLength) {
+              leftPlane[s] += pcmChunk[idx] * slotData.volume;
+              rightPlane[s] += pcmChunk[idx + chunkActualLength] * slotData.volume;
+            } else {
+              const nextCacheKey = `slot_${slotId}_chunk_${chunkIndex + 1}`;
+              let nextChunk = audioChunkCache[nextCacheKey] || await new Promise(res => store.get(nextCacheKey).onsuccess = e => res(e.target.result));
+              if (nextChunk) {
+                audioChunkCache[nextCacheKey] = nextChunk;
+                const nextIdx = idx - chunkActualLength;
+                if (nextIdx < nextChunk.length / 2) {
+                  leftPlane[s] += nextChunk[nextIdx] * slotData.volume;
+                  rightPlane[s] += nextChunk[nextIdx + (nextChunk.length / 2)] * slotData.volume;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const audioData = new AudioData({
+        format: 'f32-planar', sampleRate: SAMPLE_RATE,
+        numberOfFrames: samplesNeeded, numberOfChannels: CHANNELS,
+        timestamp: Math.round((totalSamplesProcessed / SAMPLE_RATE) * 1_000_000),
+        data: mixedBuffer
+      });
+
+      worker.postMessage({
+        type: 'ENCODE_FRAME',
+        data: {
+          timestamp: i * (1_000_000 / config.fps),
+          sourceFrames,
+          audioData,
+          keyFrame: i % (config.fps * 2) === 0,
+          layoutConfig: layoutData,
+          bgColor,
+          spacing: scaledSpacing,
+          radius: scaledRadius
+        }
+      }, [...transferList, audioData]);
+      
+      totalSamplesProcessed += samplesNeeded;
+    }
+
+    worker.postMessage({ type: 'FINALIZE' });
+    await finishExport;
+  };
+
+  const downloadFinalMp4 = (blob, config) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `StitchPro_${config.res}.mp4`;
+    a.click();
+    setExportStatus({ active: false, phase: '', progress: 0 });
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
+  const removeVideo = (index, e) => {
+    e.stopPropagation(); clearSlotMemory(index);
+    setSlots(prev => { const n = { ...prev }; delete n[index]; return n; });
+    removeFromIDB('assets', index); 
+    if (activeEditIndex === index) setActiveEditIndex(null);
+  };
+
+  if (!isLoaded) return (
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#050505]' : 'bg-[#FAFAFA]'} flex items-center justify-center transition-colors duration-500`}>
+       <div className="animate-pulse flex flex-col items-center gap-6 text-neutral-400">
+          <Layout className="w-10 h-10" />
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.4em]">Restoring Session</span>
+       </div>
+    </div>
+  );
+
+  if (!selectedTemplate) {
+    return (
+      <div className={`min-h-screen ${isDarkMode ? 'bg-[#050505] text-neutral-100' : 'bg-[#FAFAFA] text-[#050505]'} flex flex-col font-sans transition-colors duration-500`}>
+        <header className="py-24 px-6 text-center relative">
+          <button onClick={() => setIsDarkMode(!isDarkMode)} className={`absolute top-10 right-10 p-3 rounded-full transition-all active:scale-90 ${isDarkMode ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-black/5 text-black hover:bg-black/10'}`}>
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <div className={`inline-flex items-center justify-center p-4 rounded-2xl mb-8 shadow-2xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-black/5 border border-black/10'}`}>
+            <Layout className={isDarkMode ? 'text-white w-7 h-7' : 'text-black w-7 h-7'} />
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tighter mb-5">StitchPro.</h1>
+          <p className={`text-sm sm:text-base max-w-md mx-auto font-bold uppercase tracking-[0.2em] leading-relaxed transition-colors duration-500`}>
+            Professional framing for creators.
+          </p>
+        </header>
+        <main className="flex-1 px-4 sm:px-8 max-w-6xl mx-auto w-full pb-20">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-12 sm:gap-20">
+            {TEMPLATES.map((template) => (
+              <button 
+                key={template.id} 
+                onClick={() => handleTemplateSelect(template)} 
+                className="relative group flex flex-col items-center transition-all duration-500 active:scale-90"
+              >
+                <div 
+                  className={`w-32 h-32 sm:w-40 sm:h-40 border-2 rounded-xl overflow-hidden transition-all duration-500 group-hover:scale-105
+                    ${isDarkMode ? 'bg-white/60 group-hover:bg-[#1ca3ec] border-white/60 group-hover:border-[#1ca3ec]' : 'bg-black/60 group-hover:bg-[#1ca3ec] border-black/60 group-hover:border-[#1ca3ec]'}`} 
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: `repeat(${template.cols}, minmax(0, 1fr))`, 
+                    gridTemplateRows: `repeat(${template.rows}, minmax(0, 1fr))`,
+                    gap: '2px',
+                    padding: '0' 
+                  }}
+                >
+                  {Array.from({ length: template.sections }).map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`${isDarkMode ? 'bg-black' : 'bg-white'} transition-colors duration-500 rounded-sm`} 
+                      style={template.customSpans?.[i] || {}} 
+                    />
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`h-screen font-sans overflow-hidden flex flex-col transition-colors duration-500 ${isDarkMode ? 'bg-[#050505] text-neutral-100' : 'bg-[#FAFAFA] text-[#050505]'}`}>
+      <header className={`h-16 px-8 flex items-center justify-between border-b transition-colors duration-500 z-50 shrink-0 ${isDarkMode ? 'border-white/5 bg-[#050505]' : 'border-black/5 bg-white'}`}>
+        <button onClick={handleBack} className={`flex items-center gap-2.5 transition-all font-bold text-[11px] uppercase tracking-widest ${isDarkMode ? 'text-neutral-500 hover:text-white' : 'text-neutral-400 hover:text-black'}`}>
+          <ArrowLeft size={16} />
+        </button>
+        
+        <div className={`flex rounded-2xl p-1 border gap-1 backdrop-blur-md transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}>
+          {ASPECT_RATIOS.map(ratio => (
+            <button 
+              key={ratio.id} 
+              onClick={() => setAspectRatio(ratio)} 
+              className={`group w-12 h-10 flex items-center justify-center rounded-xl transition-all border-2 active:scale-95 ${aspectRatio.id === ratio.id ? (isDarkMode ? 'border-white text-white shadow-xl' : 'border-black text-black shadow-xl') : (isDarkMode ? 'border-transparent text-neutral-500 hover:text-neutral-300' : 'border-transparent text-black hover:opacity-70')}`} 
+              title={ratio.name}
+            >
+              <GeometricIcon id={ratio.id} active={aspectRatio.id === ratio.id} isDarkMode={isDarkMode} />
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-full transition-all active:scale-90 ${isDarkMode ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-black/5 text-black hover:bg-black/10'}`}>
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button 
+            onClick={() => setShowExportModal(true)} 
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border-2 active:scale-95 ${isDarkMode ? 'border-white text-white hover:bg-white hover:text-black' : 'border-black text-black hover:bg-black hover:text-white'}`}
+          >
+            <Download size={14} strokeWidth={4} />
+            <span>EXPORT</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <main className={`flex-1 flex flex-col overflow-hidden relative transition-colors duration-500 ${isDarkMode ? 'bg-[#0d0d0d]' : 'bg-[#F0F0F0]'}`} onDragOver={(e) => e.preventDefault()} onDrop={handleOSDrop}>
+          <input type="file" accept="video/*" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+          <input type="color" ref={colorInputRef} value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="hidden" />
+
+          {/* Sizing Strategy: Use min-content constraints to preserve ratio while scaling to max */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Stage: We use display: flex with item centering to allow the aspect-governed box to scale naturally */}
+            <div className="flex-1 relative flex items-center justify-center p-6 sm:p-10 md:p-14 overflow-hidden">
+              <div 
+                className={`relative shadow-[0_60px_100px_-20px_rgba(0,0,0,0.6)] transition-all duration-500 overflow-hidden ${isDarkMode ? 'ring-1 ring-white/10 bg-black' : 'ring-1 ring-black/10 bg-white'}`}
+                style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: `repeat(${selectedTemplate.cols}, minmax(0, 1fr))`, 
+                  gridTemplateRows: `repeat(${selectedTemplate.rows}, minmax(0, 1fr))`,
+                  gap: `${spacing}px`, 
+                  backgroundColor: bgColor, 
+                  padding: `${spacing}px`, 
+                  aspectRatio: aspectRatio.styleRatio,
+                  // The fix: Set dimensions to auto and use max-constraints.
+                  // This allows the aspect-ratio property to drive the actual size.
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  // Forcing min-size to try and fill the larger dimension
+                  minWidth: (aspectRatio.id === 'horizontal' || aspectRatio.id === 'square') ? 'min(80%, 100%)' : '0',
+                  minHeight: (aspectRatio.id === 'vertical' || aspectRatio.id === 'portrait') ? 'min(80%, 100%)' : '0',
+                }}
+              >
+                {Array.from({ length: selectedTemplate.sections }).map((_, i) => {
+                  const slot = slots[i]; const isEditing = activeEditIndex === i;
+                  return (
+                    <div 
+                      key={i} 
+                      className={`relative flex items-center justify-center group overflow-hidden transition-all duration-300 ${isEditing ? 'ring-2 ring-inset z-20' : ''} ${slot?.url && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''} ${isDarkMode ? (slot?.url ? 'bg-black shadow-[inset_0_0_30px_rgba(0,0,0,1)]' : 'bg-neutral-900 border border-white/5') : (slot?.url ? 'bg-neutral-50 shadow-[inset_0_0_20px_rgba(0,0,0,0.1)]' : 'bg-neutral-200 border border-black/5')}`}
+                      style={{ 
+                        borderRadius: `${radius}px`, 
+                        ...(selectedTemplate.customSpans?.[i] || {}),
+                        borderColor: isEditing ? HIGHLIGHT_COLOR : 'transparent'
+                      }}
+                      onClick={() => !slot?.url && triggerUpload(i)} 
+                      draggable={!!slot?.url && !isEditing}
+                      onDragStart={(e) => handleCellDragStart(e, i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleCellDrop(e, i)}
+                    >
+                      {slot?.url ? (
+                        <>
+                          <video
+                            ref={(el) => (videoRefs.current[i] = el)} src={slot.url} 
+                            onLoadedMetadata={(e) => updateSlot(i, { duration: e.target.duration })}
+                            className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-700 ${activeEditIndex !== null && !isEditing ? 'opacity-30' : 'opacity-100'}`} 
+                            style={{
+                              transform: `scale(${slot.transform.zoom})`, objectPosition: `${50 - slot.transform.x}% ${50 + slot.transform.y}%`, 
+                              filter: slot.filterId && slot.filterId !== 'none' ? FILTERS.find(f => f.id === slot.filterId)?.css : 'none', 
+                              transition: isEditing ? 'opacity 0.7s ease' : 'transform 0.1s ease-out, object-position 0.1s ease-out, filter 0.6s ease, opacity 0.7s ease'
+                            }}
+                            loop playsInline muted={slot.muted}
+                          />
+                          <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg text-[9px] font-black text-white tracking-widest opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none flex items-center gap-1.5 shadow-2xl"><Clock size={10} /> {formatTime(slot.duration)}</div>
+                          {isEditing && (<div className="absolute inset-0 z-30 cursor-move" onPointerDown={(e) => handlePanStart(e, i)} onPointerMove={(e) => handlePanMove(e, i)} onPointerUp={handlePanEnd} onPointerLeave={handlePanEnd} />)}
+                          <div className={`absolute inset-0 bg-black/50 transition-all duration-500 flex items-center justify-center backdrop-blur-[2px] z-20 ${isEditing ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+                            <div className="absolute top-4 right-4 flex gap-3">
+                              <button onClick={(e) => { e.stopPropagation(); updateSlot(i, { muted: !slot.muted }); }} className="p-3 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-xl text-white hover:bg-white hover:text-black transition-all active:scale-75 shadow-xl">{slot.muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</button>
+                              <button onClick={(e) => removeVideo(i, e)} className="p-3 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-xl text-white hover:bg-red-500 hover:border-red-500 transition-all active:scale-75 shadow-xl"><Trash2 size={18} /></button>
+                            </div>
+                            <div className="flex flex-col gap-3 scale-90 group-hover:scale-100 transition-all duration-500">
+                              <button onClick={(e) => { e.stopPropagation(); setActiveEditIndex(i); }} className="px-8 py-2 border-2 border-white text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all shadow-2xl">Adjust</button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center cursor-pointer group z-10">
+                          <div className={`w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center transition-all duration-500 ${isDarkMode ? 'border-white/10 bg-white/[0.01] group-hover:bg-[#1ca3ec]/10 group-hover:scale-110' : 'border-black/20 bg-black/[0.01] group-hover:bg-[#1ca3ec]/10 group-hover:scale-110'}`} style={{ borderColor: isEditing ? HIGHLIGHT_COLOR : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.5)') }}>
+                             <Plus size={20} className={`transition-colors`} style={{ color: isEditing ? HIGHLIGHT_COLOR : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.6)') }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Bar: Pure playback, no overlap */}
+            <div className={`h-24 shrink-0 flex items-center justify-center border-t transition-colors duration-500 z-40 ${isDarkMode ? 'border-white/5 bg-[#050505]' : 'border-black/5 bg-white'}`}>
+              <button 
+                onClick={toggleGlobalPlay} 
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all active:scale-[0.9] border-2 shadow-[0_20px_50px_rgba(0,0,0,0.4)] ${isDarkMode ? 'bg-black border-white text-white hover:bg-white hover:text-black shadow-white/5' : 'bg-white border-black text-black hover:bg-black hover:text-white shadow-black/5'}`}
+                title={isPlaying ? "Pause (Space)" : "Preview (Space)"}
+              >
+                {isPlaying ? <Pause size={20} fill="currentColor" strokeWidth={0} /> : <Play size={20} fill="currentColor" strokeWidth={0} className="ml-1" />}
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <aside className={`w-full md:w-80 border-t md:border-t-0 md:border-l flex flex-col shrink-0 z-50 overflow-hidden relative shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}>
+          <div className={`absolute inset-0 flex flex-col transition-transform duration-500 ease-out ${activeEditIndex !== null ? '-translate-x-full' : 'translate-x-0'}`}>
+            <div className="p-8 flex-1 overflow-y-auto space-y-12 pt-10">
+              <div className="space-y-12">
+                <div className="space-y-5">
+                  <span className={`block text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}>FRAME CANVAS</span>
+                  <div className="flex gap-4 items-center">
+                    <button onClick={() => setBgColor('#000000')} className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-125 ${bgColor === '#000000' ? (isDarkMode ? 'border-white shadow-lg' : 'border-black shadow-lg') : 'border-transparent opacity-40 shadow-sm'}`} style={{ backgroundColor: '#000000' }} />
+                    <button onClick={() => setBgColor('#ffffff')} className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-125 ${bgColor === '#ffffff' ? (isDarkMode ? 'border-white' : 'border-black shadow-lg') : (isDarkMode ? 'border-white/20 bg-white' : 'border-black/20 bg-white shadow-inner')}`} />
+                    <button 
+                      onClick={() => colorInputRef.current.click()} 
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all hover:scale-125 border-transparent ${isDarkMode ? 'bg-neutral-800' : 'bg-neutral-200'}`}
+                    >
+                      <Pipette size={12} className={isDarkMode ? 'text-neutral-400' : 'text-neutral-500'} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span>Gap Thickness</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{spacing}px</span></div>
+                  <input type="range" min="0" max="24" value={spacing} onChange={(e) => setSpacing(Number(e.target.value))} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                </div>
+
+                <div className="space-y-5">
+                  <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span>Corner Softness</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{radius}px</span></div>
+                  <input type="range" min="0" max="32" value={radius} onChange={(e) => setRadius(Number(e.target.value))} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`absolute inset-0 flex flex-col transition-transform duration-500 ease-out ${activeEditIndex !== null ? 'translate-x-0' : 'translate-x-full'} ${isDarkMode ? 'bg-[#050505]' : 'bg-white'}`}>
+            <div className={`p-8 border-b transition-colors duration-500 ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
+              <button onClick={() => setActiveEditIndex(null)} className="flex items-center gap-3 text-neutral-400 hover:text-white transition-all font-black text-[11px] uppercase tracking-[0.3em]"><ChevronLeft size={18} /> BACK</button>
+            </div>
+            <div className="p-8 flex-1 overflow-y-auto space-y-14">
+              <div className={`flex items-center gap-2.5 ${isDarkMode ? 'text-neutral-600' : 'text-neutral-400'}`}><Settings2 size={14} /><h3 className="font-black text-[11px] uppercase tracking-[0.4em]">Clip Inspector</h3></div>
+              {activeEditIndex !== null && slots[activeEditIndex] && (
+                <div className="space-y-12">
+                  <div className="space-y-5">
+                    <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span className="flex items-center gap-2"><Clock size={14} /> Playback Offset</span><span className={`tabular-nums px-3 py-1 rounded-lg shadow-inner ${isDarkMode ? 'text-white bg-white/10' : 'text-black bg-black/10'}`}>{formatTime(slots[activeEditIndex].transform.startTime)}</span></div>
+                    <input type="range" min="0" max={Math.max(0, slots[activeEditIndex].duration - 0.1)} step="0.05" value={slots[activeEditIndex].transform.startTime} onChange={(e) => {
+                      const val = Number(e.target.value); updateSlot(activeEditIndex, { transform: { ...slots[activeEditIndex].transform, startTime: val } });
+                      if (videoRefs.current[activeEditIndex]) videoRefs.current[activeEditIndex].currentTime = val;
+                    }} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                  </div>
+                  
+                  <div className="space-y-6 pt-10 border-t transition-colors duration-500" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    <div className={`flex items-center gap-2 ${isDarkMode ? 'text-neutral-600' : 'text-neutral-400'}`}><Layout size={14} /><h3 className="font-black text-[11px] uppercase tracking-[0.4em]">Color Grade</h3></div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {FILTERS.map(f => (
+                        <button 
+                          key={f.id} 
+                          onClick={() => updateSlot(activeEditIndex, { filterId: f.id })} 
+                          className={`py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95 ${slots[activeEditIndex].filterId === f.id ? (isDarkMode ? 'border-white text-white shadow-inner' : 'border-black text-black shadow-inner') : (isDarkMode ? 'border-transparent text-neutral-500 hover:text-neutral-300' : 'border-transparent text-neutral-400 hover:text-black')}`}
+                        >
+                          {f.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-5 pt-10 border-t transition-colors duration-500" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span className="flex items-center gap-2"><ZoomIn size={14} /> Zoom</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{slots[activeEditIndex].transform.zoom.toFixed(2)}x</span></div>
+                    <input type="range" min="1" max="5" step="0.01" value={slots[activeEditIndex].transform.zoom} onChange={(e) => updateSlot(activeEditIndex, { transform: { ...slots[activeEditIndex].transform, zoom: Number(e.target.value) } })} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                  </div>
+                  <div className="space-y-5">
+                    <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span className="flex items-center gap-2"><MoveHorizontal size={14} /> Position X</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{Math.round(slots[activeEditIndex].transform.x)}%</span></div>
+                    <input type="range" min="-100" max="100" step="1" value={slots[activeEditIndex].transform.x} onChange={(e) => updateSlot(activeEditIndex, { transform: { ...slots[activeEditIndex].transform, x: Number(e.target.value) } })} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                  </div>
+                  <div className="space-y-5">
+                    <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span className="flex items-center gap-2"><MoveVertical size={14} /> Position Y</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{Math.round(slots[activeEditIndex].transform.y)}%</span></div>
+                    <input type="range" min="-100" max="100" step="1" value={slots[activeEditIndex].transform.y} onChange={(e) => updateSlot(activeEditIndex, { transform: { ...slots[activeEditIndex].transform, y: Number(e.target.value) } })} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                  </div>
+                  <div className="space-y-5 pt-10 border-t transition-colors duration-500" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    <div className={`flex justify-between text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-neutral-500' : 'text-neutral-400'}`}><span className="flex items-center gap-2"><Speaker size={14} /> Audio Gain</span><span className={isDarkMode ? 'text-white' : 'text-black'}>{Math.round(slots[activeEditIndex].volume * 100)}%</span></div>
+                    <input type="range" min="0" max="2" step="0.05" value={slots[activeEditIndex].volume} onChange={(e) => updateSlot(activeEditIndex, { volume: Number(e.target.value) })} className={`w-full h-0.5 rounded-full appearance-none cursor-pointer ${isDarkMode ? 'bg-white/10 accent-neutral-400' : 'bg-black/10 accent-neutral-600'}`} />
+                  </div>
+                  <div className="pt-10 flex flex-col gap-4">
+                    <button onClick={() => updateSlot(activeEditIndex, { transform: { zoom: 1, x: 0, y: 0, startTime: 0 }, filterId: 'none' })} className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 flex items-center justify-center gap-3 ${isDarkMode ? 'border-white text-white hover:bg-white hover:text-black' : 'border-black text-black hover:bg-black hover:text-white'}`}>
+                      <RotateCcw size={16} /> RESET CLIP
+                    </button>
+                    <button onClick={(e) => removeVideo(activeEditIndex, e)} className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${isDarkMode ? 'text-red-400/30 hover:text-red-500' : 'text-red-500/30 hover:text-red-600'}`}>
+                      <Trash2 size={16} /> REMOVE
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
+        
+        {exportStatus.active && (
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-10 duration-700">
+            <div className={`backdrop-blur-3xl border p-5 pr-12 rounded-[2rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] flex items-center gap-8 min-w-[450px] ${isDarkMode ? 'bg-[#0a0a0a]/90 border-white/10' : 'bg-white/90 border-black/10'}`}>
+              <div className={`relative w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 border shadow-inner ${isDarkMode ? 'bg-black border-white/5' : 'bg-neutral-100 border-black/5'}`}>
+                {exportStatus.phase === 'encoding' ? (
+                  <canvas ref={exportCanvasRef} className="w-full h-full object-contain" />
+                ) : (
+                  <FileVideo className={`w-8 h-8 animate-pulse ${isDarkMode ? 'text-neutral-600' : 'text-neutral-400'}`} />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-4">
+                  <span className={`text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    <span className={`w-2 h-2 rounded-full bg-blue-500 animate-pulse`} />
+                    {exportStatus.phase === 'decoding' ? 'Buffering Audio Stream' : (exportStatus.phase === 'encoding' ? 'Mastering Layout' : 'Finalizing Master')}
+                  </span>
+                  <span className="text-[12px] font-black tabular-nums text-neutral-400">{exportStatus.progress}%</span>
+                </div>
+                <div className={`w-full h-1 rounded-full overflow-hidden shadow-inner ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                  <div 
+                    className={`h-full transition-all duration-300 origin-left rounded-full`} 
+                    style={{ transform: `scaleX(${exportStatus.progress / 100})`, backgroundColor: HIGHLIGHT_COLOR }} 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isPreparing && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
+             <div className="flex flex-col items-center gap-8 text-white text-center">
+                <div className="relative flex items-center justify-center"><Loader2 className="w-20 h-20 animate-spin text-white/5" /><Loader2 className="absolute inset-0 w-20 h-20 animate-pulse text-white/10 blur-md" /><Layout className="absolute w-8 h-8 text-white/40" /></div>
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-sm font-black uppercase tracking-[0.6em] ml-[0.6em]">MP4 MASTER ENGINE</span>
+                  <span className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">Locking frame buffers for H.264 encode</span>
+                </div>
+             </div>
+          </div>
+        )}
+      </div>
+
+      {showExportModal && !exportStatus.active && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className={`border rounded-[2.5rem] w-full max-md overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.6)] animate-in zoom-in-95 duration-500 ${isDarkMode ? 'bg-[#0a0a0a] border-white/10' : 'bg-white border-black/10'}`}>
+            <div className={`p-10 border-b flex justify-between items-center transition-colors duration-500 ${isDarkMode ? 'bg-[#0d0d0d] border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+              <h2 className={`font-black text-[13px] uppercase tracking-[0.5em] ${isDarkMode ? 'text-white' : 'text-black'}`}>Export Properties</h2>
+              <button onClick={() => setShowExportModal(false)} className={`transition-all p-2 rounded-full active:scale-75 ${isDarkMode ? 'text-neutral-600 hover:text-white bg-white/5' : 'text-neutral-400 hover:text-black bg-black/5'}`}><X size={18} /></button>
+            </div>
+            <div className="p-10 space-y-14">
+              <div className="space-y-6">
+                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] flex justify-between">
+                  <span>RESOLUTION</span>
+                  <span className="text-blue-500">NATIVE MP4</span>
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['720p', '1080p', '4k'].map(res => (
+                    <button 
+                      key={res} 
+                      onClick={() => setExportRes(res)} 
+                      className={`py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all border active:scale-95 ${exportRes === res ? (isDarkMode ? 'border-white text-white shadow-inner' : 'border-black text-black shadow-inner') : (isDarkMode ? 'border-transparent text-neutral-600 hover:text-neutral-400' : 'border-transparent text-neutral-400 hover:text-black')}`}
+                    >
+                      {res}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-6">
+                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">FPS</label>
+                <div className="flex gap-3">
+                  {[24, 30, 60].map(fps => (
+                    <button 
+                      key={fps} 
+                      onClick={() => setExportFps(fps)} 
+                      className={`flex-1 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all border active:scale-95 ${exportFps === fps ? (isDarkMode ? 'border-white text-white shadow-inner' : 'border-black text-black shadow-inner') : (isDarkMode ? 'border-transparent text-neutral-600 hover:text-neutral-400' : 'border-transparent text-neutral-400 hover:text-black')}`}
+                    >
+                      {fps}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className={`p-6 border-t transition-colors duration-500 ${isDarkMode ? 'bg-[#0d0d0d] border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+              <button 
+                onClick={handleStartExportBtn} 
+                className={`w-full py-7 px-4 rounded-[1.5rem] flex items-center justify-center gap-3 transition-all active:scale-[0.96] shadow-2xl text-[13px] font-black uppercase tracking-[0.6em] border-2 ${isDarkMode ? 'border-white bg-white text-black hover:bg-neutral-200 shadow-white/5' : 'border-black bg-black text-white hover:bg-neutral-800 shadow-black/5'}`}
+              >
+                MASTER MP4
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+                          // --- MOUNTING ---
+import ReactDOM from 'react-dom/client';
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
