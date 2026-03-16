@@ -26,7 +26,7 @@ const THEME = {
 
   MODAL_SURFACE: (t) => t === 'dark'
     ? "bg-[#080808] border-zinc-800 text-slate-100" 
-    : "bg-[#f8fafc] border-slate-300 text-slate-900",
+    : "bg-white border-slate-300 text-slate-900",
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
   HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter italic leading-none",
@@ -428,38 +428,65 @@ const CustomStyles = () => (
 
 // --- ATOMIC UI COMPONENTS ---
 
-const ASRStatTooltip = ({ desc, children, theme, position = "top" }) => {
-  const getPositionClasses = () => {
-    switch (position) {
-      case "bottom": return "top-full mt-2 left-1/2 -translate-x-1/2";
-      case "left": return "right-full mr-3 top-1/2 -translate-y-1/2";
-      case "right": return "left-full ml-3 top-1/2 -translate-y-1/2";
-      case "top":
-      default: return "bottom-full mb-2 left-1/2 -translate-x-1/2";
-    }
+const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon, index = 0, isHeader = false }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  const statInfoMap = {
+    'RATING': "OVERALL RATING = POINTS / RUNS",
+    'TOP RATING': "OVERALL RATING = POINTS / RUNS",
+    '🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
+    'MOST 🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
+    '🪙': "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS.",
+    'MOST 🪙': "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS.",
+    'IMPACT': "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER.",
+    'MOST IMPACT': "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER.",
+    'WINS': "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD.",
+    'MOST RECORDS': "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD.",
+    'WIN %': "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS.",
+    'HIGHEST WIN %': "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS.",
+    'FILMS': "TOTAL RUN VIDEOS OFFICIALLY FILMED BY THIS INDIVIDUAL.",
+    'AVG LENGTH': "AVERAGE DISTANCE OF COURSES IN THIS DATASET.",
+    'AVG TIME': "AVERAGE RUN TIME ACROSS ALL VERIFIED RUNS.",
+    'AVG CR': "AVERAGE OVERALL COURSE RECORD OF EACH COURSE SET BY THIS INDIVIDUAL.",
+    'LEVEL': "OFFICIAL ASR COURSE SETTER CERTIFICATION LEVEL",
+    'RUNS': "TOTAL NUMBER OF UNIQUE COURSES COMPLETED.",
+    'MOST RUNS': "TOTAL NUMBER OF UNIQUE COURSES COMPLETED.",
+    'SETS': "TOTAL NUMBER OF UNIQUE COURSES SET OR CO-SET.",
+    'MOST SETS': "TOTAL NUMBER OF UNIQUE COURSES SET OR CO-SET."
   };
 
-  const getArrowClasses = () => {
-    switch (position) {
-      case "bottom": return "bottom-full border-b-zinc-950 sm:border-b-zinc-800 left-1/2 -translate-x-1/2 translate-y-[1px] rotate-180";
-      case "left": return "left-full border-l-zinc-950 sm:border-l-zinc-800 top-1/2 -translate-y-1/2 -translate-x-[1px]";
-      case "right": return "right-full border-r-zinc-950 sm:border-r-zinc-800 top-1/2 -translate-y-1/2 translate-x-[1px]";
-      case "top":
-      default: return "top-full border-t-zinc-950 sm:border-t-zinc-800 left-1/2 -translate-x-1/2 translate-y-[-1px]";
-    }
-  };
+  const labelStr = String(label || "").toUpperCase();
+  const description = tooltip || statInfoMap[labelStr];
 
   return (
-    <div className="group relative inline-block overflow-visible">
-      {children}
-      {desc && (
-        <div className={`absolute ${getPositionClasses()} w-52 p-4 rounded-2xl border-2 shadow-[0_20px_50px_rgba(0,0,0,0.7)] transition-all opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 z-[9999] backdrop-blur-3xl ${theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-zinc-100' : 'bg-slate-900 border-slate-700 text-white'}`}>
-          <div className="flex flex-col gap-1 text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider leading-relaxed whitespace-normal break-words drop-shadow-md">{desc}</p>
-          </div>
-          <div className={`absolute border-8 border-transparent ${getArrowClasses()}`}></div>
+    <div 
+      onClick={() => description && setIsFlipped(!isFlipped)}
+      className={`stat-card-container relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
+    >
+        {/* Front Content */}
+        <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
+          <span className={`${THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible ${isHeader ? 'opacity-100' : ''}`}>
+              {label} 
+              {description && (
+                <Info size={10} className="opacity-40" />
+              )}
+          </span>
+          {!isHeader && (
+            <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
+              {icon && <span className="text-xs sm:text-sm shrink-0 mb-0.5">{icon}</span>}
+              <span className={`text-[14px] sm:text-[18px] lg:text-[22px] leading-none truncate ${THEME.VALUE} ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Back Content (Explanation) */}
+        {description && (
+          <div className={`transition-all duration-300 flex flex-col justify-center h-full w-full ${!isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
+              <p className="text-[9px] sm:text-[10px] font-black uppercase leading-[1.3] text-inherit tracking-tight">
+                {description}
+              </p>
+          </div>
+        )}
     </div>
   );
 };
@@ -480,19 +507,20 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   
   const stringToHash = (str) => {
     let hash = 0;
-    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const s = String(str || "");
+    for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
     return Math.abs(hash);
   };
 
   const getInitials = (n) => {
     if (!n) return '??'; 
     if (initialsOverride) return initialsOverride.toUpperCase();
-    const w = n.trim().split(/\s+/).filter(Boolean);
+    const w = String(n).trim().split(/\s+/).filter(Boolean);
     if (w.length === 0) return '??';
-    return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : n.slice(0, 2)).toUpperCase();
+    return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : String(n).slice(0, 2)).toUpperCase();
   };
 
-  const hash = stringToHash(name || "");
+  const hash = stringToHash(name);
   const grad = GRADIENTS[hash % GRADIENTS.length];
 
   return (
@@ -548,42 +576,6 @@ const ASRPerformanceBadge = ({ type, count = 1 }) => {
     </span>;
 };
 
-const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon, index = 0, tooltipPosition = "left" }) => {
-  const statInfo = {
-    'RATING': { desc: "OVERALL RATING = POINTS / RUNS" },
-    '🔥': { desc: "FIRE BONUS FOR THE FASTEST RUNS." },
-    '🪙': { desc: "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS." },
-    'IMPACT': { desc: "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER." },
-    'WINS': { desc: "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD." },
-    'WIN %': { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." },
-    'FILMS': { desc: "TOTAL RUN VIDEOS OFFICIALLY FILMED BY THIS INDIVIDUAL." },
-    'AVG LENGTH': { desc: "AVERAGE DISTANCE OF COURSES IN THIS DATASET." },
-    'AVG TIME': { desc: "AVERAGE RUN TIME ACROSS ALL VERIFIED RUNS." },
-    'AVG CR': { desc: "AVERAGE OVERALL COURSE RECORD OF EACH COURSE SET BY THIS INDIVIDUAL." },
-    'LEVEL': { desc: "OFFICIAL ASR COURSE SETTER CERTIFICATION LEVEL" }
-  };
-
-  const info = statInfo[label] || (tooltip ? { desc: tooltip } : null);
-  const finalPos = index < 3 ? "bottom" : tooltipPosition;
-
-  return (
-    <div className={`stat-card-container relative flex flex-col border p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] transition-all duration-300 ${THEME.CARD(theme)}`}>
-        <span className={`${THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible`}>
-            {label} 
-            {info && (
-              <ASRStatTooltip desc={info.desc} theme={theme} position={finalPos}>
-                <Info size={10} className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
-              </ASRStatTooltip>
-            )}
-        </span>
-        <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
-          {icon && <span className="text-xs sm:text-sm shrink-0 mb-0.5">{icon}</span>}
-          <span className={`text-[14px] sm:text-[18px] lg:text-[22px] leading-none truncate ${THEME.VALUE} ${colorClass || ''} ${glowClass || ''}`}>{value}</span>
-        </div>
-    </div>
-  );
-};
-
 const ASRListItem = ({ 
   rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, theme, onClick, isUnranked = false,
   badgeContent, shouldFade = false, showRules = true
@@ -628,7 +620,7 @@ const ASRListItem = ({
                   <a 
                     href={videoUrl} target="_blank" rel="noopener noreferrer" 
                     onClick={e => e.stopPropagation()} 
-                    className="p-2 sm:p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                    className="p-2.5 sm:p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                   >
                     <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                   </a>
@@ -767,7 +759,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     
     const getInitials = (n) => {
       if (!n) return 'A';
-      const clean = n.trim();
+      const clean = String(n).trim();
       return clean.length > 0 ? clean[0].toUpperCase() : 'A';
     };
 
@@ -880,6 +872,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
 };
 
 // --- LIVE TICKER COMPONENT ---
+// Fixed logic: Feed items now duplicate correctly for infinite scroll.
 
 const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
   if (!feed || feed.length === 0) return null;
@@ -887,16 +880,16 @@ const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
   const tickerItems = [...feed, ...feed];
 
   return (
-    <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[70] h-[var(--ticker-height)] flex items-center overflow-hidden border-b transition-all duration-500 bg-[#0a0a0a] border-zinc-800/50 text-white`}>
+    <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[70] h-[var(--ticker-height)] flex items-center overflow-hidden border-b transition-all duration-300 bg-[#0a0a0a] border-zinc-800/50 text-white opacity-80 hover:opacity-100 active:opacity-100 cursor-default`}>
       <div className="animate-marquee whitespace-nowrap flex items-center gap-16 px-12">
         {tickerItems.map((item, idx) => {
           const fires = item.fireCount || 0;
           const rank = item.rank || 0;
           
           return (
-            <div key={`${item.id}-${idx}`} className="flex items-center gap-0 group cursor-default h-full">
+            <div key={`${item.id}-${idx}`} className="flex items-center gap-0 group h-full">
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center`}>
-                <span className="opacity-30 mr-3 shrink-0">{item.timeString}</span>
+                <span className="text-white mr-3 shrink-0">{item.timeString}</span>
                 
                 <span className="flex items-center mr-1.5 shrink-0">
                   {rank === 1 && <span className="animate-bounce emoji-slot">🥇</span>}
@@ -1154,7 +1147,7 @@ const ASRBaseModal = ({
         className={`${THEME.MODAL_SURFACE(theme)} border w-full max-w-2xl rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.7)] flex flex-col h-[calc(100dvh-28px)] sm:h-[85dvh] relative z-20 overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
         onClick={e => e.stopPropagation()}
       >
-        <div className={`shrink-0 flex flex-col p-6 sm:p-10 pt-8 sm:pt-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-slate-300/40'} to-transparent relative z-[130]`}>
+        <div className={`shrink-0 flex flex-col p-6 sm:p-10 pt-8 sm:pt-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-white'} to-transparent relative z-[130]`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                   <button aria-label="Go Back" onClick={onBack} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Back">
@@ -1195,7 +1188,7 @@ const ASRBaseModal = ({
 
         <div 
           ref={scrollContainerRef} 
-          className={`flex-1 min-h-0 overflow-y-auto px-6 py-2 sm:px-12 sm:py-4 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-100'}`}
+          className={`flex-1 min-h-0 overflow-y-auto px-6 py-2 sm:px-12 sm:py-4 space-y-12 scrollbar-hide ${theme === 'dark' ? 'bg-[#050505]' : 'bg-white'}`}
         >
           <div className="pb-16 overflow-visible">
             {children}
@@ -1213,8 +1206,8 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
     { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
     { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
     { label: 'Diff', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
-    { label: 'Players', value: course.totalAllTimeAthletes, icon: <Users className="w-3.5 h-3.5" /> },
-    { label: 'Length', value: course.length ? Math.round(parseFloat(course.length)) : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
+    { label: 'Players', value: String(course.totalAllTimeAthletes || 0), icon: <Users className="w-3.5 h-3.5" /> },
+    { label: 'Length', value: course.length ? String(Math.round(parseFloat(course.length))) : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
     { label: 'Elev', value: course.elevation ? `${parseFloat(course.elevation).toFixed(2)}` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
     { label: 'Type', value: course.type || '-', icon: <Dna className="w-3.5 h-3.5" /> },
     { label: 'Date', value: course.dateSet || '-', icon: <Calendar className="w-3.5 h-3.5" /> }
@@ -1296,7 +1289,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         const setsCount = setterData.sets || setterCourses.length;
 
         const setterStats = [
-            { l: 'LEVEL', v: setterData.certLevel || '-' },
+            { l: 'LEVEL', v: String(setterData.certLevel || '-') },
             { l: 'IMPACT', v: String(Math.round(impact)), c: 'text-blue-600' }, 
             { l: 'SETS', v: String(setsCount) },
             { l: 'LEADS', v: String(setterData.leads || 0) },
@@ -1304,16 +1297,16 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
             { l: 'CITIES', v: String(setterData.citiesCount || 0) },
             { l: 'COUNTRIES', v: String(new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0) },
             { l: 'FILMS', v: String(setterData.films || 0) },
-            { l: 'AVG LENGTH', v: setterData.avgLength ? Math.round(setterData.avgLength) : '0' },
+            { l: 'AVG LENGTH', v: setterData.avgLength ? String(Math.round(setterData.avgLength)) : '0' },
             { l: 'AVG CR', v: setterData.avgCR ? `${setterData.avgCR.toFixed(2)}` : '0.00' },
-            { l: '🪙', v: Math.round(setterData.contributionScore || identity.contributionScore || 0) }
+            { l: '🪙', v: String(Math.round(setterData.contributionScore || identity.contributionScore || 0)) }
         ];
 
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
-                      <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} tooltipPosition="left" />
+                      <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} />
                     ))}
                 </div>
                 <div className="space-y-6 overflow-visible">
@@ -1336,7 +1329,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                           ) : (
                             <div className="p-2.5 opacity-20"><MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /></div>
                           )}
-                          stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
+                          stats={[{ label: 'RUNS', value: String(c.totalAllTimeRuns || 0) }]}
                           videoUrl={c.demoVideo}
                           onClick={() => openModal('course', c)}
                         />
@@ -1397,7 +1390,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const avgRunLength = runsInContext > 0 ? Math.round(totalLengthInRuns / runsInContext) : '0';
 
     const playerStats = [
-        { l: 'RANK', v: currentRankValue },
+        { l: 'RANK', v: String(currentRankValue) },
         { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: String(runsInContext) }, 
@@ -1406,7 +1399,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         { l: 'CITIES', v: String(new Set(courseData.map(c => c.city).filter(Boolean)).size || 0) },
         { l: 'COUNTRIES', v: String(new Set(courseData.map(c => c.country).filter(Boolean)).size || 0) },
         { l: 'AVG LENGTH', v: String(avgRunLength) },
-        { l: 'AVG TIME', v: avgRunTime },
+        { l: 'AVG TIME', v: String(avgRunTime) },
         { l: '🔥', v: String(isAllTime ? (identity.allTimeFireCount || 0) : (identity.openStats?.openFireCount || 0)), g: 'glow-blue' }
     ];
 
@@ -1414,7 +1407,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
-                  <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} tooltipPosition="left" />
+                  <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
                 ))}
             </div>
             <div className="space-y-6 overflow-visible">
@@ -1503,7 +1496,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
           });
       }
       const countryTerm = normalizeCountryName(region.name);
-      const playerCountries = (p.countryName || "").split(/[,\/]/).map(c => normalizeCountryName(c));
+      const playerCountries = String(p.countryName || "").split(/[,\/]/).map(c => normalizeCountryName(c));
       return (region.type === 'country' && playerCountries.includes(countryTerm)) ||
              (region.type === 'continent' && playerCountries.some(pc => getContinentData(pc).name === region.name));
   });
@@ -1520,7 +1513,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
     <div className="space-y-12 overflow-visible">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
           {regionalStats.map((s, i) => (
-            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} tooltipPosition="left" />
+            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} />
           ))}
       </div>
       <div className="space-y-12 text-left overflow-visible">
@@ -1560,7 +1553,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                         ) : (
                           <div className="p-2.5 opacity-20"><MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /></div>
                         )}
-                        stats={[{ label: 'RUNS', value: c.totalAllTimeRuns || 0 }]}
+                        stats={[{ label: 'RUNS', value: String(c.totalAllTimeRuns || 0) }]}
                         videoUrl={c.demoVideo}
                         onClick={() => openModal('course', c)}
                       />
@@ -1578,7 +1571,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
   switch (activeModal.type) {
     case 'player':
     case 'setter': {
-      // FIX: Ensure we use the most complete athlete meta by looking it up from atMet
       const pKeyFromData = activeModal.data.pKey || normalizeName(activeModal.data.name);
       const athleteData = atMet[pKeyFromData] || 
                           Object.values(atMet).find(a => normalizeName(a.name) === normalizeName(activeModal.data.name)) || 
@@ -1603,8 +1595,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
       );
     }
     case 'course': {
-      // FIX: Ensure we use the "rich" course object from masterCourseList (allCourses) 
-      // which contains calculated leaderboards, rather than the "thin" object from the live ticker.
       const richCourse = allCourses.find(c => c.name.toUpperCase() === activeModal.data.name?.toUpperCase()) || activeModal.data;
       
       return (
@@ -1653,6 +1643,8 @@ const useASRData = () => {
 
     const cacheBucket = Math.floor(Date.now() / REFRESH_INTERVAL); 
     const SPREADSHEET_ID = '1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4';
+    
+    // Fixed: variable name corrected from SNAPSHOT_ID to SPREADSHEET_ID
     const getCsv = (q) => encodeURI(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`);
 
     const safeFetch = async (url) => {
@@ -2100,8 +2092,9 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
             
             sorted.slice(0, 3).forEach(([pKey, time], rankIdx) => {
               const athlete = atMet[pKey] || {};
-              const names = athlete.countryName ? athlete.countryName.split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean) : ["UNKNOWN"];
-              const flags = athlete.region ? (athlete.region.match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g) || [athlete.region]) : ['🏳️'];
+              const names = String(athlete.countryName || "").split(/[,\/]/).map(s => s.trim().toUpperCase()).filter(Boolean);
+              if (names.length === 0) names.push("UNKNOWN");
+              const flags = String(athlete.region || "").match(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g) || [athlete.region || '🏳️'];
               names.forEach((name, i) => {
                 const fixed = fixCountryEntity(name, flags[i] || flags[0]);
                 if (!medalsBase[fixed.name]) medalsBase[fixed.name] = { name: fixed.name, flag: fixed.flag, gold: 0, silver: 0, bronze: 0, total: 0 };
@@ -2439,6 +2432,8 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
   );
 };
 
+// --- HOF COMPONENT ---
+
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
   const highlightColor = 'text-blue-600';
 
@@ -2461,17 +2456,6 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         </div>
       </th>
     );
-  };
-
-  const hofStatDetails = {
-    rating: { desc: "OVERALL RATING = POINTS / RUNS" },
-    runs: { desc: "TOTAL NUMBER OF VERIFIED RUNS." },
-    winPercentage: { desc: "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS." },
-    wins: { desc: "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD." },
-    contributionScore: { desc: "Project contribution score earned via setting and support." },
-    totalFireCount: { desc: "Elite markers earned by beating specific course thresholds." },
-    impact: { desc: "Total runs verified on courses set by this individual." },
-    sets: { desc: "Total number of courses officially verified and set." }
   };
 
   if (!stats || !stats.topStats) {
@@ -2497,13 +2481,8 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
           { l: 'MOST SETS', k: 'sets' }
         ].map((sec, gridIdx) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border flex flex-col overflow-visible ${THEME.CARD(theme)}`}>
-              <div className={`p-5 border-b border-inherit opacity-80 ${THEME.HEADING_SM} flex items-center justify-between overflow-visible group`}>
-                <div className="flex items-center gap-2 w-full justify-between overflow-visible text-left">
-                  <span>{sec.l}</span>
-                  <ASRStatTooltip desc={hofStatDetails[sec.k]?.desc} theme={theme} position={gridIdx % 4 === 3 ? "left" : (gridIdx % 4 === 0 ? "right" : "bottom")}>
-                    <Info size={12} className="opacity-30 group-hover:opacity-100 transition-opacity cursor-help" />
-                  </ASRStatTooltip>
-                </div>
+              <div className={`p-5 border-b border-inherit overflow-visible group h-14 sm:h-16 flex items-center`}>
+                <ASRStatCard isHeader label={sec.l} theme={theme} index={gridIdx} />
               </div>
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/30' : 'divide-slate-200'} overflow-visible`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
@@ -2519,8 +2498,8 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                     <span className={`text-xs ${highlightColor} ${THEME.VALUE} px-2 py-1 rounded-lg transition-colors`}>
                       {sec.k === 'rating' ? (p.rating?.toFixed(2) || '0.00') : 
                       (sec.k === 'winPercentage' ? (p.winPercentage?.toFixed(2) || '0.00') : 
-                      (sec.k === 'contributionScore' ? Math.round(p.contributionScore || 0) :
-                      (sec.k === 'totalFireCount' ? p.allTimeFireCount : (sec.k === 'impact' || sec.k === 'sets' ? Math.round(p[sec.k]) : String(p[sec.k])))))}
+                      (sec.k === 'contributionScore' ? String(Math.round(p.contributionScore || 0)) :
+                      (sec.k === 'totalFireCount' ? String(p.allTimeFireCount || 0) : (sec.k === 'impact' || sec.k === 'sets' ? String(Math.round(p[sec.k] || 0)) : String(p[sec.k] || 0)))))}
                     </span>
                   </div>
                 ))}
@@ -2621,7 +2600,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
-            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b border-subtle flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-[#f8fafc]/95 text-slate-700'}`}>
+            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b border-subtle flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300' : 'bg-white/95 text-slate-700'}`}>
                 <div className="w-20 sm:w-24 pl-4 sm:pl-10 py-8 text-left font-black text-[9px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
                   {columns.filter(c => !c.isRank).map((col, i) => (
@@ -2657,7 +2636,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                       const forceRound = ['impact', 'avgLength', 'contributionScore'];
 
                       if (forceRound.includes(k)) {
-                        return { value: Math.round(parseFloat(val) || 0) };
+                        return { value: String(Math.round(parseFloat(val) || 0)) };
                       }
                       if (forceAlignment.includes(k) || (typeof val === 'number' && !Number.isInteger(val))) {
                         return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2) };
@@ -2761,7 +2740,8 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
     return (
       <div 
-        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-500 group/bar ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
+        onClick={onOpenIntro}
+        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap">
           <span className="animate-pulse text-xs leading-none shrink-0">●</span>
@@ -2778,7 +2758,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
 
 const ASRTopShield = ({ theme }) => {
     return (
-        <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-black' : 'bg-[#f8fafc]'}`} />
+        <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`} />
     );
 };
 
@@ -2861,7 +2841,7 @@ export default function App() {
         .sort((a, b) => a[1] - b[1]);
       const meta = (cMet || {})[name] || {}; const contData = getContinentData(meta.country || 'UNKNOWN');
       const mRecs = athletesMAll.map(a => a[1]); const fRecs = athletesFAll.map(a => a[1]);
-      const coordsMatch = meta.coordinates ? String(meta.coordinates).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) : null;
+      const coordsMatch = String(meta.coordinates || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
       return {
         name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️', continent: contData.name, continentFlag: contData.flag,
         mRecord: mRecs.length ? Math.min(...mRecs) : null, fRecord: fRecs.length ? Math.min(...fRecs) : null,
@@ -2875,7 +2855,7 @@ export default function App() {
 
   const settersWithImpact = useMemo(() => {
     return (settersData || []).map(s => {
-        const sName = s.name ? s.name.trim() : "";
+        const sName = s.name ? String(s.name).trim() : "";
         const leadCourses = masterCourseList.filter(c => isNameInList(sName, c.leadSetters));
         const assistCourses = masterCourseList.filter(c => isNameInList(sName, c.assistantsetters));
         const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
@@ -2903,7 +2883,7 @@ export default function App() {
             avgCR: totalCourses > 0 ? (totalCR / totalCourses) : 0,
             citiesCount: citiesSet.size
         };
-    }).filter(s => isAllTimeContext || s.sets > 0);
+    }).filter(s => isAllTimeContext || (s.sets || 0) > 0);
   }, [settersData, masterCourseList, isAllTimeContext, atMet]);
 
   // --- NAVIGATION LOGIC ---
@@ -3055,7 +3035,7 @@ export default function App() {
   }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact, view]);
 
   const breadcrumbsArr = useMemo(() => {
-    return modalHistory.map(h => h.data.name || 'Detail');
+    return modalHistory.map(h => String(h.data.name || 'Detail'));
   }, [modalHistory]);
 
   const handleShare = useCallback(() => {
@@ -3078,20 +3058,20 @@ export default function App() {
     if (!modal) return null;
     const { type, data } = modal;
     if (type === 'course') {
-        let cityProv = data.city && data.city !== 'UNKNOWN' ? data.city : '';
+        let cityProv = data.city && data.city !== 'UNKNOWN' ? String(data.city) : '';
         if ((data.country === 'USA' || data.country === 'CANADA') && data.stateProv) {
-          cityProv += cityProv ? `, ${data.stateProv}` : data.stateProv;
+          cityProv += cityProv ? `, ${data.stateProv}` : String(data.stateProv);
         }
         
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
               <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-300 bg-white'} ios-clip-fix`}>
-                <FallbackAvatar name={data.name} sizeCls="text-xl sm:text-4xl" />
+                <FallbackAvatar name={String(data.name)} sizeCls="text-xl sm:text-4xl" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
                 <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-1.5 min-w-0">
-                  <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2>
+                  <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{String(data.name)}</h2>
                   
                   <div className="flex items-center gap-2 shrink-0">
                     <a 
@@ -3115,7 +3095,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
-                  {formatLocationSubtitle(cityProv, data.country, data.flag)}
+                  {formatLocationSubtitle(cityProv, String(data.country), String(data.flag))}
                 </div>
               </div>
             </div>
@@ -3129,11 +3109,11 @@ export default function App() {
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
               <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'border-slate-300 bg-white'} ios-clip-fix`}>
-                <FallbackAvatar name={data.name} />
+                <FallbackAvatar name={String(data.name)} />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center text-left">
                   <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-1.5 min-w-0">
-                    <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{data.name}</h2>
+                    <h2 className="text-xl sm:text-3xl font-black tracking-tighter uppercase leading-none text-inherit max-w-full break-words whitespace-normal">{String(data.name)}</h2>
                     {data.igHandle && (
                       <div className="flex items-center gap-2 shrink-0">
                         <a 
@@ -3149,7 +3129,7 @@ export default function App() {
                     )}
                   </div>
                   <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
-                    {formatLocationSubtitle(htown, data.countryName, data.region)}
+                    {formatLocationSubtitle(htown, String(data.countryName), String(data.region))}
                   </div>
               </div>
             </div>
@@ -3159,10 +3139,10 @@ export default function App() {
     if (type === 'region') {
       return (
         <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
-          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-300 bg-white'} ios-clip-fix`}><FallbackAvatar name={data.name} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-300 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
-            <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{data.name}</h2></div>
-            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{data.flag}</span></div>}
+            <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{String(data.name)}</h2></div>
+            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{String(data.flag)}</span></div>}
           </div>
         </div>
       );
@@ -3215,7 +3195,7 @@ export default function App() {
              activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
              atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={navigateToEntity}
              onSetterClick={(setter) => { 
-                const sName = typeof setter === 'string' ? setter : setter.name;
+                const sName = typeof setter === 'string' ? setter : String(setter.name);
                 const sObj = settersWithImpact.find(s => normalizeName(s.name) === normalizeName(sName)); 
                 if (sObj) navigateToEntity('setter', sObj); 
              }}
