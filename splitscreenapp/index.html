@@ -243,7 +243,7 @@ const EXPORT_WORKER_BLOB = URL.createObjectURL(new Blob([`
   };
 `], { type: 'application/javascript' }));
 
-export default function App() {
+function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [slots, setSlots] = useState({}); 
