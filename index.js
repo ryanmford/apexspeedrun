@@ -443,27 +443,26 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   }, [isFlipped]);
 
   const statInfoMap = {
-    'RATING': "OVERALL RATING = POINTS / RUNS",
-    'TOP RATING': "OVERALL RATING = POINTS / RUNS",
+    'RATING': "RATING = POINTS / RUNS",
+    'TOP RATING': "RATING = POINTS / RUNS",
     '🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
     'MOST 🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
-    '🪙': "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS.",
-    'MOST 🪙': "CONTRIBUTION COINS EARNED FROM RUNS, WINS, & SETS.",
-    'IMPACT': "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER.",
-    'MOST IMPACT': "TOTAL RUNS ACROSS ALL COURSES BY THIS SETTER.",
-    'WINS': "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD.",
-    'MOST RECORDS': "TOTAL NUMBER OF ACTIVE COURSE RECORDS HELD.",
-    'WIN %': "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS.",
-    'HIGHEST WIN %': "PERCENTAGE OF RUNS THAT ARE CURRENT COURSE RECORDS.",
-    'FILMS': "TOTAL RUN VIDEOS OFFICIALLY FILMED BY THIS INDIVIDUAL.",
-    'AVG LENGTH': "AVERAGE DISTANCE OF COURSES IN THIS DATASET.",
-    'AVG TIME': "AVERAGE RUN TIME ACROSS ALL VERIFIED RUNS.",
-    'AVG CR': "AVERAGE OVERALL COURSE RECORD OF EACH COURSE SET BY THIS INDIVIDUAL.",
-    'LEVEL': "OFFICIAL ASR COURSE SETTER CERTIFICATION LEVEL",
-    'RUNS': "TOTAL NUMBER OF UNIQUE COURSES COMPLETED.",
-    'MOST RUNS': "TOTAL NUMBER OF UNIQUE COURSES COMPLETED.",
-    'SETS': "TOTAL NUMBER OF UNIQUE COURSES SET OR CO-SET.",
-    'MOST SETS': "TOTAL NUMBER OF UNIQUE COURSES SET OR CO-SET."
+    '🪙': "CONTRIBUTOR COINS EARNED FROM RUNS, WINS, & SETS.",
+    'MOST 🪙': "CONTRIBUTOR COINS EARNED FROM RUNS, WINS, & SETS.",
+    'IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
+    'MOST IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
+    'WINS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
+    'MOST RECORDS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
+    'WIN %': "WIN % = WINS / RUNS",
+    'HIGHEST WIN %': "WIN % = WINS / RUNS",
+    'FILMS': "TOTAL RUNS FILMED FOR OTHER PLAYERS.",
+    'AVG LENGTH': "AVERAGE COURSE LENGTH (METERS).",
+    'AVG TIME': "AVERAGE RUN TIME (SECONDS).",
+    'LEVEL': "ASR COURSE SETTER CERTIFICATION LEVEL",
+    'RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
+    'MOST RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
+    'SETS': "TOTAL NUMBER OF COURSES SET.",
+    'MOST SETS': "TOTAL NUMBER OF COURSES SET."
   };
 
   const labelStr = String(label || "").toUpperCase();
@@ -707,21 +706,21 @@ const ASRPromotionBanner = ({ type, theme }) => {
   const configs = {
     setter: {
       title: "COURSE SETTER CERTIFICATION",
-      subtitle: "Become an Apex certified speed parkour course setter.",
+      subtitle: "Become an Apex certified course setter.",
       icon: <Eye className="text-white" size={24} />,
       link: SKOOL_LINK,
       btnText: "GET STARTED"
     },
     coach: {
       title: "SPEED PARKOUR COACHING CERTIFICATION",
-      subtitle: "Become an Apex certified speed parkour specialist.",
+      subtitle: "Become an Apex certified speed parkour coach.",
       icon: <ShieldCheck className="text-white" size={24} />,
       link: SKOOL_LINK,
       btnText: "GET STARTED"
     },
     masterclass: {
         title: "VERIFY YOUR RUN",
-        subtitle: "Get your runs verified for free in the Apex Skool app.",
+        subtitle: "Get your runs verified for free in Apex Skool app.",
         icon: <Zap className="text-white" size={24} />,
         link: SKOOL_LINK,
         btnText: "GET VERIFIED"
@@ -843,22 +842,19 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 const ASRInlineValueCard = ({ theme, type }) => {
   const cards = {
     skool_training: {
-      title: "Apex Global Network",
       desc: "Join our worldwide network on Apex Skool app.",
       icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
       link: SKOOL_LINK,
       btn: "JOIN NOW"
     },
     shop_gear: {
-      title: "Verify Your Run",
-      desc: "Submit and verify your video proof via Apex Skool app.",
+      desc: "Submit your video proof on Apex Skool app.",
       icon: <Video className="w-4 h-4 sm:w-5 sm:h-5" />,
       link: SKOOL_LINK,
       btn: "GET VERIFIED"
     },
     pro_setter: {
-        title: "Course Setter Certification",
-        desc: "Take the course setter certification on Apex Skool app.",
+        desc: "Take our course setter certification on Apex Skool app.",
         icon: <Waypoints className="w-4 h-4 sm:w-5 sm:h-5" />,
         link: SKOOL_LINK,
         btn: "LEARN MORE"
@@ -1215,10 +1211,10 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
   const stats = [
     { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
     { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
-    { label: 'Diff', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
+    { label: 'Difficulty', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
     { label: 'Players', value: String(course.totalAllTimeAthletes || 0), icon: <Users className="w-3.5 h-3.5" /> },
     { label: 'Length', value: course.length ? String(Math.round(parseFloat(course.length))) : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
-    { label: 'Elev', value: course.elevation ? `${parseFloat(course.elevation).toFixed(2)}` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
+    { label: 'Elevation', value: course.elevation ? `${parseFloat(course.elevation).toFixed(2)}` : '-', icon: <Mountain className="w-3.5 h-3.5" /> },
     { label: 'Type', value: course.type || '-', icon: <Dna className="w-3.5 h-3.5" /> },
     { label: 'Date', value: course.dateSet || '-', icon: <Calendar className="w-3.5 h-3.5" /> }
   ];
