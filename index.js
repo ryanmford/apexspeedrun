@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v45_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v46_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -29,7 +29,6 @@ const THEME = {
     : "bg-white border-slate-300 text-slate-900",
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
-  // Improved HOF Heading for better readability as requested
   HEADING_HOF: "text-[11px] sm:text-[13px] font-black uppercase tracking-[0.15em] opacity-90",
   HEADING_MAIN: "text-4xl sm:text-[64px] font-black uppercase tracking-tighter italic leading-none",
   LABEL: "text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-50",
@@ -50,7 +49,7 @@ const THEME = {
 const isPlaceholderPlayer = (name) => {
   if (!name) return false;
   const n = String(name).toUpperCase();
-  return n.includes("INTERIM") || n.includes("TOP TIME") || n.includes("PLACEHOLDER");
+  return n.includes("INTERIM") || n.includes("TOP TIME") || n.includes("PLACEHOLDER") || n.includes("UNKNOWN");
 };
 
 const normalizeName = (n) => {
@@ -222,6 +221,33 @@ const getFireCountForRun = (time, gender) => {
     if (time < 11) return 1;
   }
   return 0;
+};
+
+// --- NEW COMPONENT: COUNT UP ANIMATION ---
+const ASRCountUp = ({ end, duration = 2000 }) => {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(0);
+  
+  useEffect(() => {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const currentCount = Math.floor(progress * end);
+      
+      if (currentCount !== countRef.current) {
+        setCount(currentCount);
+        countRef.current = currentCount;
+      }
+      
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }, [end, duration]);
+
+  return <span>{count.toLocaleString()}</span>;
 };
 
 // --- STYLES ---
@@ -434,7 +460,6 @@ const CustomStyles = () => (
 const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon, index = 0, isHeader = false }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  // Auto-flip back to default after 5 seconds
   useEffect(() => {
     if (isFlipped) {
       const timer = setTimeout(() => setIsFlipped(false), 5000);
@@ -473,7 +498,6 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
       onClick={() => description && setIsFlipped(!isFlipped)}
       className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
     >
-        {/* Front Content */}
         <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
           <span className={`${isHeader ? THEME.HEADING_HOF : THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible ${isHeader ? 'opacity-100' : ''}`}>
               {label} 
@@ -489,7 +513,6 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
           )}
         </div>
 
-        {/* Back Content (Explanation) */}
         {description && (
           <div className={`transition-all duration-300 flex flex-col justify-center h-full w-full ${!isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
               <p className="text-[9px] sm:text-[10px] font-black uppercase leading-[1.3] text-inherit tracking-tight overflow-hidden line-clamp-3 p-1">
@@ -618,8 +641,8 @@ const ASRListItem = ({
                 const colDef = columns.filter(c => !c.isRank && c.type !== 'profile').filter(c => c.key !== 'rules')[idx];
                 return (
                   <div key={idx} className={`${colDef?.width || 'w-20 sm:w-24'} px-2 sm:px-4 flex items-center justify-end text-right shrink-0 h-full`}>
-                    <span className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[9px] sm:text-[13px] opacity-60'}`}>
-                      {s.value}
+                    <span className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] sm:text-[13px] opacity-60'}`}>
+                      {s.value || '--'}
                     </span>
                   </div>
                 );
@@ -681,8 +704,8 @@ const ASRListItem = ({
       <div className="flex items-center gap-4 pr-2 shrink-0 h-full">
         <div className="flex flex-col items-end min-w-[60px] sm:min-w-[100px] text-right">
           {stats.map((s, idx) => (
-            <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.color || accentColor}` : 'text-[9px] opacity-60'}`}>
-              {s.value}
+            <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] opacity-60'}`}>
+              {s.value || '--'}
             </span>
           ))}
         </div>
@@ -867,7 +890,6 @@ const ASRInlineValueCard = ({ theme, type }) => {
       <div className="flex items-center gap-4">
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
-          <h5 className="text-xs font-black uppercase tracking-tight">{c.title}</h5>
           <p className="text-[10px] font-black opacity-60 uppercase whitespace-normal break-words">{c.desc}</p>
         </div>
       </div>
@@ -1139,7 +1161,7 @@ const ASRBaseModal = ({
 
     if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
-        scrollContainerRef.current.scrollTo({ top: targetScroll, left: 0, behavior: 'instant' });
+        scrollContainerRef.current.scrollTo({ top: targetScroll, left: 0, behavior: 'auto' });
     }
     
     prevIndexRef.current = currentIndex;
@@ -1731,7 +1753,7 @@ const useASRData = () => {
         const dataRows = csvToObjects(csv, RANKING_MAPPING);
         return dataRows.map((vals, i) => {
           const pName = (vals.name || "").trim();
-          if (pName.length < 2) return null; 
+          if (pName.length < 2 || isPlaceholderPlayer(pName)) return null; 
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
           const location = (vals.__raw[18] || vals.location || "").trim();
@@ -1798,7 +1820,7 @@ const useASRData = () => {
           const dataRows = csvToObjects(csv, SETTER_MAPPING);
           return dataRows.map((vals, i) => {
               const name = vals.name;
-              if (!name) return null;
+              if (!name || isPlaceholderPlayer(name)) return null;
               const fixed = fixCountryEntity(vals.country, vals.flag);
               const location = (vals.__raw[18] || vals.location || "").trim();
               return {
@@ -1974,16 +1996,18 @@ const useASRData = () => {
           };
         });
 
-        result.openRankings = Object.keys(athleteMetadata).map(pKey => {
-          const meta = athleteMetadata[pKey];
-          const perfs = result.openPerformances[pKey] || [];
-          const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
-          return {
-            ...meta, id: `open-${pKey}`, rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, 
-            runs: perfs.length, wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
-            sets: openAthleteSetCount[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
-          };
-        }).sort((a, b) => b.rating - a.rating); 
+        result.openRankings = Object.keys(athleteMetadata)
+          .filter(k => !isPlaceholderPlayer(athleteMetadata[k].name))
+          .map(pKey => {
+            const meta = athleteMetadata[pKey];
+            const perfs = result.openPerformances[pKey] || [];
+            const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
+            return {
+              ...meta, id: `open-${pKey}`, rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, 
+              runs: perfs.length, wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
+              sets: openAthleteSetCount[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
+            };
+          }).sort((a, b) => b.rating - a.rating); 
         return result;
       };
 
@@ -1994,7 +2018,7 @@ const useASRData = () => {
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
       
-      const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")]
+      const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")];
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
@@ -2060,8 +2084,8 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
         const entry = map[key];
         entry.courses++;
         entry.runs += (c.totalRuns || 0);
-        (c.athletesM || []).forEach(a => entry.playersSet.add(a[0]));
-        (c.athletesF || []).forEach(a => entry.playersSet.add(a[0]));
+        (c.athletesMAll || []).forEach(a => { if(!isPlaceholderPlayer(a[0])) entry.playersSet.add(a[0]); });
+        (c.athletesFAll || []).forEach(a => { if(!isPlaceholderPlayer(a[0])) entry.playersSet.add(a[0]); });
     });
     return Object.values(map)
         .map(item => ({ ...item, players: item.playersSet.size }))
@@ -2388,7 +2412,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                   aria-label="Search" 
                   value={search || ''} 
                   onChange={e => setSearch(e.target.value)}
-                  placeholder=""
+                  placeholder="SEARCH..."
                   className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full text-[12px] sm:text-[14px] font-black uppercase tracking-widest outline-none transition-all border-2 ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
@@ -2449,9 +2473,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
           <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
           {sortable && (
             <div className={`transition-all duration-300 shrink-0 ${isActive ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-              <label className="cursor-pointer">
-                <ChevronDown size={16} strokeWidth={3} className={`${isActive && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
-              </label>
+              <ChevronDown size={16} strokeWidth={3} className={`${isActive && medalSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
             </div>
           )}
         </div>
@@ -2562,9 +2584,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, tooltip,
         <span className="uppercase text-[10px] sm:text-[12px] font-black">{l}</span>
         {sortable && (
           <div className={`transition-all duration-300 shrink-0 ${isActive ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-60'}`}>
-            <label className="cursor-pointer">
-              <ChevronDown size={16} strokeWidth={3} className={`${isActive && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
-            </label>
+            <ChevronDown size={16} strokeWidth={3} className={`${isActive && activeSort.direction === 'ascending' ? 'rotate-180' : ''}`} />
           </div>
         )}
       </div>
@@ -2738,20 +2758,49 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   );
 };
 
-const ASRAnnouncementBar = ({ theme, onOpenIntro }) => {
+const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
+    const isAllTime = eventType === 'all-time';
+
     return (
       <div 
         onClick={onOpenIntro}
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap">
-          <span className="animate-pulse text-xs leading-none shrink-0">●</span>
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0">
-            ASR OPEN CLIPS DUE IN:
-          </span>
-          <div className="shrink-0 flex items-center">
-            <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
-          </div>
+          {isAllTime ? (
+            <div className="flex items-center gap-3 sm:gap-6 text-[9px] sm:text-[11px] uppercase tracking-[0.15em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic">
+              <div className="flex items-center gap-1.5">
+                <span className="opacity-60">PLAYERS:</span>
+                <ASRCountUp end={stats.players} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="opacity-60">COURSES:</span>
+                <ASRCountUp end={stats.courses} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="opacity-60">CITIES:</span>
+                <ASRCountUp end={stats.cities} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="opacity-60">COUNTRIES:</span>
+                <ASRCountUp end={stats.countries} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="opacity-60">RUNS:</span>
+                <ASRCountUp end={stats.runs} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <span className="animate-pulse text-xs leading-none shrink-0">●</span>
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0">
+                ASR OPEN CLIPS DUE IN:
+              </span>
+              <div className="shrink-0 flex items-center">
+                <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -2813,6 +2862,11 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading, hasError } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
+  // Clear search on view change to land on a clean page
+  useEffect(() => {
+    setSearch('');
+  }, [view, eventType]);
+
   useEffect(() => {
     histRef.current = modalHistory;
     idxRef.current = historyIndex;
@@ -2820,7 +2874,7 @@ export default function App() {
 
   useLayoutEffect(() => {
     const resetScroll = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     };
 
     resetScroll();
@@ -2841,16 +2895,36 @@ export default function App() {
       const meta = (cMet || {})[name] || {}; const contData = getContinentData(meta.country || 'UNKNOWN');
       const mRecs = athletesMAll.map(a => a[1]); const fRecs = athletesFAll.map(a => a[1]);
       const coordsMatch = String(meta.coordinates || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+
+      // Filtering out placeholders from counts
+      const filteredM = athletesMAll.filter(a => !isPlaceholderPlayer(dnMap[a[0]] || a[0]));
+      const filteredF = athletesFAll.filter(a => !isPlaceholderPlayer(dnMap[a[0]] || a[0]));
+
       return {
         name, city: meta.city || 'UNKNOWN', country: meta.country || 'UNKNOWN', flag: meta.flag || '🏳️', continent: contData.name, continentFlag: contData.flag,
         mRecord: mRecs.length ? Math.min(...mRecs) : null, fRecord: fRecs.length ? Math.min(...fRecs) : null,
-        totalAthletes: new Set([...athletesMAll.map(a => a[0]), ...athletesFAll.map(a => a[0])]).size, totalRuns: athletesMAll.length + athletesFAll.length,
+        totalAthletes: new Set([...filteredM.map(a => a[0]), ...filteredF.map(a => a[0])]).size, 
+        totalRuns: filteredM.length + filteredF.length,
         allTimeMRecord: mRecs.length ? Math.min(...mRecs) : null, allTimeFRecord: fRecs.length ? Math.min(...fRecs) : null,
-        allTimeAthletesM: athletesMAll, allTimeAthletesF: athletesFAll, totalAllTimeAthletes: new Set([...athletesMAll.map(a => a[0]), ...athletesFAll.map(a => a[0])]).size,
-        totalAllTimeRuns: athletesMAll.length + athletesFAll.length, parsedCoords: coordsMatch ? [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])] : null, ...meta
+        allTimeAthletesM: athletesMAll, allTimeAthletesF: athletesFAll,
+        athletesMAll, athletesFAll, // raw lists for HOF
+        totalAllTimeAthletes: new Set([...filteredM.map(a => a[0]), ...filteredF.map(a => a[0])]).size,
+        totalAllTimeRuns: filteredM.length + filteredF.length, 
+        parsedCoords: coordsMatch ? [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])] : null, ...meta
       };
     });
-  }, [lbAT, cMet, atRawBest]);
+  }, [lbAT, cMet, atRawBest, dnMap]);
+
+  // --- KPI CALCULATIONS ---
+  const kpiStats = useMemo(() => {
+    return {
+      players: (data || []).filter(p => !isPlaceholderPlayer(p.name)).length,
+      courses: masterCourseList.length,
+      cities: new Set(masterCourseList.map(c => c.city).filter(v => v && v !== 'UNKNOWN')).size,
+      countries: new Set(masterCourseList.map(c => c.country).filter(v => v && v !== 'UNKNOWN')).size,
+      runs: masterCourseList.reduce((acc, c) => acc + (c.totalAllTimeRuns || 0), 0)
+    };
+  }, [data, masterCourseList]);
 
   const settersWithImpact = useMemo(() => {
     return (settersData || []).map(s => {
@@ -2899,7 +2973,6 @@ export default function App() {
     if (isLoading) return;
     isInternalNavRef.current = true;
     
-    const currentHist = histRef.current;
     const currentIdx = idxRef.current;
     
     const nextItem = { type, data, roleOverride };
@@ -3177,7 +3250,7 @@ export default function App() {
         onPlayerClick={(p) => p && navigateToEntity('player', p)} 
         onCourseClick={(c) => c && navigateToEntity('course', c)} 
       />
-      <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} />
+      <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} eventType={eventType} stats={kpiStats} />
 
       <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
