@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v46_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v47_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -290,7 +290,9 @@ const CustomStyles = () => (
       --ticker-height: 32px;
       --nav-height-mobile: 68px;
       --nav-height-desktop: 76px;
-      --bottom-nav-height: 49px; /* Absolute base height matching Instagram */
+      
+      /* Instagram Style: Fixed total height that handles its own safe-area logic internally */
+      --bottom-nav-total-height: calc(50px + env(safe-area-inset-bottom, 0px));
     }
     
     html, body {
@@ -299,8 +301,8 @@ const CustomStyles = () => (
       overflow-x: hidden;
       background: #000;
       min-height: 100%;
+      /* Critical for PWA screen space usage */
       height: -webkit-fill-available;
-      /* Prevent the whole app from being pulled down */
       overscroll-behavior-y: none;
     }
 
@@ -427,6 +429,7 @@ const CustomStyles = () => (
       pointer-events: none; z-index: 0;
     }
 
+    /* Fixed Instagram-style dock */
     .bottom-nav-dock {
       position: fixed;
       bottom: 0;
@@ -434,13 +437,18 @@ const CustomStyles = () => (
       right: 0;
       z-index: 100;
       width: 100%;
-      background: transparent;
-      /* Ensures the dock itself doesn't contribute to scroll height */
+      height: var(--bottom-nav-total-height);
       pointer-events: none;
     }
     
     .bottom-nav-inner {
       pointer-events: auto;
+      height: 100%;
+      display: flex;
+      align-items: flex-start; /* Icons sit at the top of the bar */
+      justify-content: space-around;
+      padding-top: 5px; /* Visual spacing for icons */
+      box-sizing: border-box;
     }
 
     .stat-card-container { overflow: visible !important; }
@@ -2680,7 +2688,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                           shouldFade={item.shouldFade}
                           showRules={showRules}
                           stats={rowStats}
-                          videoUrl={item.demoVideo}
+                          videoUrl={item.videoUrl || item.demoVideo}
                           onClick={() => onRowClick?.(item)}
                         />
                     );
@@ -2738,16 +2746,16 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
 
 const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
-    { id: 'players', label: 'PLAYERS', icon: <Users size={22} /> },
-    { id: 'map', label: 'COURSES', icon: <MapPin size={22} /> },
-    { id: 'start', label: 'START', icon: <Play size={24} fill="currentColor" /> },
-    { id: 'setters', label: 'SETTERS', icon: <Waypoints size={22} /> },
-    { id: 'hof', label: 'HOF', icon: <Trophy size={22} /> }
+    { id: 'players', label: 'PLAYERS', icon: <Users size={24} /> },
+    { id: 'map', label: 'COURSES', icon: <MapPin size={24} /> },
+    { id: 'start', label: 'START', icon: <Play size={26} fill="currentColor" /> },
+    { id: 'setters', label: 'SETTERS', icon: <Waypoints size={24} /> },
+    { id: 'hof', label: 'HOF', icon: <Trophy size={24} /> }
   ];
 
   return (
     <div className="bottom-nav-dock">
-      <div className={`bottom-nav-inner w-full px-6 pt-1 pb-[var(--safe-bottom)] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
+      <div className={`bottom-nav-inner w-full border-t transition-all duration-500 ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900'} backdrop-blur-3xl`}>
         {items.map(item => (
           <button
             key={item.id}
@@ -2755,7 +2763,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 if (item.id === 'start') onOpenIntro();
                 else window.location.hash = `#/${item.id}`;
             }}
-            className={`flex flex-col items-center justify-center gap-0.5 px-2 transition-all duration-300 active:scale-[0.85] h-[var(--bottom-nav-height)] ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            className={`flex flex-col items-center justify-center gap-1 px-1 transition-all duration-300 active:scale-[0.8] h-[50px] w-full ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
           </button>
@@ -3247,7 +3255,7 @@ export default function App() {
   }), [rawCourseList]);
 
   return (
-    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(20px+var(--bottom-nav-height)+var(--safe-bottom))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-20 flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRTopShield theme={theme} />
       
@@ -3326,7 +3334,7 @@ export default function App() {
                         onSort={handleSort} 
                         data={list} 
                         onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : 'player', item, view === 'setters' ? 'setter' : null)} 
-                        showRules={false} 
+                        showRules={view === 'courses'} 
                         statKeys={view === 'setters' ? ['impact', 'sets'] : ['rating', 'runs']}
                       />
                     ) : (
