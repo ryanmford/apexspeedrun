@@ -291,8 +291,9 @@ const CustomStyles = () => (
       --nav-height-mobile: 68px;
       --nav-height-desktop: 76px;
       
-      /* Instagram Style: Fixed total height that handles its own safe-area logic internally */
-      --bottom-nav-total-height: calc(50px + env(safe-area-inset-bottom, 0px));
+      /* Instagram Standard: 48px icons height + safe area background */
+      --bottom-nav-base-height: 48px;
+      --bottom-nav-total-height: calc(var(--bottom-nav-base-height) + env(safe-area-inset-bottom, 0px));
     }
     
     html, body {
@@ -301,7 +302,6 @@ const CustomStyles = () => (
       overflow-x: hidden;
       background: #000;
       min-height: 100%;
-      /* Critical for PWA screen space usage */
       height: -webkit-fill-available;
       overscroll-behavior-y: none;
     }
@@ -439,16 +439,17 @@ const CustomStyles = () => (
       width: 100%;
       height: var(--bottom-nav-total-height);
       pointer-events: none;
+      box-shadow: 0 -1px 0 rgba(0,0,0,0.1);
     }
     
     .bottom-nav-inner {
       pointer-events: auto;
       height: 100%;
       display: flex;
-      align-items: flex-start; /* Icons sit at the top of the bar */
+      align-items: flex-start; /* Keeps icons in the top strip */
       justify-content: space-around;
-      padding-top: 5px; /* Visual spacing for icons */
       box-sizing: border-box;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     .stat-card-container { overflow: visible !important; }
@@ -2746,11 +2747,11 @@ const ASRNavBar = ({ theme, setTheme, view, setView, eventType, setEventType }) 
 
 const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
-    { id: 'players', label: 'PLAYERS', icon: <Users size={24} /> },
-    { id: 'map', label: 'COURSES', icon: <MapPin size={24} /> },
-    { id: 'start', label: 'START', icon: <Play size={26} fill="currentColor" /> },
-    { id: 'setters', label: 'SETTERS', icon: <Waypoints size={24} /> },
-    { id: 'hof', label: 'HOF', icon: <Trophy size={24} /> }
+    { id: 'players', label: 'PLAYERS', icon: <Users size={22} /> },
+    { id: 'map', label: 'COURSES', icon: <MapPin size={22} /> },
+    { id: 'start', label: 'START', icon: <Play size={24} fill="currentColor" /> },
+    { id: 'setters', label: 'SETTERS', icon: <Waypoints size={22} /> },
+    { id: 'hof', label: 'HOF', icon: <Trophy size={22} /> }
   ];
 
   return (
@@ -2763,7 +2764,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 if (item.id === 'start') onOpenIntro();
                 else window.location.hash = `#/${item.id}`;
             }}
-            className={`flex flex-col items-center justify-center gap-1 px-1 transition-all duration-300 active:scale-[0.8] h-[50px] w-full ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] h-[var(--bottom-nav-base-height)] w-full ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
           </button>
@@ -3255,7 +3256,7 @@ export default function App() {
   }), [rawCourseList]);
 
   return (
-    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-20 flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRTopShield theme={theme} />
       
@@ -3271,7 +3272,7 @@ export default function App() {
       <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
-      <div className="flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))] overflow-visible">
+      <div className={`flex-1 flex flex-col pt-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:pt-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))] pb-[var(--bottom-nav-total-height)] overflow-visible`}>
         <ASRBaseModal 
           isOpen={historyIndex >= 0} 
           onClose={closeModals} 
@@ -3298,7 +3299,7 @@ export default function App() {
 
         <ASRControlBar theme={theme} />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible">
+        <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible pb-10">
           <div className="w-full flex flex-col mb-4 animate-in fade-in duration-500">
              <h1 className="text-inherit text-3xl sm:text-[42px] leading-tight font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
                 {currentTitle}
@@ -3347,14 +3348,14 @@ export default function App() {
                 </div>
              )}
 
-             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pb-20 pt-8">
+             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pt-8">
                 {(view === 'map' || view === 'setters') && <ASRPromotionBanner type="setter" theme={theme} />}
                 {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
              </div>
            </div>}
+           <footer className="mt-20 text-center opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
         </main>
       </div>
-      <footer className="mt-40 text-center pb-[calc(100px+var(--safe-bottom))] opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
     </div>
   );
 }
