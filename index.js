@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v48_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v49_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -35,7 +35,7 @@ const THEME = {
   VALUE: "font-mono font-black tabular-nums num-col",
   
   INPUT: (t) => t === 'dark'
-    ? "bg-zinc-900/50 text-white focus:bg-zinc-900/80 border-zinc-800 focus:border-blue-600/60 shadow-2xl"
+    ? "bg-zinc-900/80 text-white focus:bg-black/90 border-zinc-800 focus:border-blue-600/60 shadow-2xl"
     : "bg-white text-slate-900 border-slate-200 focus:border-blue-600 shadow-xl",
   
   BUTTON_ROUNDED: "rounded-[0.9rem] sm:rounded-[1.8rem] transition-all whitespace-nowrap",
@@ -320,14 +320,14 @@ const CustomStyles = () => (
       color: white !important;
     }
 
-    /* Floating Navigation Styles - Unified & Polished */
+    /* Floating Navigation Styles - 3D Bubble Aesthetic */
     .floating-nav-dock {
       position: fixed;
       bottom: calc(24px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      width: min(92%, 440px);
+      width: min(88%, 420px);
       pointer-events: none;
     }
     
@@ -338,9 +338,13 @@ const CustomStyles = () => (
       align-items: center;
       justify-content: space-around;
       border-radius: 999px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      box-shadow: 
+        0 20px 40px rgba(0,0,0,0.6), 
+        0 0 0 1px rgba(255,255,255,0.08),
+        inset 0 1px 1px rgba(255,255,255,0.15);
       padding: 0 12px;
       position: relative;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
 
     .floating-nav-item-active-dot {
@@ -398,6 +402,15 @@ const CustomStyles = () => (
     .asr-marker-pin-wrap svg {
       filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
     }
+
+    /* Unified Search Bubble - Improved Mobile Visuals */
+    .search-bubble {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .search-bubble:focus-within {
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2), 0 0 0 2px rgba(37,99,235,0.4);
+    }
   `}</style>
 );
 
@@ -441,7 +454,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   return (
     <div 
       onClick={() => description && setIsFlipped(!isFlipped)}
-      className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
+      className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50 active:scale-95' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
     >
         <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
           <span className={`${isHeader ? THEME.HEADING_HOF : THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible ${isHeader ? 'opacity-100' : ''}`}>
@@ -565,7 +578,7 @@ const ASRListItem = ({
       <div 
         onClick={onClick} 
         className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 
-          ${onClick ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'} 
+          ${onClick ? 'cursor-pointer active:bg-blue-600/5' : 'cursor-default'} 
           ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/40' : 'hover:bg-slate-200/40') : ''} 
           ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
@@ -598,7 +611,7 @@ const ASRListItem = ({
                   <a 
                     href={videoUrl} target="_blank" rel="noopener noreferrer" 
                     onClick={e => e.stopPropagation()} 
-                    className="p-2.5 sm:p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                    className="p-2.5 sm:p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                   >
                     <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
                   </a>
@@ -615,7 +628,7 @@ const ASRListItem = ({
       onClick={onClick} 
       className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix 
         p-4 rounded-3xl border h-auto min-h-[72px] py-4
-        ${onClick ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'}
+        ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}
         ${theme === 'dark' 
           ? 'bg-zinc-900/30 border-zinc-900/50 shadow-md' 
           : 'bg-white border-slate-200 shadow-md'}
@@ -659,7 +672,7 @@ const ASRListItem = ({
             <a 
               href={videoUrl} target="_blank" rel="noopener noreferrer" 
               onClick={e => e.stopPropagation()} 
-              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+              className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
             >
               <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
             </a>
@@ -1050,14 +1063,14 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
                   href={SKOOL_LINK} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-2xl whitespace-nowrap"
+                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-2xl whitespace-nowrap active:scale-95"
                 >
                   {steps[step].action} <CornerUpRight className="w-5 h-5" strokeWidth={2.5} />
                 </a>
               ) : (
                 <button 
                   onClick={nextStep} 
-                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 text-xs sm:text-sm shadow-2xl whitespace-nowrap"
+                  className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 text-xs sm:text-sm shadow-2xl whitespace-nowrap active:scale-95"
                 >
                   Next <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
                 </button>
@@ -1120,11 +1133,11 @@ const ASRBaseModal = ({
         <div className={`shrink-0 flex flex-col p-6 sm:p-10 pt-8 sm:pt-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-900/50' : 'from-white'} to-transparent relative z-[140]`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                  <button aria-label="Go Back" onClick={onBack} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Go Back">
+                  <button aria-label="Go Back" onClick={onBack} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Go Back">
                       <CornerUpLeft className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                   </button>
                   {canGoForward && (
-                      <button aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0 animate-in fade-in duration-300" title="Go Forward">
+                      <button aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0 animate-in fade-in duration-300" title="Go Forward">
                           <CornerUpRight className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                       </button>
                   )}
@@ -1145,10 +1158,10 @@ const ASRBaseModal = ({
                   )}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Share Link">
+                <button onClick={handleShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Share Link">
                     <Share size={18} strokeWidth={2.5} />
                 </button>
-                <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all shrink-0" title="Close">
+                <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Close">
                     <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
                 </button>
               </div>
@@ -1289,7 +1302,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={e => e.stopPropagation()}
-                              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                              className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                               title="View Map"
                             >
                               <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
@@ -1389,7 +1402,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={e => e.stopPropagation()}
-                              className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                              className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                               title="View Map"
                             >
                               <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
@@ -1433,7 +1446,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
           <button 
             key={tab.id} 
             onClick={() => setActiveRole(tab.id)} 
-            className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeRole === tab.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+            className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap ${activeRole === tab.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
           >
             {tab.label}
           </button>
@@ -1510,7 +1523,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="p-2.5 rounded-xl transition-all hover:scale-125 text-slate-500 hover:text-blue-600 flex items-center justify-center"
+                            className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                             title="View Map"
                           >
                             <MapPin className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
@@ -1959,7 +1972,7 @@ const useASRData = () => {
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
       
-      const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")];
+      const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")] ;
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
@@ -2222,7 +2235,9 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
     };
 
     const displayData = (activeTab === 'cities' ? cities : (activeTab === 'countries' ? countries : conts)).filter(x => x.name !== 'GLOBAL');
-    const mapPillStyle = `px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all border-2 shadow-2xl backdrop-blur-md ${theme === 'dark' ? 'bg-zinc-950/80 border-blue-600/40 text-slate-100' : 'bg-white/90 border-blue-600 text-slate-900'}`;
+    
+    // Updated mapPillStyle with White Outline for 3D Pin aesthetics
+    const mapPillStyle = `px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all border-[2.5px] border-white shadow-2xl backdrop-blur-md ${theme === 'dark' ? 'bg-zinc-950/80 text-slate-100' : 'bg-white/90 text-slate-900'}`;
 
     if (!isScriptsLoaded) {
         return (
@@ -2245,7 +2260,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
                     <MapPin size={12} /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
                 </button>
-                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-2 backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 border-blue-600/30 text-white' : 'bg-white/98 border-blue-600/30 text-slate-900'} ios-clip-fix`}>
+                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-[2.5px] border-white backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 text-white' : 'bg-white/98 text-slate-900'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         {['continents', 'countries', 'cities'].map(t => (
                             <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
@@ -2343,18 +2358,27 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
 };
 
 const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, setMapMode }) => {
+  const placeholder = useMemo(() => {
+
+  }, [view]);
+
   return (
     <div className="w-full flex flex-col mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
             <div className="flex-1 relative group w-full">
-                <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600`}><Search size={18} strokeWidth={2.5} /></div>
+                <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600 shrink-0`}>
+                    <Search size={18} strokeWidth={2.5} />
+                </div>
+                {/* MOBILE ZOOM FIX: font-size set to 16px on mobile (hidden from user via sm:text-scale if needed, 
+                  but 16px is clean for accessibility). 
+                */}
                 <input 
                   type="text" 
                   aria-label="Search" 
                   value={search || ''} 
                   onChange={e => setSearch(e.target.value)}
-                  placeholder=""
-                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full text-[12px] sm:text-[14px] font-black uppercase tracking-widest outline-none transition-all border-2 ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
+                  placeholder={placeholder}
+                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full text-[16px] sm:text-[14px] font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
@@ -2363,10 +2387,10 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 )}
             </div>
             {view === 'players' && (
-                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
+                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900 shadow-2xl' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                            <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
+                            <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-90 ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
                               {g.l}
                             </button>
                         ))}
@@ -2374,18 +2398,18 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 </div>
             )}
             {view === 'map' && (
-                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
+                <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900 shadow-2xl' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         <button 
                           onClick={() => setMapMode('map')} 
-                          className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                          className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="Map View"
                         >
                           <MapIcon size={16} />
                         </button>
                         <button 
                           onClick={() => setMapMode('list')} 
-                          className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                          className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="List View"
                         >
                           <List size={16} />
@@ -2449,7 +2473,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
               </div>
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-900/30' : 'divide-slate-200'} overflow-visible`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
-                  <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}>
+                  <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer active:scale-95" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}>
                     <div className="flex items-center gap-3 text-left">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col text-left">
@@ -2486,7 +2510,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             </thead>
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-900/30' : 'divide-slate-200'}`}>
               {(stats.medalCount || []).map((c) => (
-                <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] transition-colors cursor-pointer text-inherit">
+                <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] active:bg-blue-600/10 transition-colors cursor-pointer text-inherit">
                   <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
                     <ASRRankBadge rank={c.displayRank} theme={theme} />
                   </td>
@@ -2628,7 +2652,7 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
     return (
         <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-900 text-slate-100 shadow-xl' : 'bg-white/80 border-slate-200 text-slate-900 shadow-sm'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)]`}>
             <div 
-                className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group" 
+                className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group active:scale-95 transition-transform" 
                 onClick={() => {
                     window.location.hash = '#/players';
                     setEventType('open');
@@ -2643,13 +2667,13 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
               <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
                 <button 
                   onClick={() => setEventType('open')} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   OPEN
                 </button>
                 <button 
                   onClick={() => setEventType('all-time')} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   ALL-TIME
                 </button>
@@ -2680,7 +2704,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 
   return (
     <div className="floating-nav-dock">
-      <div className={`floating-nav-inner transition-all duration-500 ${theme === 'dark' ? 'bg-zinc-900/95 text-white' : 'bg-white/98 text-zinc-900'} backdrop-blur-3xl`}>
+      <div className={`floating-nav-inner transition-all duration-500 ${theme === 'dark' ? 'bg-zinc-900/98 text-white' : 'bg-white/98 text-zinc-900'} backdrop-blur-3xl`}>
         {items.map(item => {
           const isActive = view === item.id;
           return (
@@ -2692,7 +2716,9 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
               }}
               className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] w-full relative h-full ${isActive ? 'text-blue-600' : 'opacity-30 hover:opacity-100 text-inherit'}`}
             >
-              {item.icon}
+              <div className={`transition-transform duration-300 ${isActive ? 'scale-110 -translate-y-1' : ''}`}>
+                {item.icon}
+              </div>
               {isActive && <div className="floating-nav-item-active-dot" />}
             </button>
           );
