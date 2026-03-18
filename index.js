@@ -290,7 +290,7 @@ const CustomStyles = () => (
       --ticker-height: 32px;
       --nav-height-mobile: 68px;
       --nav-height-desktop: 76px;
-      --bottom-nav-height: 64px;
+      --bottom-nav-height: 54px; /* Reduced for a more compact PWA look */
     }
     
     html, body {
@@ -2740,7 +2740,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 
   return (
     <div className="bottom-nav-dock">
-      <div className={`w-full px-6 pt-3 pb-[calc(10px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
+      <div className={`w-full px-6 pt-1.5 pb-[calc(6px+var(--safe-bottom))] border-t transition-all duration-500 flex items-center justify-around ${theme === 'dark' ? 'bg-black/95 border-zinc-800 text-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]'} backdrop-blur-2xl`}>
         {items.map(item => (
           <button
             key={item.id}
@@ -2748,7 +2748,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 if (item.id === 'start') onOpenIntro();
                 else window.location.hash = `#/${item.id}`;
             }}
-            className={`flex flex-col items-center justify-center gap-0.5 px-2 transition-all duration-300 active:scale-[0.85] ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
+            className={`flex flex-col items-center justify-center gap-0.5 px-2 transition-all duration-300 active:scale-[0.85] h-[48px] ${view === item.id ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
           >
             {item.icon}
           </button>
@@ -3240,7 +3240,7 @@ export default function App() {
   }), [rawCourseList]);
 
   return (
-    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(140px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans pb-[calc(100px+var(--bottom-nav-height))] flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       <CustomStyles />
       <ASRTopShield theme={theme} />
       
