@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v49_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v50_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -407,6 +407,9 @@ const CustomStyles = () => (
     .search-bubble {
         box-shadow: 0 10px 30px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05);
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        /* Prevent auto-zoom on mobile */
+        font-size: 16px !important;
+        touch-action: manipulation;
     }
     .search-bubble:focus-within {
         box-shadow: 0 15px 40px rgba(0,0,0,0.2), 0 0 0 2px rgba(37,99,235,0.4);
@@ -1158,7 +1161,7 @@ const ASRBaseModal = ({
                   )}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={handleShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Share Link">
+                <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Share Link">
                     <Share size={18} strokeWidth={2.5} />
                 </button>
                 <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Close">
@@ -1710,7 +1713,7 @@ const useASRData = () => {
           if (pName.length < 2 || isPlaceholderPlayer(pName)) return null; 
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
-          const location = (vals.__raw[18] || vals.location || "").trim();
+          const location = (vals.location || "").trim();
           const searchKey = `${pName} ${fixed.name} ${rawIg} ${location}`.toLowerCase();
           return { 
             id: `${gender}-${normalizeName(pName)}-${i}`, 
@@ -1727,7 +1730,7 @@ const useASRData = () => {
             contributionScore: cleanNumeric(vals.contribution) || 0, 
             allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0),
             avgTime: cleanNumeric(vals.avg) || 0,
-            certLevel: (vals.__raw[17] || vals.cert || "").trim().toUpperCase(),
+            certLevel: (vals.cert || "").trim().toUpperCase(),
             searchKey
           };
         }).filter(Boolean);
@@ -1776,7 +1779,7 @@ const useASRData = () => {
               const name = vals.name;
               if (!name || isPlaceholderPlayer(name)) return null;
               const fixed = fixCountryEntity(vals.country, vals.flag);
-              const location = (vals.__raw[18] || vals.location || "").trim();
+              const location = (vals.location || "").trim();
               return {
                   id: `setter-${normalizeName(name)}-${i}`,
                   name: name.trim(),
@@ -1788,7 +1791,7 @@ const useASRData = () => {
                   leads: cleanNumeric(vals.leads) || 0,
                   assists: cleanNumeric(vals.assists) || 0,
                   contributionScore: cleanNumeric(vals.contribution) || 0,
-                  certLevel: (vals.__raw[17] || vals.cert || "").trim().toUpperCase(),
+                  certLevel: (vals.cert || "").trim().toUpperCase(),
                   searchKey: `${name} ${fixed.name} ${location}`.toLowerCase()
               };
           }).filter(Boolean);
@@ -1842,9 +1845,6 @@ const useASRData = () => {
           if (rawFilmer) {
             const filmerKey = normalizeName(rawFilmer);
             filmerCreditsCount[filmerKey] = (filmerCreditsCount[filmerKey] || 0) + 1;
-            if (courseSetMap[normC]) {
-                courseSetMap[normC].filmer = rawFilmer;
-            }
           }
           
           if (!athleteMetadata[pKey]) {
@@ -2236,7 +2236,6 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
 
     const displayData = (activeTab === 'cities' ? cities : (activeTab === 'countries' ? countries : conts)).filter(x => x.name !== 'GLOBAL');
     
-    // Updated mapPillStyle with White Outline for 3D Pin aesthetics
     const mapPillStyle = `px-6 py-3.5 rounded-full font-black uppercase tracking-[0.15em] text-[10px] transition-all border-[2.5px] border-white shadow-2xl backdrop-blur-md ${theme === 'dark' ? 'bg-zinc-950/80 text-slate-100' : 'bg-white/90 text-slate-900'}`;
 
     if (!isScriptsLoaded) {
@@ -2359,7 +2358,12 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
 
 const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, setMapMode }) => {
   const placeholder = useMemo(() => {
-
+    switch (view) {
+      case 'players': return 'Search by player or region...';
+      case 'map': return 'Search by course or city...';
+      case 'setters': return 'Search by setter name...';
+      default: return 'Search the vault...';
+    }
   }, [view]);
 
   return (
@@ -2369,16 +2373,17 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600 shrink-0`}>
                     <Search size={18} strokeWidth={2.5} />
                 </div>
-                {/* MOBILE ZOOM FIX: font-size set to 16px on mobile (hidden from user via sm:text-scale if needed, 
-                  but 16px is clean for accessibility). 
-                */}
                 <input 
                   type="text" 
                   aria-label="Search" 
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck="false"
                   value={search || ''} 
                   onChange={e => setSearch(e.target.value)}
                   placeholder={placeholder}
-                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full text-[16px] sm:text-[14px] font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
+                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
@@ -2831,6 +2836,7 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
+  // Ensure search is empty on view change or mount
   useEffect(() => {
     setSearch('');
   }, [view, eventType]);
@@ -2934,7 +2940,6 @@ export default function App() {
   }, []);
 
   const navigateToEntity = useCallback((type, data, roleOverride = null) => {
-    if (isLoading) return;
     isInternalNavRef.current = true;
     
     const currentIdx = idxRef.current;
@@ -2947,7 +2952,7 @@ export default function App() {
     setHistoryIndex(currentIdx + 1);
 
     window.location.hash = `#/${type}/${normalizeName(data.name)}`;
-  }, [isLoading]);
+  }, []);
 
   const closeModals = useCallback(() => {
     isInternalNavRef.current = true;
@@ -3049,6 +3054,7 @@ export default function App() {
 
   const list = useMemo(() => {
     if (view === 'setters') return settersList;
+    if (view === 'map') return courseList;
     if (filteredAthletes.length === 0) return [];
     let qual = filteredAthletes.filter(p => isQualifiedAthlete(p, isAllTimeContext));
     let unranked = filteredAthletes.filter(p => !isQualifiedAthlete(p, isAllTimeContext));
@@ -3061,7 +3067,7 @@ export default function App() {
     let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
     if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
-  }, [filteredAthletes, settersList, isAllTimeContext, data, gen, view]);
+  }, [filteredAthletes, settersList, courseList, isAllTimeContext, data, gen, view]);
 
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
@@ -3251,54 +3257,50 @@ export default function App() {
              </h1>
           </div>
 
-          {isLoading && data.length === 0 ? <div className={`border-2 rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950 border-zinc-900' : 'bg-slate-200 border-slate-300'}`}>
-            <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
-            <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
-          </div> : 
-            view === 'hof' ? <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => navigateToEntity('player', p)} onSetterClick={s => navigateToEntity('setter', s)} onRegionClick={r => navigateToEntity('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} /> : 
-           <div className="space-y-4 overflow-visible">
-             <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
+          {isLoading && data.length === 0 ? (
+            <div className={`border-2 rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950 border-zinc-900' : 'bg-slate-200 border-slate-300'}`}>
+              <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
+              <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
+            </div>
+          ) : view === 'hof' ? (
+            <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => navigateToEntity('player', p)} onSetterClick={s => navigateToEntity('setter', s)} onRegionClick={r => navigateToEntity('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} />
+          ) : (
+            <div className="space-y-4 overflow-visible">
+              <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
 
-             {view === 'map' ? (
-               mapMode === 'map' ? (
-                 <ASRGlobalMap courses={rawCourseList} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries} theme={theme} onCourseClick={navigateToEntity} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
-               ) : (
-                <div className={`relative border rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
-                  <div className="overflow-visible w-full text-left scrollbar-hide">
-                      <ASRDataTable theme={theme} columns={COURSE_COLS} sort={viewSorts.courses} onSort={handleSort} data={courseList} onRowClick={item => navigateToEntity('course', item)} showRules={true} statKeys={['totalAthletes']} />
-                  </div>
-                </div>
-               )
-             ) : (
+              {view === 'map' && mapMode === 'map' ? (
+                <ASRGlobalMap courses={rawCourseList} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries} theme={theme} onCourseClick={(t, item) => navigateToEntity('course', item)} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
+              ) : (
                 <div className={`relative border rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
                     {list.length > 0 ? (
                       <ASRDataTable 
                         theme={theme} 
-                        columns={view === 'setters' ? SETTER_COLS : PLAYER_COLS} 
-                        sort={view === 'setters' ? viewSorts.setters : viewSorts.players} 
+                        columns={view === 'setters' ? SETTER_COLS : (view === 'map' ? COURSE_COLS : PLAYER_COLS)} 
+                        sort={view === 'setters' ? viewSorts.setters : (view === 'map' ? viewSorts.courses : viewSorts.players)} 
                         onSort={handleSort} 
                         data={list} 
-                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : 'player', item, view === 'setters' ? 'setter' : null)} 
-                        showRules={view === 'courses'} 
-                        statKeys={view === 'setters' ? ['impact', 'sets'] : ['rating', 'runs']}
+                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : 'player'), item, view === 'setters' ? 'setter' : null)} 
+                        showRules={view === 'map'} 
+                        statKeys={view === 'setters' ? ['impact', 'sets'] : (view === 'map' ? ['totalAthletes'] : ['rating', 'runs'])}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
                         <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
-                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">SCANNING LIVE STATS</h3>
+                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">{search ? "NO RESULTS FOUND" : "SCANNING LIVE STATS"}</h3>
                       </div>
                     )}
                   </div>
                 </div>
-             )}
+              )}
 
-             <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pt-8">
+              <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pt-8">
                 {(view === 'map' || view === 'setters') && <ASRPromotionBanner type="setter" theme={theme} />}
                 {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
-             </div>
-           </div>}
-            <footer className="mt-20 text-center opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
+              </div>
+            </div>
+          )}
+          <footer className="mt-20 text-center opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
         </main>
       </div>
     </div>
