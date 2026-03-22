@@ -1273,14 +1273,13 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         const impact = setterData.impact || setterCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
         const setsCount = setterData.sets || setterCourses.length;
 
+        // Unified 8 stats
         const setterStats = [
             { l: 'LEVEL', v: String(setterData.certLevel || '-') },
             { l: 'IMPACT', v: String(Math.round(impact)), c: 'text-blue-600' }, 
             { l: 'SETS', v: String(setsCount) },
             { l: 'LEADS', v: String(setterData.leads || 0) },
             { l: 'ASSISTS', v: String(setterData.assists || 0) },
-            { l: 'CITIES', v: String(setterData.citiesCount || 0) },
-            { l: 'COUNTRIES', v: String(new Set(setterCourses.map(c => c.country).filter(Boolean)).size || 0) },
             { l: 'FILMS', v: String(setterData.films || 0) },
             { l: 'AVG LENGTH', v: setterData.avgLength ? String(Math.round(setterData.avgLength)) : '0' },
             { l: '🪙', v: String(Math.round(setterData.contributionScore || identity.contributionScore || 0)) }
@@ -1371,6 +1370,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const totalRunTime = courseData.reduce((sum, run) => sum + (run.num || 0), 0);
     const avgRunTime = runsInContext > 0 ? (totalRunTime / runsInContext).toFixed(2) : '0.00';
     
+    // Unified 8 stats
     const playerStats = [
         { l: 'RANK', v: String(currentRankValue) },
         { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
@@ -1378,15 +1378,13 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         { l: 'RUNS', v: String(runsInContext) }, 
         { l: 'WINS', v: String(metaSource.wins || 0) }, 
         { l: 'WIN %', v: ((metaSource.wins / (runsInContext || 1)) * 100).toFixed(2) }, 
-        { l: 'CITIES', v: String(new Set(courseData.map(c => c.city).filter(Boolean)).size || 0) },
-        { l: 'COUNTRIES', v: String(new Set(courseData.map(c => c.country).filter(Boolean)).size || 0) },
         { l: 'AVG TIME', v: String(avgRunTime) },
         { l: '🔥', v: String(isAllTime ? (identity.allTimeFireCount || 0) : (identity.openStats?.openFireCount || 0)), g: 'glow-blue' }
     ];
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
                   <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
                 ))}
@@ -2734,7 +2732,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
-            <div className="flex items-center gap-2 sm:gap-6 text-[8px] sm:text-[11px] uppercase tracking-tighter sm:tracking-[0.15em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
+            <div className="flex items-center gap-2 sm:gap-6 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
               <div className="flex items-center gap-1">
                 <span className="opacity-60">PLAYERS:</span>
                 <ASRCountUp end={stats.players} />
@@ -2746,14 +2744,6 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
               <div className="flex items-center gap-1">
                 <span className="opacity-60">CITIES:</span>
                 <ASRCountUp end={stats.cities} />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="opacity-60">COUNTRIES:</span>
-                <ASRCountUp end={stats.countries} />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="opacity-60">RUNS:</span>
-                <ASRCountUp end={stats.runs} />
               </div>
             </div>
           ) : (
