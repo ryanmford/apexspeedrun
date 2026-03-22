@@ -2357,15 +2357,6 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
 };
 
 const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, setMapMode }) => {
-  const placeholder = useMemo(() => {
-    switch (view) {
-      case 'players': return 'Search by player or region...';
-      case 'map': return 'Search by course or city...';
-      case 'setters': return 'Search by setter name...';
-      default: return 'Search the vault...';
-    }
-  }, [view]);
-
   return (
     <div className="w-full flex flex-col mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
@@ -2382,7 +2373,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                   spellCheck="false"
                   value={search || ''} 
                   onChange={e => setSearch(e.target.value)}
-                  placeholder={placeholder}
+                  placeholder=""
                   className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
@@ -2743,30 +2734,30 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
-            <div className="flex items-center gap-3 sm:gap-6 text-[9px] sm:text-[11px] uppercase tracking-[0.15em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 sm:gap-6 text-[8px] sm:text-[11px] uppercase tracking-tighter sm:tracking-[0.15em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
+              <div className="flex items-center gap-1">
                 <span className="opacity-60">PLAYERS:</span>
                 <ASRCountUp end={stats.players} />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="opacity-60">COURSES:</span>
                 <ASRCountUp end={stats.courses} />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="opacity-60">CITIES:</span>
                 <ASRCountUp end={stats.cities} />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="opacity-60">COUNTRIES:</span>
                 <ASRCountUp end={stats.countries} />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="opacity-60">RUNS:</span>
                 <ASRCountUp end={stats.runs} />
               </div>
             </div>
           ) : (
-            <>
+            <div className="flex items-center gap-3 text-inherit">
               <span className="animate-pulse text-xs leading-none shrink-0">●</span>
               <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0">
                 ASR OPEN CLIPS DUE IN:
@@ -2774,7 +2765,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
               <div className="shrink-0 flex items-center">
                 <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -2836,7 +2827,7 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  // Ensure search is empty on view change or mount
+  // Clear search on view change or mount
   useEffect(() => {
     setSearch('');
   }, [view, eventType]);
