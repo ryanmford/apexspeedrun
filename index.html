@@ -4,17 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Apex Speed Run</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-B4W7YVST8N');
+    </script>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts (Noto Sans for consistency) -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons (Browser Ready) -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Custom Styles (CSS Variables for Layout) -->
     <link rel="stylesheet" href="styles.css">
 
     <style>
@@ -41,13 +46,8 @@
     </style>
 </head>
 <body>
-    <!-- React Mount Point -->
     <div id="root"></div>
 
-    <!-- 
-      FIXED: Added type="module" to handle React imports correctly.
-      Note: Ensure your React code is in index.js (or update the src below to app.js)
-    -->
     <script type="module" src="index.js"></script>
 </body>
 </html>
