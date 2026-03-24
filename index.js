@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v50_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v55_stable'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -66,14 +66,45 @@ const normalizeCountryName = (name) => {
     n = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
     const map = {
-        'UNITED STATES OF AMERICA': 'USA', 'UNITED STATES': 'USA', 'US': 'USA',
-        'UNITED KINGDOM': 'UK', 'GREAT BRITAIN': 'UK', 'ENGLAND': 'UK',
+        'UNITED STATES OF AMERICA': 'USA', 'UNITED STATES': 'USA', 'US': 'USA', 'USA': 'USA',
+        'UNITED KINGDOM': 'UK', 'GREAT BRITAIN': 'UK', 'ENGLAND': 'UK', 'UK': 'UK',
         'SCOTLAND': 'UK', 'WALES': 'UK', 'NORTHERN IRELAND': 'UK',
         'SOUTH KOREA': 'KOREA', 'REPUBLIC OF KOREA': 'KOREA', 'RUSSIAN FEDERATION': 'RUSSIA',
         'THE NETHERLANDS': 'NETHERLANDS', 'CZECH REPUBLIC': 'CZECHIA',
-        'UNITED MEXICAN STATES': 'MEXICO', 'MACAO': 'MACAU'
+        'UNITED MEXICAN STATES': 'MEXICO', 'MACAO': 'MACAU', 'MACAU SAR': 'MACAU',
+        'ISRAEL': 'ISRAEL', 'TAIWAN': 'TAIWAN', 'SWITZERLAND': 'SWITZERLAND'
     };
     return map[n] || n;
+};
+
+const fixCountryEntity = (name, flag) => {
+    let n = String(name || "").trim();
+    let f = String(flag || "").trim();
+
+    const flagRegex = /[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/;
+    if (flagRegex.test(n)) return { name: "UNKNOWN", flag: n };
+    if (flagRegex.test(f)) return { name: n || "UNKNOWN", flag: f };
+
+    const normalized = normalizeCountryName(n);
+
+    const flagMandatoryMap = {
+      "USA": "🇺🇸", "UNITED STATES": "🇺🇸", "UNITED STATES OF AMERICA": "🇺🇸", "US": "🇺🇸",
+      "UK": "🇬🇧", "UNITED KINGDOM": "🇬🇧", "GREAT BRITAIN": "🇬🇧", "ENGLAND": "🇬🇧", "SCOTLAND": "🇬🇧", "WALES": "🇬🇧",
+      "CANADA": "🇨🇦", "MEXICO": "🇲🇽", "FRANCE": "🇫🇷", "GERMANY": "🇩🇪",
+      "SPAIN": "🇪🇸", "ITALY": "🇮🇹", "JAPAN": "🇯🇵", "AUSTRALIA": "🇦🇺",
+      "BRAZIL": "🇧🇷", "PUERTO RICO": "🇵🇷", "CZECHIA": "🇨🇿", "CZECH REPUBLIC": "🇨🇿",
+      "NETHERLANDS": "🇳🇱", "SWITZERLAND": "🇨🇭", "AUSTRIA": "🇦🇹", "BELGIUM": "🇧🇪",
+      "SWEDEN": "🇸🇪", "NORWAY": "🇳🇴", "FINLAND": "🇫🇮", "DENMARK": "🇩🇰",
+      "KOREA": "🇰🇷", "SOUTH KOREA": "🇰🇷", "CHINA": "🇨🇳", "MACAU": "🇲🇴", "MACAO": "🇲🇴", "HONG KONG": "🇭🇰",
+      "NEW ZEALAND": "🇳🇿", "SINGAPORE": "🇸🇬", "IRELAND": "🇮🇪", "PORTUGAL": "🇵🇹",
+      "POLAND": "🇵🇱", "SOUTH AFRICA": "🇿🇦", "ARGENTINA": "🇦🇷", "CHILE": "🇨🇱", "ISRAEL": "🇮🇱", "TAIWAN": "🇹🇼",
+      "RUSSIA": "🇷🇺", "UKRAINE": "🇺🇦", "VIETNAM": "🇻🇳", "THAILAND": "🇹🇭", "MALAYSIA": "🇲🇾", "PHILIPPINES": "🇵🇭"
+    };
+
+    const finalName = normalized || "UNKNOWN";
+    const finalFlag = flagMandatoryMap[finalName] || (f && f !== "🏳️" ? f : "🏳️");
+
+    return { name: finalName, flag: finalFlag };
 };
 
 const cleanNumeric = (v) => {
@@ -122,25 +153,14 @@ const csvToObjects = (csv, mapping, headerRowIndex = 0) => {
   });
 };
 
-const fixCountryEntity = (name, flag) => {
-    const n = (name || "").toUpperCase().trim();
-    const f = (flag || "").trim();
-
-    const flagMandatoryMap = {
-      "USA": "🇺🇸", "UNITED STATES": "🇺🇸", "UNITED STATES OF AMERICA": "🇺🇸",
-      "UK": "🇬🇧", "UNITED KINGDOM": "🇬🇧", "GREAT BRITAIN": "🇬🇧",
-      "CANADA": "🇨🇦", "MEXICO": "🇲🇽", "FRANCE": "🇫🇷", "GERMANY": "🇩🇪",
-      "SPAIN": "🇪🇸", "ITALY": "🇮🇹", "JAPAN": "🇯🇵", "AUSTRALIA": "🇦🇺",
-      "BRAZIL": "🇧🇷", "PUERTO RICO": "🇵🇷", "CZECHIA": "🇨🇿", "CZECH REPUBLIC": "🇨🇿",
-      "NETHERLANDS": "🇳🇱", "SWITZERLAND": "🇨🇭", "AUSTRIA": "🇦🇹", "BELGIUM": "🇧🇪",
-      "SWEDEN": "🇸🇪", "NORWAY": "🇳🇴", "FINLAND": "🇫🇮", "DENMARK": "🇩🇰",
-      "KOREA": "🇰🇷", "SOUTH KOREA": "🇰🇷", "CHINA": "🇨🇳"
-    };
-
-    const finalName = n || "UNKNOWN";
-    const finalFlag = flagMandatoryMap[finalName] || (f && f !== "🏳️" ? f : "🏳️");
-
-    return { name: finalName, flag: finalFlag };
+const formatFlagsWithSpace = (f) => {
+    if (!f) return "";
+    const flagRegex = /[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g;
+    const matches = String(f).match(flagRegex);
+    if (matches && matches.length > 1) {
+        return matches.join(' ');
+    }
+    return f;
 };
 
 const robustSort = (a, b, key, dir) => {
@@ -320,7 +340,6 @@ const CustomStyles = () => (
       color: white !important;
     }
 
-    /* Floating Navigation Styles - 3D Bubble Aesthetic */
     .floating-nav-dock {
       position: fixed;
       bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -383,7 +402,6 @@ const CustomStyles = () => (
       background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
     }
 
-    /* Map Overrides - White Outlines Like Pins */
     .asr-cluster {
       background: rgba(37, 99, 235, 0.9);
       border: 2.5px solid #ffffff;
@@ -403,11 +421,9 @@ const CustomStyles = () => (
       filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
     }
 
-    /* Unified Search Bubble - Improved Mobile Visuals */
     .search-bubble {
         box-shadow: 0 10px 30px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05);
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        /* Prevent auto-zoom on mobile */
         font-size: 16px !important;
         touch-action: manipulation;
     }
@@ -456,7 +472,12 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
 
   return (
     <div 
-      onClick={() => description && setIsFlipped(!isFlipped)}
+      onClick={(e) => {
+        if (description) {
+          e.stopPropagation();
+          setIsFlipped(!isFlipped);
+        }
+      }}
       className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50 active:scale-95' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
     >
         <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
@@ -527,7 +548,7 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
 const formatLocationSubtitle = (hometown, country, flags) => {
     const h = String(hometown || "").trim();
     const c = String(country || "").trim();
-    const f = String(flags || "").trim();
+    const f = formatFlagsWithSpace(String(flags || "").trim());
 
     let displayLoc = h || c;
     
@@ -542,7 +563,7 @@ const formatLocationSubtitle = (hometown, country, flags) => {
 };
 
 const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
-  const isUnranked = rank === "UR" || rank === "UR ";
+  const isUnranked = String(rank || "").trim() === "UR";
   const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
   const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-7 h-7 sm:w-10 sm:h-10';
   const textClass = size === 'lg' ? 'text-sm sm:text-base' : 'text-[10px] sm:text-sm';
@@ -1165,7 +1186,7 @@ const ASRBaseModal = ({
                     <Share size={18} strokeWidth={2.5} />
                 </button>
                 <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Close">
-                    <X className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                    <X size={20} strokeWidth={2.5} />
                 </button>
               </div>
           </div>
@@ -1273,7 +1294,6 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         const impact = setterData.impact || setterCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
         const setsCount = setterData.sets || setterCourses.length;
 
-        // Unified 8 stats
         const setterStats = [
             { l: 'LEVEL', v: String(setterData.certLevel || '-') },
             { l: 'IMPACT', v: String(Math.round(impact)), c: 'text-blue-600' }, 
@@ -1370,7 +1390,6 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const totalRunTime = courseData.reduce((sum, run) => sum + (run.num || 0), 0);
     const avgRunTime = runsInContext > 0 ? (totalRunTime / runsInContext).toFixed(2) : '0.00';
     
-    // Unified 8 stats
     const playerStats = [
         { l: 'RANK', v: String(currentRankValue) },
         { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
@@ -1623,7 +1642,7 @@ const useASRData = () => {
     const cacheBucket = Math.floor(Date.now() / REFRESH_INTERVAL); 
     const SPREADSHEET_ID = '1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4';
     
-    const getCsv = (q) => encodeURI(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&${q}&cb=${cacheBucket}`);
+    const getDocsUrl = (gid) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}&cb=${cacheBucket}`;
 
     const safeFetch = async (url) => {
         try {
@@ -1634,13 +1653,11 @@ const useASRData = () => {
     };
 
     try {
-      const [rM, rF, rLive, rSet, rSettersM, rSettersF] = await Promise.all([
-        safeFetch(getCsv('gid=595214914')), 
-        safeFetch(getCsv('gid=566627843')), 
-        safeFetch(getCsv('gid=623600169')), 
-        safeFetch(getCsv('gid=1961325686')), 
-        safeFetch(getCsv('gid=595214914')), 
-        safeFetch(getCsv('gid=566627843'))  
+      const [rM, rF, rLive, rSet] = await Promise.all([
+        safeFetch(getDocsUrl('595214914')), 
+        safeFetch(getDocsUrl('566627843')), 
+        safeFetch(getDocsUrl('623600169')), 
+        safeFetch(getDocsUrl('1961325686'))
       ]);
       
       const hasTotalError = rM === null && rF === null && rLive === null;
@@ -1660,7 +1677,8 @@ const useASRData = () => {
         ig: ['ig', 'instagram', 'social'],
         avg: ['avg time', 'average', 'avg'],
         cert: ['cert', 'level', 'certification'],
-        location: ['location', 'city', 'region']
+        location: ['location', 'city', 'region', 'hometown'], 
+        homeGym: ['gym', 'home gym']
       };
 
       const SET_LIST_MAPPING = {
@@ -1690,7 +1708,8 @@ const useASRData = () => {
         ig: ['ig', 'instagram'],
         contribution: ['🪙', 'contribution'],
         cert: ['cert', 'level', 'certification'],
-        location: ['location', 'city']
+        location: ['location', 'city'],
+        homeGym: ['gym', 'home gym']
       };
 
       const LIVE_FEED_MAPPING = {
@@ -1701,6 +1720,7 @@ const useASRData = () => {
         date: ['date', 'day', 'timestamp'],
         tag: ['tag', 'event', 'category', 'season'],
         proof: ['proof', 'link', 'video', 'url'],
+        fire: ['🔥'],
         filmer: ['filmer', 'videographer', 'filmed by']
       };
 
@@ -1709,16 +1729,33 @@ const useASRData = () => {
         return dataRows.map((vals, i) => {
           const pName = (vals.name || "").trim();
           if (pName.length < 2 || isPlaceholderPlayer(pName)) return null; 
+          
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
-          const location = (vals.location || "").trim();
-          const searchKey = `${pName} ${fixed.name} ${rawIg} ${location}`.toLowerCase();
+          
+          // Column S (18) = Hometown 
+          // Column T (19) = Hometown Flag Emoji
+          // Column U (20) = Home Gym Location
+          // Column W (22) = Home Gym Flag Emoji
+          const pLocation = vals.__raw ? (vals.__raw[18] || "").trim() : (vals.location || "").trim();
+          const pHomeGym = vals.__raw ? (vals.__raw[20] || "").trim() : (vals.homeGym || "").trim();
+
+          const townFlagRaw = vals.__raw ? (vals.__raw[19] || "").trim() : "";
+          const gymFlagRaw = vals.__raw ? (vals.__raw[22] || "").trim() : "";
+          
+          const townEntity = fixCountryEntity("", townFlagRaw);
+          const gymEntity = fixCountryEntity("", gymFlagRaw);
+
+          const searchKey = `${pName} ${fixed.name} ${rawIg} ${pLocation} ${pHomeGym}`.toLowerCase();
           return { 
             id: `${gender}-${normalizeName(pName)}-${i}`, 
             name: pName, pKey: normalizeName(pName), gender, 
             countryName: fixed.name, 
             region: fixed.flag, 
-            location,
+            location: pLocation,
+            homeGym: pHomeGym,
+            townFlag: townEntity.flag,
+            gymFlag: gymEntity.flag,
             igHandle: rawIg,
             rating: cleanNumeric(vals.rating) || 0, 
             runs: Math.floor(cleanNumeric(vals.runs) || 0), 
@@ -1741,10 +1778,10 @@ const useASRData = () => {
               const course = (vals.course || "").trim().toUpperCase();
               if (course) {
                   const fixed = fixCountryEntity(vals.country, vals.flag);
-                  const valAG = String(vals.__raw[32] || "").toUpperCase().trim();
-                  const rulesVideoFromCol = String(vals.__raw[31] || "").trim();
-                  const sponsorName = (vals.__raw[34] || "").trim();
-                  const sponsorLink = (vals.__raw[35] || "").trim();
+                  const valAG = vals.__raw ? String(vals.__raw[32] || "").toUpperCase().trim() : "";
+                  const rulesVideoFromCol = vals.__raw ? String(vals.__raw[31] || "").trim() : "";
+                  const sponsorName = vals.__raw ? (vals.__raw[34] || "").trim() : "";
+                  const sponsorLink = vals.__raw ? (vals.__raw[35] || "").trim() : "";
                   
                   const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
                   map[course] = { 
@@ -1777,12 +1814,23 @@ const useASRData = () => {
               const name = vals.name;
               if (!name || isPlaceholderPlayer(name)) return null;
               const fixed = fixCountryEntity(vals.country, vals.flag);
-              const location = (vals.location || "").trim();
+              
+              const pLocation = vals.__raw ? (vals.__raw[18] || "").trim() : (vals.location || "").trim();
+              const pHomeGym = vals.__raw ? (vals.__raw[20] || "").trim() : (vals.homeGym || "").trim();
+
+              const townFlagRaw = vals.__raw ? (vals.__raw[19] || "").trim() : "";
+              const gymFlagRaw = vals.__raw ? (vals.__raw[22] || "").trim() : "";
+              const townEntity = fixCountryEntity("", townFlagRaw);
+              const gymEntity = fixCountryEntity("", gymFlagRaw);
+
               return {
                   id: `setter-${normalizeName(name)}-${i}`,
                   name: name.trim(),
                   region: fixed.flag || '🏳️',
-                  location,
+                  location: pLocation,
+                  homeGym: pHomeGym,
+                  townFlag: townEntity.flag,
+                  gymFlag: gymEntity.flag,
                   countryName: fixed.name,
                   igHandle: (vals.ig || "").replace(/@/g, '').trim(),
                   sets: cleanNumeric(vals.sets) || 0,
@@ -1790,7 +1838,7 @@ const useASRData = () => {
                   assists: cleanNumeric(vals.assists) || 0,
                   contributionScore: cleanNumeric(vals.contribution) || 0,
                   certLevel: (vals.cert || "").trim().toUpperCase(),
-                  searchKey: `${name} ${fixed.name} ${location}`.toLowerCase()
+                  searchKey: `${name} ${fixed.name} ${pLocation} ${pHomeGym}`.toLowerCase()
               };
           }).filter(Boolean);
       };
@@ -1839,14 +1887,14 @@ const useASRData = () => {
           
           if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
 
-          const rawFilmer = (vals.filmer || vals.__raw[8] || "").trim();
+          const rawFilmer = (vals.filmer || (vals.__raw && vals.__raw[8]) || "").trim();
           if (rawFilmer) {
             const filmerKey = normalizeName(rawFilmer);
             filmerCreditsCount[filmerKey] = (filmerCreditsCount[filmerKey] || 0) + 1;
           }
           
           if (!athleteMetadata[pKey]) {
-              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', countryName: '', searchKey: pName.toLowerCase() };
+              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', homeGym: '', countryName: '', searchKey: pName.toLowerCase() };
           } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
               athleteMetadata[pKey].name = pName;
               athleteDisplayNameMap[pKey] = pName;
@@ -1854,7 +1902,7 @@ const useASRData = () => {
 
           if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
           if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
-            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
           }
           if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
           if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
@@ -1867,7 +1915,7 @@ const useASRData = () => {
           if ((isASROpenTag || isInOpenWindow) && isCourseOpen) {
             if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
             if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
-              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || vals.__raw[7] || "" };
+              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
             }
             if (!openCourseLeaderboards[pGender][normC]) openCourseLeaderboards[pGender][normC] = {};
             if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
@@ -1970,7 +2018,7 @@ const useASRData = () => {
       pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
       
-      const allSetters = [...processSettersData(rSettersM || ""), ...processSettersData(rSettersF || "")] ;
+      const allSetters = [...processSettersData(rM || ""), ...processSettersData(rF || "")] ;
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
@@ -2007,7 +2055,7 @@ const useFilteredData = (source, searchTerm, sortConfig, predicate = null) => {
   }, [source, searchTerm, sortConfig, predicate]);
 };
 
-const getAggregatedStats = (rawCourseList, groupBy) => {
+const getAggregatedStats = (rawCourseList, groupBy, dnMap = {}) => {
     const map = {};
     (rawCourseList || []).forEach(c => {
         let name = c[groupBy];
@@ -2036,8 +2084,8 @@ const getAggregatedStats = (rawCourseList, groupBy) => {
         const entry = map[key];
         entry.courses++;
         entry.runs += (c.totalRuns || 0);
-        (c.athletesMAll || []).forEach(a => { if(!isPlaceholderPlayer(a[0])) entry.playersSet.add(a[0]); });
-        (c.athletesFAll || []).forEach(a => { if(!isPlaceholderPlayer(a[0])) entry.playersSet.add(a[0]); });
+        (c.athletesMAll || []).forEach(a => { if(!isPlaceholderPlayer(dnMap[a[0]] || a[0])) entry.playersSet.add(a[0]); });
+        (c.athletesFAll || []).forEach(a => { if(!isPlaceholderPlayer(dnMap[a[0]] || a[0])) entry.playersSet.add(a[0]); });
     });
     return Object.values(map)
         .map(item => ({ ...item, players: item.playersSet.size }))
@@ -2334,7 +2382,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                     
                     const emojiLine = (
                       <div className="flex items-center gap-0">
-                        {meta.region && <span className="emoji-slot">{meta.region}</span>}
+                        {meta.region && <span className="emoji-slot">{formatFlagsWithSpace(meta.region)}</span>}
                         {medal && <span className="emoji-slot">{medal}</span>}
                         {fireArray.map((f, idx) => <span key={idx} className="emoji-slot">{f}</span>)}
                       </div>
@@ -2424,7 +2472,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
     const isActive = medalSort.key === k;
     return (
       <th 
-        className={`${w} px-2 sm:px-4 py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} border-b-2 border-transparent`}
+        className={`${w} px-2 sm:px-4 py-8 ${sortable ? 'group' : 'cursor-default'} select-none transition-all ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} border-b-2 border-transparent`}
         onClick={() => sortable && setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
       >
         <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
@@ -2472,7 +2520,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col text-left">
                         <span className="text-xs font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors">{p.name}</span>
-                        <span className="text-sm mt-1">{p.region}</span>
+                        <span className="text-sm mt-1">{formatFlagsWithSpace(p.region)}</span>
                       </div>
                     </div>
                     
@@ -2511,7 +2559,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   <td className="px-2 sm:px-4 py-6 text-left">
                     <div className="flex items-center gap-3 text-left">
                       <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors">{c.name}</span>
-                      <span className="emoji-slot text-xl sm:text-2xl shrink-0">{c.flag}</span>
+                      <span className="emoji-slot text-xl sm:text-2xl shrink-0">{formatFlagsWithSpace(c.flag)}</span>
                     </div>
                   </td>
                   <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.gold)}</td>
@@ -2535,7 +2583,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, paddingC
   const isActive = activeSort && activeSort.key === k;
   return (
     <div 
-        className={`${w} ${paddingClass} py-8 ${sortable ? 'cursor-pointer group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
+        className={`${w} ${paddingClass} py-8 ${sortable ? 'group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
         onClick={() => sortable && handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
     >
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
@@ -2626,7 +2674,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
-                          rank={item.currentRank} title={item.name} subtitle={item.region || item.flag || ''} 
+                          rank={item.currentRank} title={item.name} subtitle={formatFlagsWithSpace(item.region || item.flag || '')} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           showRules={showRules}
@@ -2730,20 +2778,28 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
         onClick={onOpenIntro}
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
-        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
+        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
-            <div className="flex items-center gap-2 sm:gap-6 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-4 sm:gap-8 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
+              <div className="flex items-center gap-1.5">
                 <span className="opacity-60">PLAYERS:</span>
                 <ASRCountUp end={stats.players} />
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="opacity-60">COURSES:</span>
                 <ASRCountUp end={stats.courses} />
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="opacity-60">CITIES:</span>
                 <ASRCountUp end={stats.cities} />
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5">
+                <span className="opacity-60">COUNTRIES:</span>
+                <ASRCountUp end={stats.countries} />
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5">
+                <span className="opacity-60">RUNS:</span>
+                <ASRCountUp end={stats.runs} />
               </div>
             </div>
           ) : (
@@ -2817,7 +2873,6 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  // Clear search on view change or mount
   useEffect(() => {
     setSearch('');
   }, [view, eventType]);
@@ -2837,7 +2892,6 @@ export default function App() {
     return () => cancelAnimationFrame(timer);
   }, [view, eventType]);
 
-  // --- DERIVATION ---
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
     return courseNames.map(name => {
@@ -3126,6 +3180,10 @@ export default function App() {
     }
     if (type === 'player' || type === 'setter') {
         const htown = data.location || "";
+        const gym = data.homeGym || "";
+        const townFlag = formatFlagsWithSpace(String(data.townFlag || ""));
+        const gymFlag = formatFlagsWithSpace(String(data.gymFlag || ""));
+
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
@@ -3149,8 +3207,20 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
-                    {formatLocationSubtitle(htown, String(data.countryName), String(data.region))}
+                  
+                  <div className="flex flex-col gap-1.5 mt-1 min-w-0 opacity-80 text-inherit font-black uppercase whitespace-normal break-words">
+                    <div className="text-[9px] sm:text-[11px] leading-tight tracking-widest flex items-center gap-1.5 flex-wrap">
+                        <span className="opacity-50 shrink-0">HOME TOWN:</span>
+                        <span className="shrink-0">{htown || 'UNKNOWN'}</span>
+                        {townFlag && <span className="flex items-center gap-0.5 ml-1">{townFlag}</span>}
+                    </div>
+                    {gym && (
+                        <div className="text-[9px] sm:text-[11px] leading-tight tracking-widest flex items-center gap-1.5 flex-wrap">
+                            <span className="opacity-50 shrink-0">HOME GYM:</span>
+                            <span className="shrink-0">{gym}</span>
+                            {gymFlag && <span className="flex items-center gap-0.5 ml-1">{gymFlag}</span>}
+                        </div>
+                    )}
                   </div>
               </div>
             </div>
@@ -3163,7 +3233,7 @@ export default function App() {
           <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-900 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
             <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{String(data.name)}</h2></div>
-            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{String(data.flag)}</span></div>}
+            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{formatFlagsWithSpace(String(data.flag))}</span></div>}
           </div>
         </div>
       );
@@ -3182,10 +3252,10 @@ export default function App() {
   }, [view]);
 
   const mapRegionStats = useMemo(() => ({
-    continents: getAggregatedStats(rawCourseList, 'continent'),
-    cities: getAggregatedStats(rawCourseList, 'city'),
-    countries: getAggregatedStats(rawCourseList, 'country')
-  }), [rawCourseList]);
+    continents: getAggregatedStats(rawCourseList, 'continent', dnMap),
+    cities: getAggregatedStats(rawCourseList, 'city', dnMap),
+    countries: getAggregatedStats(rawCourseList, 'country', dnMap)
+  }), [rawCourseList, dnMap]);
 
   return (
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
