@@ -5,13 +5,13 @@ import {
   Compass, Info, ChevronRight, Navigation, ShieldCheck,
   Video, HelpCircle, Building2, Map as MapIcon, Waypoints, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
-  Users, MessageSquare, TrendingUp, Fingerprint, Zap,
+  Users, User, MessageSquare, TrendingUp, Fingerprint, Zap,
   Dna, Ruler, Mountain, Calendar, AlertCircle, Timer, List, Share, Eye, Camera, Award, Star, Medal,
-  Clock
+  Clock, Flag
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v55_stable'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v59_teams'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -200,17 +200,15 @@ const isNameInList = (name, listStr) => {
     return parts.some(p => p === searchName || p.includes(searchName) || searchName.includes(p));
 };
 
-// --- DATA CONSTANTS ---
-const continents = {
-  "eu": ["ALBANIA", "ANDORRA", "ARMENIA", "AUSTRIA", "AZERBAIJAN", "BELARUS", "BELGIUM", "BOSNIA AND HERZEGOVINA", "BULGARIA", "CROATIA", "CYPRIA", "CZECHIA", "CZECH REPUBLIC", "DENMARK", "ESTONIA", "FINLAND", "FRANCE", "GEORGIA", "GERMANY", "GREECE", "HUNGARY", "ICELAND", "IRELAND", "ITALY", "KAZAKHSTAN", "KOSOVO", "LATVIA", "LIECHTENSTEIN", "LITHUANIA", "LUXEMBOURG", "MALTA", "MOLDOVA", "MONACO", "MONTENEGRO", "NETHERLANDS", "NORTH MACEDONIA", "NORWAY", "POLAND", "PORTUGAL", "ROMANIA", "RUSSIA", "SAN MARINO", "SERBIA", "SLOVAKIA", "SLOVENIA", "SPAIN", "SWEDEN", "SWITZERLAND", "TURKEY", "UKRAINE", "UK", "UNITED KINGDOM"],
-  "na": ["ANTIGUA AND BARBUDA", "BAHAMAS", "BARBADOS", "BELIZE", "CANADA", "COSTA RICA", "CUBA", "DOMINICA", "DOMINICAN REPUBLIC", "EL SALVADOR", "GRENADA", "GUATEMALA", "HAITI", "HONDURAS", "JAMAICA", "MEXICO", "NICARAGUA", "PANAMA", "SAINT KITTS AND NEVIS", "SAINT LUCIA", "SAINT VINCENT AND THE GRENADINES", "TRINIDAD AND TOBAGO", "USA", "UNITED STATES", "PUERTO RICO"],
-  "sa": ["ARGENTINA", "BOLIVIA", "BRAZIL", "CHILE", "COLOMBIA", "ECUADOR", "GUYANA", "PARAGUAY", "PERU", "SURINAME", "URUGUAY", "VENEZUELA"],
-  "as": ["AFGHANISTAN", "BAHRAIN", "BANGLADESH", "BHUTAN", "BRUNEI", "CAMBODIA", "CHINA", "INDIA", "INDONESIA", "IRAN", "IRAQ", "ISRAEL", "JAPAN", "JORDAN", "KOREA", "SOUTH KOREA", "KUWAIT", "KYRGYZSTAN", "LAOS", "LEBANON", "MALAYSIA", "MALDIVES", "MONGOLIA", "MYANMAR", "NEPAL", "OMAN", "PAKISTAN", "PALESTINE", "PHILIPPINES", "QATAR", "SAUDI ARABIA", "SINGAPORE", "SRI LANKA", "SYRIA", "TAIWAN", "TAJIKISTAN", "THAILAND", "TIMOR-LESTE", "TURKMENISTAN", "UNITED ARAB EMIRATES", "UZBEKISTAN", "VIETNAM", "YEMEN"],
-  "af": ["ALGERIA", "ANGOLA", "BENIN", "BOTSWANA", "BURKINA FASO", "BURUNDI", "CABO VERDE", "CAMEROON", "CENTRAL AFRICAN REPUBLIC", "CHAD", "COMOROS", "CONGO", "DJIBOUTI", "EGYPT", "EQUATORIAL GUINEA", "ERITREA", "ESWATINI", "ETHIOPIA", "GABON", "GAMBIA", "GHANA", "IVORY COAST", "KENYA", "LESOTHO", "LIBERIA", "LIBYA", "MADAGASCAR", "MALAWI", "MALI", "MAURITANIA", "MAURITIUS", "MOROCCO", "MOZAMBIQUE", "NAMIBIA", "NIGER", "NIGERIA", "RWANDA", "SAO TOME AND PRINCIPE", "SENEGAL", "SEYCHELLES", "SIERRA LEONE", "SOMALIA", "SOUTH AFRICA", "SOUTH SUDAN", "SUDAN", "TANZANIA", "TOGO", "TUNISIA", "UGANDA", "ZAMBIA", "ZIMBABWE"],
-  "oc": ["AUSTRALIA", "FIJI", "KIRIBATI", "MARSHALL ISLANDS", "MICRONESIA", "NAURU", "NEW ZEALAND", "PALAU", "PAPUA NEW GUINEA", "SAMOA", "SOLOMON ISLANDS", "TONGA", "TUVALU", "VANUATU"]
-};
-
 const getContinentData = (country) => {
+    const continents = {
+      "eu": ["ALBANIA", "ANDORRA", "ARMENIA", "AUSTRIA", "AZERBAIJAN", "BELARUS", "BELGIUM", "BOSNIA AND HERZEGOVINA", "BULGARIA", "CROATIA", "CYPRIA", "CZECHIA", "CZECH REPUBLIC", "DENMARK", "ESTONIA", "FINLAND", "FRANCE", "GEORGIA", "GERMANY", "GREECE", "HUNGARY", "ICELAND", "IRELAND", "ITALY", "KAZAKHSTAN", "KOSOVO", "LATVIA", "LIECHTENSTEIN", "LITHUANIA", "LUXEMBOURG", "MALTA", "MOLDOVA", "MONACO", "MONTENEGRO", "NETHERLANDS", "NORTH MACEDONIA", "NORWAY", "POLAND", "PORTUGAL", "ROMANIA", "RUSSIA", "SAN MARINO", "SERBIA", "SLOVAKIA", "SLOVENIA", "SPAIN", "SWEDEN", "SWITZERLAND", "TURKEY", "UKRAINE", "UK", "UNITED KINGDOM"],
+      "na": ["ANTIGUA AND BARBUDA", "BAHAMAS", "BARBADOS", "BELIZE", "CANADA", "COSTA RICA", "CUBA", "DOMINICA", "DOMINICAN REPUBLIC", "EL SALVADOR", "GRENADA", "GUATEMALA", "HAITI", "HONDURAS", "JAMAICA", "MEXICO", "NICARAGUA", "PANAMA", "SAINT KITTS AND NEVIS", "SAINT LUCIA", "SAINT VINCENT AND THE GRENADINES", "TRINIDAD AND TOBAGO", "USA", "UNITED STATES", "PUERTO RICO"],
+      "sa": ["ARGENTINA", "BOLIVIA", "BRAZIL", "CHILE", "COLOMBIA", "ECUADOR", "GUYANA", "PARAGUAY", "PERU", "SURINAME", "URUGUAY", "VENEZUELA"],
+      "as": ["AFGHANISTAN", "BAHRAIN", "BANGLADESH", "BHUTAN", "BRUNEI", "CAMBODIA", "CHINA", "INDIA", "INDONESIA", "IRAN", "IRAQ", "ISRAEL", "JAPAN", "JORDAN", "KOREA", "SOUTH KOREA", "KUWAIT", "KYRGYZSTAN", "LAOS", "LEBANON", "MALAYSIA", "MALDIVES", "MONGOLIA", "MYANMAR", "NEPAL", "OMAN", "PAKISTAN", "PALESTINE", "PHILIPPINES", "QATAR", "SAUDI ARABIA", "SINGAPORE", "SRI LANKA", "SYRIA", "TAIWAN", "TAJIKISTAN", "THAILAND", "TIMOR-LESTE", "TURKMENISTAN", "UNITED ARAB EMIRATES", "UZBEKISTAN", "VIETNAM", "YEMEN"],
+      "af": ["ALGERIA", "ANGOLA", "BENIN", "BOTSWANA", "BURKINA FASO", "BURUNDI", "CABO VERDE", "CAMEROON", "CENTRAL AFRICAN REPUBLIC", "CHAD", "COMOROS", "CONGO", "DJIBOUTI", "EGYPT", "EQUATORIAL GUINEA", "ERITREA", "ESWATINI", "ETHIOPIA", "GABON", "GAMBIA", "GHANA", "IVORY COAST", "KENYA", "LESOTHO", "LIBERIA", "LIBYA", "MADAGASCAR", "MALAWI", "MALI", "MAURITANIA", "MAURITIUS", "MOROCCO", "MOZAMBIQUE", "NAMIBIA", "NIGER", "NIGERIA", "RWANDA", "SAO TOME AND PRINCIPE", "SENEGAL", "SEYCHELLES", "SIERRA LEONE", "SOMALIA", "SOUTH AFRICA", "SOUTH SUDAN", "SUDAN", "TANZANIA", "TOGO", "TUNISIA", "UGANDA", "ZAMBIA", "ZIMBABWE"],
+      "oc": ["AUSTRALIA", "FIJI", "KIRIBATI", "MARSHALL ISLANDS", "MICRONESIA", "NAURU", "NEW ZEALAND", "PALAU", "PAPUA NEW GUINEA", "SAMOA", "SOLOMON ISLANDS", "TONGA", "TUVALU", "VANUATU"]
+    };
     const c = normalizeCountryName(country);
     const regionMap = {
         'eu': { name: 'EUROPE', flag: '🌍' },
@@ -446,6 +444,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
 
   const statInfoMap = {
     'RATING': "RATING = POINTS / RUNS",
+    'AVG POINTS': "AVERAGE POINTS PER RUN",
     'TOP RATING': "RATING = POINTS / RUNS",
     '🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
     'MOST 🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
@@ -464,7 +463,8 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     'RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
     'MOST RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
     'SETS': "TOTAL NUMBER OF COURSES SET.",
-    'MOST SETS': "TOTAL NUMBER OF COURSES SET."
+    'MOST SETS': "TOTAL NUMBER OF COURSES SET.",
+    'PLAYERS': "TOTAL UNIQUE PLAYERS AFFILIATED WITH THIS ENTITY."
   };
 
   const labelStr = String(label || "").toUpperCase();
@@ -1134,10 +1134,12 @@ const ASRBaseModal = ({
   useLayoutEffect(() => {
     if (!isOpen) return;
     
+    // Save current scroll if we have a valid index
     if (prevIndexRef.current !== -1 && scrollContainerRef.current) {
       historyScrollPositions.current[prevIndexRef.current] = scrollContainerRef.current.scrollTop;
     }
 
+    // Scroll to top for NEW entries (index is higher than any stored) or restored pos
     if (scrollContainerRef.current) {
         const targetScroll = historyScrollPositions.current[currentIndex] || 0;
         scrollContainerRef.current.scrollTo({ top: targetScroll, left: 0, behavior: 'auto' });
@@ -1563,6 +1565,61 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
   );
 };
 
+const TeamDetails = ({ team, theme, openModal }) => {
+  // Sort by pts and take top 20
+  const topPlayers = [...(team.players || [])]
+    .sort((a, b) => (b.pts || 0) - (a.pts || 0))
+    .slice(0, 20);
+  
+  const avgPts = team.runs > 0 ? (team.pts / team.runs).toFixed(2) : "0.00";
+
+  const teamStats = [
+    { label: "PLAYERS", value: String(team.players?.length || 0) },
+    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: "text-blue-600" },
+    { label: "AVG POINTS", value: avgPts },
+    { label: "RUNS", value: String(team.runs || 0) }
+  ];
+
+  const medalStats = [
+      { label: "🥇", value: String(team.medals?.gold || 0) },
+      { label: "🥈", value: String(team.medals?.silver || 0) },
+      { label: "🥉", value: String(team.medals?.bronze || 0) },
+      { label: "🔥", value: String(team.fires || 0), colorClass: "text-blue-500" }
+  ];
+
+  return (
+    <div className="space-y-12 overflow-visible">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
+          {teamStats.map((s, i) => (
+            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} colorClass={s.colorClass} />
+          ))}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
+          {medalStats.map((s, i) => (
+            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} colorClass={s.colorClass} />
+          ))}
+      </div>
+      <div className="space-y-6 text-left overflow-visible">
+          <ASRSectionHeading theme={theme} className="!mb-0">TOP 20 PLAYERS</ASRSectionHeading>
+          <div className="grid grid-cols-1 gap-3 overflow-visible">
+              {topPlayers.map((p, i) => (
+                  <ASRListItem 
+                    key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
+                    stats={[{ value: (p.pts || 0).toFixed(2) }]}
+                    onClick={() => openModal('player', p)}
+                  />
+              ))}
+              {topPlayers.length === 0 && (
+                <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                  <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No players found in this team</span>
+                </div>
+              )}
+          </div>
+      </div>
+    </div>
+  );
+};
+
 const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, opPerfs, atMet, dnMap, settersWithImpact, openModal, onSetterClick }) => {
   if (!activeModal) return null;
 
@@ -1614,6 +1671,14 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
           allCourses={allCourses} 
           allPlayers={Object.values(atMet)} 
           playerPerformances={atPerfs} 
+          openModal={openModal} 
+        />
+      );
+    case 'team':
+      return (
+        <TeamDetails 
+          team={activeModal.data} 
+          theme={theme} 
           openModal={openModal} 
         />
       );
@@ -1733,12 +1798,9 @@ const useASRData = () => {
           const fixed = fixCountryEntity(vals.country, vals.flag);
           const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
           
-          // Column S (18) = Hometown 
-          // Column T (19) = Hometown Flag Emoji
-          // Column U (20) = Home Gym Location
-          // Column W (22) = Home Gym Flag Emoji
           const pLocation = vals.__raw ? (vals.__raw[18] || "").trim() : (vals.location || "").trim();
           const pHomeGym = vals.__raw ? (vals.__raw[20] || "").trim() : (vals.homeGym || "").trim();
+          const pTeamLocation = vals.__raw ? (vals.__raw[21] || "").trim() : ""; 
 
           const townFlagRaw = vals.__raw ? (vals.__raw[19] || "").trim() : "";
           const gymFlagRaw = vals.__raw ? (vals.__raw[22] || "").trim() : "";
@@ -1754,6 +1816,7 @@ const useASRData = () => {
             region: fixed.flag, 
             location: pLocation,
             homeGym: pHomeGym,
+            teamLocation: pTeamLocation, 
             townFlag: townEntity.flag,
             gymFlag: gymEntity.flag,
             igHandle: rawIg,
@@ -1894,7 +1957,7 @@ const useASRData = () => {
           }
           
           if (!athleteMetadata[pKey]) {
-              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', homeGym: '', countryName: '', searchKey: pName.toLowerCase() };
+              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', homeGym: '', teamLocation: '', countryName: '', searchKey: pName.toLowerCase() };
           } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
               athleteMetadata[pKey].name = pName;
               athleteDisplayNameMap[pKey] = pName;
@@ -1960,7 +2023,7 @@ const useASRData = () => {
         result.openLeaderboards = openCourseLeaderboards;
         result.athleteDisplayNameMap = athleteDisplayNameMap;
         result.atRawBest = allTimeAthleteBestTimes;
-        result.opRawBest = openAthleteBestTimes;
+        result.opRawBest = openAthleteSetCount;
         result.filmerCredits = filmerCreditsCount;
         
         const chronologicalRuns = [...dataRows].sort((a, b) => {
@@ -2445,7 +2508,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                         <button 
                           onClick={() => setMapMode('map')} 
                           className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
-                          title="Map View"
+                          title="View / Map Mode"
                         >
                           <MapIcon size={16} />
                         </button>
@@ -2660,21 +2723,22 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
                       const forceAlignment = ['rating', 'avgCR', 'pts'];
-                      const forceRound = ['impact', 'avgLength', 'contributionScore'];
+                      const forceRound = ['impact', 'avgLength', 'contributionScore', 'runs'];
+                      const blueKeys = ['pts'];
 
                       if (forceRound.includes(k)) {
                         return { value: String(Math.round(parseFloat(val) || 0)) };
                       }
                       if (forceAlignment.includes(k) || (typeof val === 'number' && !Number.isInteger(val))) {
-                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2) };
+                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2), color: blueKeys.includes(k) ? 'text-blue-600' : '' };
                       }
-                      return { value: val !== undefined && val !== null ? String(val) : "0" };
+                      return { value: val !== undefined && val !== null ? String(val) : "0", color: blueKeys.includes(k) ? 'text-blue-600' : '' };
                     });
 
                     return (
                         <ASRListItem 
                           key={idx} variant="table" theme={theme} columns={columns}
-                          rank={item.currentRank} title={item.name} subtitle={formatFlagsWithSpace(item.region || item.flag || '')} 
+                          rank={item.currentRank} title={item.name} subtitle={formatFlagsWithSpace(item.region || item.flag || item.gymFlag || '')} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           showRules={showRules}
@@ -2737,9 +2801,9 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
 
 const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   const items = [
-    { id: 'players', label: 'PLAYERS', icon: <Users size={22} strokeWidth={2.5} /> },
+    { id: 'players', label: 'PLAYERS', icon: <User size={22} strokeWidth={2.5} /> },
+    { id: 'teams', label: 'TEAMS', icon: <Users size={22} strokeWidth={2.5} /> },
     { id: 'map', label: 'COURSES', icon: <MapPin size={22} strokeWidth={2.5} /> },
-    { id: 'start', label: 'START', icon: <Play size={22} strokeWidth={2.5} /> },
     { id: 'setters', label: 'SETTERS', icon: <Waypoints size={22} strokeWidth={2.5} /> },
     { id: 'hof', label: 'HOF', icon: <Trophy size={22} strokeWidth={2.5} /> }
   ];
@@ -2753,8 +2817,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
             <button
               key={item.id}
               onClick={() => {
-                  if (item.id === 'start') onOpenIntro();
-                  else window.location.hash = `#/${item.id}`;
+                  window.location.hash = `#/${item.id}`;
               }}
               className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] w-full relative h-full ${isActive ? 'text-blue-600' : 'opacity-30 hover:opacity-100 text-inherit'}`}
             >
@@ -2840,6 +2903,13 @@ const PLAYER_COLS = [
     { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
 ];
 
+const TEAM_COLS = [
+    { isRank: true },
+    { label: 'TEAM', type: 'profile', key: 'name', subKey: 'location', width: 'w-full', sortable: false },
+    { label: 'POINTS', type: 'number', key: 'pts', align: 'right', width: 'w-20 sm:w-40' },
+    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
+];
+
 const SETTER_COLS = [
     { isRank: true },
     { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
@@ -2882,6 +2952,7 @@ export default function App() {
     idxRef.current = historyIndex;
   }, [modalHistory, historyIndex]);
 
+  // Handle global scroll to top on major transitions
   useLayoutEffect(() => {
     const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -2966,6 +3037,49 @@ export default function App() {
     }).filter(s => isAllTimeContext || (s.sets || 0) > 0);
   }, [settersData, masterCourseList, isAllTimeContext, atMet]);
 
+  const teamsAggregated = useMemo(() => {
+    const teams = {};
+    const sourcePlayers = isAllTimeContext ? Object.values(atMet || {}) : openData;
+
+    sourcePlayers.forEach(p => {
+      // Find a gym reference - openData objects are flat, atMet objects might have deeper keys
+      const gym = p.homeGym || "";
+      if (!gym || isPlaceholderPlayer(p.name)) return;
+      
+      const key = gym.toUpperCase();
+      if (!teams[key]) {
+        teams[key] = { 
+            name: gym, 
+            players: [], 
+            pts: 0, 
+            runs: 0, 
+            fires: 0,
+            medals: { gold: 0, silver: 0, bronze: 0 },
+            flag: p.gymFlag || '🏳️', 
+            location: p.teamLocation || p.location || 'UNKNOWN', 
+            searchKey: gym.toLowerCase() 
+        };
+      }
+      
+      teams[key].players.push(p);
+      teams[key].pts += (p.pts || 0);
+      teams[key].runs += (p.runs || 0);
+      
+      // Aggregate fires
+      const fires = isAllTimeContext ? (p.allTimeFireCount || 0) : (p.openFireCount || 0);
+      teams[key].fires += fires;
+
+      // Aggregate medals from performance source
+      const perfSource = isAllTimeContext ? (atPerfs[p.pKey] || []) : (opPerfs[p.pKey] || []);
+      perfSource.forEach(perf => {
+          if (perf.rank === 1) teams[key].medals.gold++;
+          else if (perf.rank === 2) teams[key].medals.silver++;
+          else if (perf.rank === 3) teams[key].medals.bronze++;
+      });
+    });
+    return Object.values(teams).sort((a, b) => b.pts - a.pts);
+  }, [atMet, openData, isAllTimeContext, atPerfs, opPerfs]);
+
   const jumpToHistoryIndex = useCallback((idx) => {
     if (idx < 0 || idx >= histRef.current.length) return;
     isInternalNavRef.current = true;
@@ -3021,7 +3135,7 @@ export default function App() {
         const cleanPath = hash.replace(/^#\/?/, '');
         const parts = cleanPath.split('/').filter(Boolean);
         const firstSegment = parts[0] || 'players';
-        const entityTypes = ['player', 'course', 'setter', 'region'];
+        const entityTypes = ['player', 'course', 'setter', 'region', 'team'];
 
         if (entityTypes.includes(firstSegment) && parts.length >= 2) {
             const type = firstSegment;
@@ -3037,6 +3151,7 @@ export default function App() {
                 if (type === 'course') foundData = masterCourseList.find(c => normalizeName(c.name) === slug);
                 if (type === 'setter') foundData = settersWithImpact.find(s => normalizeName(s.name) === slug);
                 if (type === 'region') foundData = { name: slug.toUpperCase(), type: 'country' };
+                if (type === 'team') foundData = teamsAggregated.find(t => normalizeName(t.name) === slug);
 
                 if (foundData) {
                     const index = idxRef.current;
@@ -3055,7 +3170,7 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     if (!isLoading) handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isLoading, atMet, masterCourseList, settersWithImpact]);
+  }, [isLoading, atMet, masterCourseList, settersWithImpact, teamsAggregated]);
 
   const canGoForward = historyIndex < modalHistory.length - 1;
 
@@ -3063,7 +3178,8 @@ export default function App() {
     players: { key: 'rating', direction: 'descending' },
     setters: { key: 'impact', direction: 'descending' },
     courses: { key: 'totalAllTimeRuns', direction: 'descending' }, 
-    hof: { key: 'gold', direction: 'descending' }
+    hof: { key: 'gold', direction: 'descending' },
+    teams: { key: 'pts', direction: 'descending' }
   });
 
   const handleSort = (newSort) => {
@@ -3087,9 +3203,13 @@ export default function App() {
   const filteredSetters = useFilteredData(settersWithImpact, debouncedSearch, viewSorts.setters);
   const settersList = useMemo(() => filteredSetters.map((s, i) => ({ ...s, currentRank: i + 1 })), [filteredSetters]);
 
+  const filteredTeams = useFilteredData(teamsAggregated, debouncedSearch, viewSorts.teams);
+  const teamsList = useMemo(() => filteredTeams.map((t, i) => ({ ...t, currentRank: i + 1 })), [filteredTeams]);
+
   const list = useMemo(() => {
     if (view === 'setters') return settersList;
     if (view === 'map') return courseList;
+    if (view === 'teams') return teamsList;
     if (filteredAthletes.length === 0) return [];
     let qual = filteredAthletes.filter(p => isQualifiedAthlete(p, isAllTimeContext));
     let unranked = filteredAthletes.filter(p => !isQualifiedAthlete(p, isAllTimeContext));
@@ -3102,7 +3222,7 @@ export default function App() {
     let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
     if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
-  }, [filteredAthletes, settersList, courseList, isAllTimeContext, data, gen, view]);
+  }, [filteredAthletes, settersList, courseList, teamsList, isAllTimeContext, data, gen, view]);
 
   const hofStats = useMemo(() => {
     if (view !== 'hof' || !data || data.length === 0) return null; 
@@ -3184,6 +3304,8 @@ export default function App() {
         const townFlag = formatFlagsWithSpace(String(data.townFlag || ""));
         const gymFlag = formatFlagsWithSpace(String(data.gymFlag || ""));
 
+        const teamObj = gym ? teamsAggregated.find(t => t.name.toUpperCase() === gym.toUpperCase()) : null;
+
         return (
           <div className="flex flex-col gap-6 w-full text-left animate-in fade-in duration-300">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0 w-full">
@@ -3217,7 +3339,12 @@ export default function App() {
                     {gym && (
                         <div className="text-[9px] sm:text-[11px] leading-tight tracking-widest flex items-center gap-1.5 flex-wrap">
                             <span className="opacity-50 shrink-0">HOME GYM:</span>
-                            <span className="shrink-0">{gym}</span>
+                            <span 
+                                className={`shrink-0 ${teamObj ? 'cursor-pointer hover:text-blue-500 underline decoration-blue-500/30 underline-offset-4 transition-colors' : ''}`}
+                                onClick={() => teamObj && navigateToEntity('team', teamObj)}
+                            >
+                                {gym}
+                            </span>
                             {gymFlag && <span className="flex items-center gap-0.5 ml-1">{gymFlag}</span>}
                         </div>
                     )}
@@ -3238,6 +3365,19 @@ export default function App() {
         </div>
       );
     }
+    if (type === 'team') {
+      return (
+        <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-900 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} sizeCls="text-xl sm:text-4xl" /></div>
+          <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
+            <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{String(data.name)}</h2></div>
+              <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-widest min-w-0 opacity-70 text-inherit whitespace-normal break-words mt-0.5">
+                  {formatLocationSubtitle(data.location, "TEAM LOCATION", String(data.flag))}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return null;
   };
 
@@ -3246,7 +3386,8 @@ export default function App() {
       players: "PLAYERS",
       map: "COURSES",
       setters: "SETTERS",
-      hof: "HALL OF FAME"
+      hof: "HALL OF FAME",
+      teams: "TEAMS"
     };
     return titles[view] || "VAULT";
   }, [view]);
@@ -3327,13 +3468,13 @@ export default function App() {
                     {list.length > 0 ? (
                       <ASRDataTable 
                         theme={theme} 
-                        columns={view === 'setters' ? SETTER_COLS : (view === 'map' ? COURSE_COLS : PLAYER_COLS)} 
-                        sort={view === 'setters' ? viewSorts.setters : (view === 'map' ? viewSorts.courses : viewSorts.players)} 
+                        columns={view === 'setters' ? SETTER_COLS : (view === 'map' ? COURSE_COLS : (view === 'teams' ? TEAM_COLS : PLAYER_COLS))} 
+                        sort={view === 'setters' ? viewSorts.setters : (view === 'map' ? viewSorts.courses : (view === 'teams' ? viewSorts.teams : viewSorts.players))} 
                         onSort={handleSort} 
                         data={list} 
-                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : 'player'), item, view === 'setters' ? 'setter' : null)} 
+                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : (view === 'teams' ? 'team' : 'player')), item, view === 'setters' ? 'setter' : null)} 
                         showRules={view === 'map'} 
-                        statKeys={view === 'setters' ? ['impact', 'sets'] : (view === 'map' ? ['totalAthletes'] : ['rating', 'runs'])}
+                        statKeys={view === 'setters' ? ['impact', 'sets'] : (view === 'map' ? ['totalAthletes'] : (view === 'teams' ? ['pts', 'runs'] : ['rating', 'runs']))}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
@@ -3347,7 +3488,7 @@ export default function App() {
 
               <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pt-8">
                 {(view === 'map' || view === 'setters') && <ASRPromotionBanner type="setter" theme={theme} />}
-                {view === 'players' && <ASRPromotionBanner type="coach" theme={theme} />}
+                {(view === 'players' || view === 'teams') && <ASRPromotionBanner type="coach" theme={theme} />}
               </div>
             </div>
           )}
