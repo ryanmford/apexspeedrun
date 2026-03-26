@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Apex Speed Run</title>
 
+    <!-- PWA Setup: Linking the manifest and Apple icon -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="asr.png">
+    <meta name="theme-color" content="#09090b">
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -26,7 +31,7 @@
         body {
             font-family: 'Noto Sans', sans-serif;
             margin: 0;
-            background-color: #000; /* Matches your dark theme default */
+            background-color: #000;
         }
         /* Loading State Styling */
         #root:empty::before {
