@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Apex Speed Run</title>
 
-    <!-- PWA Setup: Linking the manifest and Apple icon -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- PWA Setup -->
+    <!-- Removed leading slash from href to ensure it works on GitHub Pages/subfolders -->
+    <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="asr.png">
     <meta name="theme-color" content="#09090b">
 
@@ -54,5 +55,16 @@
     <div id="root"></div>
 
     <script type="module" src="index.js"></script>
+
+    <!-- Registering the Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+        });
+      }
+    </script>
 </body>
 </html>
