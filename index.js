@@ -186,9 +186,9 @@ const useDebounce = (value, delay) => {
 const isQualifiedAthlete = (p, isAllTime = true) => {
     if (!p || isPlaceholderPlayer(p.name)) return false;
     const runs = p.runs || 0;
-    if (isAllTime) {
-      return p.gender === 'M' ? (runs >= 4) : (runs >= 2);
-    } else {
+if (isAllTime) {
+    return p.gender === 'M' ? (runs >= 4) : (runs >= 3);
+  } else {
       return runs >= 3;
     }
 };
@@ -1382,8 +1382,8 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
     if (isAllTime) {
-      isQualifiedInProfile = identity.gender === 'M' ? (runsInContext >= 4) : (runsInContext >= 2);
-    } else {
+    isQualifiedInProfile = identity.gender === 'M' ? (runsInContext >= 4) : (runsInContext >= 3);
+  } else {
       isQualifiedInProfile = runsInContext >= 3;
     }
 
@@ -3219,7 +3219,7 @@ export default function App() {
     }
     const fQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true, shouldFade: false }));
     const fUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false, shouldFade: isAllTimeContext ? true : ((p.runs || 0) === 0) }));
-    let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 2+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
+    let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 3+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
     if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
   }, [filteredAthletes, settersList, courseList, teamsList, isAllTimeContext, data, gen, view]);
