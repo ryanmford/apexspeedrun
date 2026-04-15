@@ -3096,15 +3096,18 @@ export default function App() {
             avgCR: totalCourses > 0 ? (totalCR / totalCourses) : 0,
             citiesCount: citiesSet.size
         };
-    }).filter(s => isAllTimeContext || (s.sets || 0) > 0);
-  }, [settersData, masterCourseList, isAllTimeContext, atMet]);
+    }).filter(s => (s.sets || 0) > 0);
+  }, [settersData, masterCourseList, atMet]);
 
   const teamsAggregated = useMemo(() => {
     const teams = {};
     const sourcePlayers = isAllTimeContext ? Object.values(atMet || {}) : openData;
 
     sourcePlayers.forEach(p => {
-      // Find a gym reference - openData objects are flat, atMet objects might have deeper keys
+      // Delist anyone with 0 runs entirely from team calculations
+      const playerRuns = p.runs !== undefined ? p.runs : (atPerfs[p.pKey]?.length || 0);
+      if (playerRuns === 0) return;
+
       const gym = p.homeGym || "";
       if (!gym || isPlaceholderPlayer(p.name)) return;
       
@@ -3125,7 +3128,7 @@ export default function App() {
       
       teams[key].players.push(p);
       teams[key].pts += (p.pts || 0);
-      teams[key].runs += (p.runs || 0);
+      teams[key].runs += playerRuns;
       
       // Aggregate fires
       const fires = isAllTimeContext ? (p.allTimeFireCount || 0) : (p.openFireCount || 0);
@@ -3260,7 +3263,7 @@ export default function App() {
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
   
   const athletePool = isAllTimeContext ? data : openData;
-  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name), [gen]));
+  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0, [gen]));
   
   const filteredSetters = useFilteredData(settersWithImpact, debouncedSearch, viewSorts.setters);
   const settersList = useMemo(() => filteredSetters.map((s, i) => ({ ...s, currentRank: i + 1 })), [filteredSetters]);
