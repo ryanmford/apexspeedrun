@@ -3096,8 +3096,8 @@ export default function App() {
             avgCR: totalCourses > 0 ? (totalCR / totalCourses) : 0,
             citiesCount: citiesSet.size
         };
-    }).filter(s => (s.sets || 0) > 0);
-  }, [settersData, masterCourseList, atMet]);
+    }).filter(s => isAllTimeContext || (s.sets || 0) > 0);
+  }, [settersData, masterCourseList, isAllTimeContext, atMet]);
 
   const teamsAggregated = useMemo(() => {
     const teams = {};
@@ -3106,7 +3106,7 @@ export default function App() {
     sourcePlayers.forEach(p => {
       // Find a gym reference - openData objects are flat, atMet objects might have deeper keys
       const gym = p.homeGym || "";
-      if (!gym || isPlaceholderPlayer(p.name) || (p.runs || 0) === 0) return;
+      if (!gym || isPlaceholderPlayer(p.name)) return;
       
       const key = gym.toUpperCase();
       if (!teams[key]) {
@@ -3260,7 +3260,7 @@ export default function App() {
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
   
   const athletePool = isAllTimeContext ? data : openData;
-  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0, [gen]));
+  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name), [gen]));
   
   const filteredSetters = useFilteredData(settersWithImpact, debouncedSearch, viewSorts.setters);
   const settersList = useMemo(() => filteredSetters.map((s, i) => ({ ...s, currentRank: i + 1 })), [filteredSetters]);
@@ -3422,8 +3422,8 @@ export default function App() {
           <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-900 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
             <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{String(data.name)}</h2></div>
-            {data.flag && <div className="text-xl sm:text-2xl leading-none
-</div>
+            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{formatFlagsWithSpace(String(data.flag))}</span></div>}
+          </div>
         </div>
       );
     }
