@@ -478,6 +478,15 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
           setIsFlipped(!isFlipped);
         }
       }}
+      role={description ? "button" : undefined}
+      tabIndex={description ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (description && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsFlipped(!isFlipped);
+        }
+      }}
       className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50 active:scale-95' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
     >
         <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
@@ -595,14 +604,22 @@ const ASRListItem = ({
   rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, theme, onClick, isUnranked = false,
   badgeContent, shouldFade = false, showRules = true
 }) => {
-  const accentColor = 'text-blue-600';
+  const accentColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
   
   if (variant === 'table') {
     return (
       <div 
-        onClick={onClick} 
-        className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 
-          ${onClick ? 'cursor-pointer active:bg-blue-600/5' : 'cursor-default'} 
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={(e) => {
+          if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onClick(e);
+          }
+        }}
+        className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 outline-none
+          ${onClick ? 'cursor-pointer active:bg-blue-600/5 focus:bg-blue-600/5' : 'cursor-default'} 
           ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/40' : 'hover:bg-slate-200/40') : ''} 
           ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
@@ -650,9 +667,17 @@ const ASRListItem = ({
   return (
     <div 
       onClick={onClick} 
-      className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix 
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick(e);
+        }
+      }}
+      className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix outline-none
         p-4 rounded-3xl border h-auto min-h-[72px] py-4
-        ${onClick ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}
+        ${onClick ? 'cursor-pointer active:scale-[0.98] focus:scale-[0.98] focus:border-blue-500' : 'cursor-default'}
         ${theme === 'dark' 
           ? 'bg-zinc-900/30 border-zinc-900/50 shadow-md' 
           : 'bg-white border-slate-200 shadow-md'}
@@ -755,8 +780,8 @@ const ASRPromotionBanner = ({ type, theme }) => {
             {config.icon}
           </div>
           <div className="flex flex-col text-left">
-            <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter leading-none mb-2">{config.title}</h3>
-            <p className="text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words opacity-90">{config.subtitle}</p>
+            <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter leading-none mb-2 text-white">{config.title}</h3>
+            <p className="text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words opacity-90 text-white">{config.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl group-hover:bg-blue-50 transition-colors whitespace-nowrap">
@@ -872,7 +897,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
       <div className="flex items-center gap-4">
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
-          <p className="text-[10px] font-black opacity-60 uppercase whitespace-normal break-words">{c.desc}</p>
+          <p className={`text-[10px] font-black opacity-60 uppercase whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.desc}</p>
         </div>
       </div>
       <a href={c.link} target="_blank" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
@@ -1075,8 +1100,8 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
           </div>
           
           <div className="flex gap-2.5 py-2 justify-center">
-            {steps.map((_, i) => (
-              <div key={i} className={`h-2.5 rounded-full transition-all duration-500 ${i === step ? 'w-14 bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'w-4 bg-current opacity-20'}`} />
+            {steps.map((s, i) => (
+              <div key={s.title} className={`h-2.5 rounded-full transition-all duration-500 ${i === step ? 'w-14 bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'w-4 bg-current opacity-20'}`} />
             ))}
           </div>
 
@@ -1211,8 +1236,8 @@ const ASRBaseModal = ({
 // --- INSPECTOR BODY COMPONENTS ---
 const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
   const stats = [
-    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
-    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-blue-600' },
+    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: theme === 'dark' ? 'text-white' : 'text-blue-600' },
+    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: theme === 'dark' ? 'text-white' : 'text-blue-600' },
     { label: 'Difficulty', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
     { label: 'Players', value: String(course.totalAllTimeAthletes || 0), icon: <Users className="w-3.5 h-3.5" /> },
     { label: 'Length', value: course.length ? String(Math.round(parseFloat(course.length))) : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
@@ -1250,7 +1275,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Leads</span>
-                <div className="text-[15px] sm:text-lg font-mono font-black text-blue-600">
+                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'}`}>
                   <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1258,7 +1283,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.assistantsetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Assistants</span>
-                <div className="text-[15px] sm:text-lg font-mono font-black text-blue-600">
+                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'}`}>
                   <SetterDisplay text={course.assistantsetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1298,7 +1323,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
         const setterStats = [
             { l: 'LEVEL', v: String(setterData.certLevel || '-') },
-            { l: 'IMPACT', v: String(Math.round(impact)), c: 'text-blue-600' }, 
+            { l: 'IMPACT', v: String(Math.round(impact)), c: theme === 'dark' ? 'text-white' : 'text-blue-600' }, 
             { l: 'SETS', v: String(setsCount) },
             { l: 'LEADS', v: String(setterData.leads || 0) },
             { l: 'ASSISTS', v: String(setterData.assists || 0) },
@@ -1394,7 +1419,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     
     const playerStats = [
         { l: 'RANK', v: String(currentRankValue) },
-        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: 'text-blue-600' }, 
+        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: theme === 'dark' ? 'text-white' : 'text-blue-600' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: String(runsInContext) }, 
         { l: 'WINS', v: String(metaSource.wins || 0) }, 
@@ -1575,7 +1600,7 @@ const TeamDetails = ({ team, theme, openModal }) => {
 
   const teamStats = [
     { label: "PLAYERS", value: String(team.players?.length || 0) },
-    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: "text-blue-600" },
+    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: theme === 'dark' ? 'text-white' : "text-blue-600" },
     { label: "AVG POINTS", value: avgPts },
     { label: "RUNS", value: String(team.runs || 0) }
   ];
@@ -2090,8 +2115,13 @@ const useASRData = () => {
         recentFeed: processed.recentFeed,
         isLoading: false, hasError: hasTotalError, hasPartialError
       };
+      
       setState(nextState);
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextState));
+      try {
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextState));
+      } catch (storageError) {
+        console.warn("Could not write cache to localStorage (Quota exceeded?).", storageError);
+      }
     } catch(e) { 
         setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
     }
@@ -2236,6 +2266,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
     const [isLocating, setIsLocating] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
         const injectScript = (url, id) => {
             if (document.getElementById(id)) return Promise.resolve();
             return new Promise((resolve, reject) => {
@@ -2258,10 +2289,11 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                 injectCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css', 'cluster-css');
                 injectCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', 'cluster-default-css');
                 await injectScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', 'cluster-js');
-                setIsScriptsLoaded(true);
+                if (isMounted) setIsScriptsLoaded(true);
             } catch (err) { console.error("Map scripts failed to load", err); }
         };
         loadAll();
+        return () => { isMounted = false; };
     }, []);
 
     useEffect(() => {
@@ -2385,7 +2417,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                                         </span>
                                     </div>
                                  </div>
-                                 <span className={`text-sm sm:text-base font-mono font-black text-blue-600 tabular-nums`}>{c.courses}</span>
+                                 <span className={`text-sm sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'} tabular-nums`}>{c.courses}</span>
                             </div>
                         ))}
                     </div>
@@ -2529,7 +2561,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
 
 // --- HOF COMPONENT ---
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
-  const highlightColor = 'text-blue-600';
+  const highlightColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
 
   const MedalHeader = ({ l, k, a = 'left', w = "", sortable = true }) => {
     const isActive = medalSort.key === k;
@@ -2578,7 +2610,19 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
               </div>
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-900/30' : 'divide-slate-200'} overflow-visible`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
-                  <div key={i} className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer active:scale-95" onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}>
+                  <div 
+                    key={i} 
+                    className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer active:scale-95" 
+                    onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time');
+                      }
+                    }}
+                  >
                     <div className="flex items-center gap-3 text-left">
                       <ASRRankBadge rank={i + 1} theme={theme} />
                       <div className="flex flex-col text-left">
@@ -2687,6 +2731,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
     }, [data, visibleCount]);
 
     const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))]";
+    const dataColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
@@ -2730,9 +2775,9 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                         return { value: String(Math.round(parseFloat(val) || 0)) };
                       }
                       if (forceAlignment.includes(k) || (typeof val === 'number' && !Number.isInteger(val))) {
-                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2), color: blueKeys.includes(k) ? 'text-blue-600' : '' };
+                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2), color: blueKeys.includes(k) ? dataColor : '' };
                       }
-                      return { value: val !== undefined && val !== null ? String(val) : "0", color: blueKeys.includes(k) ? 'text-blue-600' : '' };
+                      return { value: val !== undefined && val !== null ? String(val) : "0", color: blueKeys.includes(k) ? dataColor : '' };
                     });
 
                     return (
@@ -2762,6 +2807,15 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
                 onClick={() => {
                     window.location.hash = '#/players';
                     setEventType('open');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.hash = '#/players';
+                    setEventType('open');
+                  }
                 }}
             >
                 <div className="flex flex-col leading-none">
@@ -2839,6 +2893,14 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
     return (
       <div 
         onClick={onOpenIntro}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpenIntro();
+          }
+        }}
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-full justify-center font-sans font-black flex-nowrap text-inherit">
@@ -3034,8 +3096,8 @@ export default function App() {
             avgCR: totalCourses > 0 ? (totalCR / totalCourses) : 0,
             citiesCount: citiesSet.size
         };
-    }).filter(s => isAllTimeContext || (s.sets || 0) > 0);
-  }, [settersData, masterCourseList, isAllTimeContext, atMet]);
+    }).filter(s => (s.sets || 0) > 0);
+  }, [settersData, masterCourseList, atMet]);
 
   const teamsAggregated = useMemo(() => {
     const teams = {};
@@ -3044,7 +3106,7 @@ export default function App() {
     sourcePlayers.forEach(p => {
       // Find a gym reference - openData objects are flat, atMet objects might have deeper keys
       const gym = p.homeGym || "";
-      if (!gym || isPlaceholderPlayer(p.name)) return;
+      if (!gym || isPlaceholderPlayer(p.name) || (p.runs || 0) === 0) return;
       
       const key = gym.toUpperCase();
       if (!teams[key]) {
@@ -3198,7 +3260,7 @@ export default function App() {
   const courseList = useMemo(() => filteredCourses.map((c, i) => ({ ...c, currentRank: i + 1 })), [filteredCourses]);
   
   const athletePool = isAllTimeContext ? data : openData;
-  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name), [gen]));
+  const filteredAthletes = useFilteredData(athletePool, debouncedSearch, viewSorts.players, useCallback(p => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0, [gen]));
   
   const filteredSetters = useFilteredData(settersWithImpact, debouncedSearch, viewSorts.setters);
   const settersList = useMemo(() => filteredSetters.map((s, i) => ({ ...s, currentRank: i + 1 })), [filteredSetters]);
@@ -3360,8 +3422,8 @@ export default function App() {
           <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-900 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
           <div className="flex flex-col min-w-0 flex-1 justify-center h-20 sm:h-24">
             <div className="mb-1 sm:mb-2"><h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none text-inherit">{String(data.name)}</h2></div>
-            {data.flag && <div className="text-xl sm:text-2xl leading-none drop-shadow-sm"><span className="emoji-slot">{formatFlagsWithSpace(String(data.flag))}</span></div>}
-          </div>
+            {data.flag && <div className="text-xl sm:text-2xl leading-none
+</div>
         </div>
       );
     }
@@ -3393,10 +3455,10 @@ export default function App() {
   }, [view]);
 
   const mapRegionStats = useMemo(() => ({
-    continents: getAggregatedStats(rawCourseList, 'continent', dnMap),
-    cities: getAggregatedStats(rawCourseList, 'city', dnMap),
-    countries: getAggregatedStats(rawCourseList, 'country', dnMap)
-  }), [rawCourseList, dnMap]);
+    continents: getAggregatedStats(filteredCourses, 'continent', dnMap),
+    cities: getAggregatedStats(filteredCourses, 'city', dnMap),
+    countries: getAggregatedStats(filteredCourses, 'country', dnMap)
+  }), [filteredCourses, dnMap]);
 
   return (
     <div className={`min-h-[100dvh] transition-colors duration-500 font-sans flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
@@ -3461,7 +3523,7 @@ export default function App() {
               <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
 
               {view === 'map' && mapMode === 'map' ? (
-                <ASRGlobalMap courses={rawCourseList} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries} theme={theme} onCourseClick={(t, item) => navigateToEntity('course', item)} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
+                <ASRGlobalMap courses={filteredCourses} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries} theme={theme} onCourseClick={(t, item) => navigateToEntity('course', item)} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
               ) : (
                 <div className={`relative border rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
@@ -3496,17 +3558,5 @@ export default function App() {
         </main>
       </div>
     </div>
-  );
-}
-                          // --- MOUNTING ---
-import ReactDOM from 'react-dom/client';
-
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
   );
 }
