@@ -639,8 +639,8 @@ const ASRListItem = ({
             {stats.map((s, idx) => {
                 const colDef = columns.filter(c => !c.isRank && c.type !== 'profile').filter(c => c.key !== 'rules')[idx];
                 return (
-                  <div key={idx} className={`${colDef?.width || 'w-20 sm:w-24'} px-2 sm:px-4 flex items-center justify-end text-right shrink-0 h-full`}>
-                    <span className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] sm:text-[13px] opacity-60'}`}>
+                  <div key={idx} className={`${colDef?.width || 'w-24 sm:w-48'} px-2 sm:px-4 flex items-center justify-end text-right shrink-0 h-full`}>
+                    <span className={`${THEME.VALUE} ${idx === 0 ? `text-sm sm:text-[20px] tracking-tight ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] sm:text-[13px] opacity-60'}`}>
                       {s.value || '--'}
                     </span>
                   </div>
@@ -711,7 +711,7 @@ const ASRListItem = ({
       <div className="flex items-center gap-4 pr-2 shrink-0 h-full">
         <div className="flex flex-col items-end min-w-[60px] sm:min-w-[100px] text-right">
           {stats.map((s, idx) => (
-            <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-xs sm:text-[18px] ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] opacity-60'}`}>
+            <span key={idx} className={`${THEME.VALUE} ${idx === 0 ? `text-sm sm:text-[20px] tracking-tight ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] opacity-60'}`}>
               {s.value || '--'}
             </span>
           ))}
@@ -2961,28 +2961,25 @@ const ASRControlBar = () => {
 const PLAYER_COLS = [
     { isRank: true },
     { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
-    { label: 'RATING', type: 'number', key: 'rating', decimals: 2, align: 'right', width: 'w-20 sm:w-40' },
-    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
+    { label: 'RATING', type: 'number', key: 'rating', decimals: 2, align: 'right', width: 'w-28 sm:w-48' }
 ];
 
 const TEAM_COLS = [
     { isRank: true },
     { label: 'TEAM', type: 'profile', key: 'name', subKey: 'location', width: 'w-full', sortable: false },
-    { label: 'POINTS', type: 'number', key: 'pts', align: 'right', width: 'w-20 sm:w-40' },
-    { label: 'RUNS', type: 'number', key: 'runs', align: 'right', width: 'w-16 sm:w-32' }
+    { label: 'POINTS', type: 'number', key: 'pts', align: 'right', width: 'w-28 sm:w-48' }
 ];
 
 const SETTER_COLS = [
     { isRank: true },
     { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
-    { label: 'IMPACT', type: 'number', key: 'impact', align: 'right', width: 'w-20 sm:w-40' },
-    { label: 'SETS', type: 'number', key: 'sets', align: 'right', width: 'w-16 sm:w-32' }
+    { label: 'IMPACT', type: 'number', key: 'impact', align: 'right', width: 'w-28 sm:w-48' }
 ];
 
 const COURSE_COLS = [
     { isRank: true },
-    { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full' },
-    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-20 sm:w-40' }
+    { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full', sortable: false },
+    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-28 sm:w-48' }
 ];
 
 export default function App() {
@@ -3539,7 +3536,7 @@ export default function App() {
                         data={list} 
                         onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : (view === 'teams' ? 'team' : 'player')), item, view === 'setters' ? 'setter' : null)} 
                         showRules={view === 'map'} 
-                        statKeys={view === 'setters' ? ['impact', 'sets'] : (view === 'map' ? ['totalAthletes'] : (view === 'teams' ? ['pts', 'runs'] : ['rating', 'runs']))}
+                        statKeys={view === 'setters' ? ['impact'] : (view === 'map' ? ['totalAthletes'] : (view === 'teams' ? ['pts'] : ['rating']))}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
