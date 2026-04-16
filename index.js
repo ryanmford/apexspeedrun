@@ -186,9 +186,9 @@ const useDebounce = (value, delay) => {
 const isQualifiedAthlete = (p, isAllTime = true) => {
     if (!p || isPlaceholderPlayer(p.name)) return false;
     const runs = p.runs || 0;
-if (isAllTime) {
-    return p.gender === 'M' ? (runs >= 4) : (runs >= 3);
-  } else {
+    if (isAllTime) {
+      return p.gender === 'M' ? (runs >= 4) : (runs >= 3);
+    } else {
       return runs >= 3;
     }
 };
@@ -602,7 +602,7 @@ const ASRPerformanceBadge = ({ type, count = 1 }) => {
 
 const ASRListItem = ({ 
   rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, theme, onClick, isUnranked = false,
-  badgeContent, shouldFade = false, showRules = true
+  badgeContent, shouldFade = false
 }) => {
   const accentColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
   
@@ -637,7 +637,7 @@ const ASRListItem = ({
               {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
             </div>
             {stats.map((s, idx) => {
-                const colDef = columns.filter(c => !c.isRank && c.type !== 'profile').filter(c => c.key !== 'rules')[idx];
+                const colDef = columns.filter(c => !c.isRank && c.type !== 'profile')[idx];
                 return (
                   <div key={idx} className={`${colDef?.width || 'w-24 sm:w-48'} px-2 sm:px-4 flex items-center justify-end text-right shrink-0 h-full`}>
                     <span className={`${THEME.VALUE} ${idx === 0 ? `text-sm sm:text-[20px] tracking-tight ${s.value ? s.color || accentColor : 'opacity-20'}` : 'text-[9px] sm:text-[13px] opacity-60'}`}>
@@ -646,19 +646,6 @@ const ASRListItem = ({
                   </div>
                 );
             })}
-            {showRules && (
-              <div className="w-16 sm:w-32 px-2 sm:px-4 flex items-center justify-center shrink-0">
-                {videoUrl && (
-                  <a 
-                    href={videoUrl} target="_blank" rel="noopener noreferrer" 
-                    onClick={e => e.stopPropagation()} 
-                    className="p-2.5 sm:p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
-                  >
-                    <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
-                  </a>
-                )}
-              </div>
-            )}
         </div>
       </div>
     );
@@ -2705,7 +2692,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, paddingC
   );
 };
 
-const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRules = true, statKeys = [] }) => {
+const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys = [] }) => {
     const [visibleCount, setVisibleCount] = useState(50);
     const observerTarget = useRef(null);
     useEffect(() => { setVisibleCount(50); }, [data, sort]);
@@ -2746,24 +2733,19 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
                       sortable={col.sortable !== false}
                     />
                   ))}
-                  {showRules && (
-                    <div className="w-16 sm:w-32 px-2 sm:px-4 shrink-0 flex items-center justify-center">
-                      <span className="uppercase text-[10px] sm:text-[12px] font-black opacity-80">RULES</span>
-                    </div>
-                  )}
                 </div>
             </div>
             <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-900/30' : 'divide-slate-200'} overflow-visible`}>
                 {visibleData.map((item, idx) => {
                     if (item.isDivider) return (
                       <div 
-                        key={idx} 
+                        key={`divider-${idx}`} 
                         className="py-14 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.5em] cursor-default border-y border-transparent hover:border-blue-600/10 hover:bg-blue-600/5"
                       >
                         {item.label}
                       </div>
                     );
-                    if (item.isUtility) return <div key={idx} className="px-6 py-10"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
+                    if (item.isUtility) return <div key={`utility-${idx}`} className="px-6 py-10"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
                     
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
@@ -2782,13 +2764,11 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, showRule
 
                     return (
                         <ASRListItem 
-                          key={idx} variant="table" theme={theme} columns={columns}
+                          key={item.id || idx} variant="table" theme={theme} columns={columns}
                           rank={item.currentRank} title={item.name} subtitle={formatFlagsWithSpace(item.region || item.flag || item.gymFlag || '')} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
-                          showRules={showRules}
                           stats={rowStats}
-                          videoUrl={item.videoUrl || item.demoVideo}
                           onClick={() => onRowClick?.(item)}
                         />
                     );
@@ -3535,7 +3515,6 @@ export default function App() {
                         onSort={handleSort} 
                         data={list} 
                         onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : (view === 'teams' ? 'team' : 'player')), item, view === 'setters' ? 'setter' : null)} 
-                        showRules={view === 'map'} 
                         statKeys={view === 'setters' ? ['impact'] : (view === 'map' ? ['totalAthletes'] : (view === 'teams' ? ['pts'] : ['rating']))}
                       />
                     ) : (
