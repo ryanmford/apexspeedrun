@@ -578,8 +578,8 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
   const textClass = size === 'lg' ? 'text-sm sm:text-base' : 'text-[10px] sm:text-sm';
   const isPodium = rank === 1 || rank === 2 || rank === 3;
   const styles = {
-    1: { border: 'border-amber-500', text: 'text-amber-600 dark:text-amber-500', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
-    2: { border: 'border-zinc-400', text: 'text-zinc-400 dark:text-zinc-300', glow: 'shadow-[0_0_15px_rgba(161,161,170,0.3)]' },
+    1: { border: 'border-amber-500', text: theme === 'dark' ? 'text-amber-500' : 'text-amber-600', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
+    2: { border: 'border-zinc-400', text: theme === 'dark' ? 'text-zinc-300' : 'text-zinc-400', glow: 'shadow-[0_0_15px_rgba(161,161,170,0.3)]' },
     3: { border: 'border-[#CE8946]', text: 'text-[#CE8946]', glow: 'shadow-[0_0_15px_rgba(206,137,70,0.4)]' },
     unranked: { border: theme === 'dark' ? 'border-zinc-800' : 'border-slate-200', text: 'text-zinc-500', glow: 'shadow-none' },
     default: { border: 'border-none', text: theme === 'dark' ? 'text-white' : 'text-black', glow: 'shadow-none' }
@@ -605,6 +605,8 @@ const ASRListItem = ({
   badgeContent, shouldFade = false
 }) => {
   const accentColor = theme === 'dark' ? 'text-white' : 'text-black';
+  const tableHover = theme === 'dark' ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.05]';
+  const cardHover = theme === 'dark' ? 'hover:bg-zinc-900/60' : 'hover:bg-slate-50';
   
   if (variant === 'table') {
     return (
@@ -619,8 +621,7 @@ const ASRListItem = ({
           }
         }}
         className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 outline-none
-          ${onClick ? 'cursor-pointer active:bg-blue-600/5 focus:bg-blue-600/5' : 'cursor-default'} 
-          ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/40' : 'hover:bg-slate-200/40') : ''} 
+          ${onClick ? `cursor-pointer active:bg-blue-600/5 focus:bg-blue-600/5 ${tableHover}` : 'cursor-default'} 
           ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
         <div className="w-20 sm:w-24 pl-4 sm:pl-10 shrink-0">
@@ -663,12 +664,11 @@ const ASRListItem = ({
         }
       }}
       className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix outline-none
-        p-4 rounded-3xl border h-auto min-h-[72px] py-4
-        ${onClick ? 'cursor-pointer active:scale-[0.98] focus:scale-[0.98] focus:border-blue-500' : 'cursor-default'}
+        p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border h-auto min-h-[72px] sm:min-h-[80px]
+        ${onClick ? `cursor-pointer active:scale-[0.98] focus:scale-[0.98] focus:border-blue-500 ${cardHover}` : 'cursor-default'}
         ${theme === 'dark' 
           ? 'bg-zinc-900/30 border-zinc-900/50 shadow-md' 
           : 'bg-white border-slate-200 shadow-md'}
-        ${onClick ? (theme === 'dark' ? 'hover:bg-zinc-900/60' : 'hover:bg-slate-50') : ''}
         ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
     >
       <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
@@ -720,7 +720,7 @@ const ASRListItem = ({
 };
 
 const ASRPromotionBanner = ({ type, theme }) => {
-  const configs = {
+  const configs = useMemo(() => ({
     setter: {
       title: "COURSE SETTER CERTIFICATION",
       subtitle: "Become an Apex certified course setter.",
@@ -749,7 +749,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
         link: SKOOL_LINK,
         btnText: "JOIN NOW"
     }
-  };
+  }), []);
 
   const config = configs[type];
   if (!config) return null;
@@ -824,7 +824,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       }
       
       return (
-        <a href={sponsorLink} className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
+        <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
               <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500 group-hover:bg-amber-500/10`}>
                 <Building2 className="w-4 h-4" />
@@ -882,12 +882,12 @@ const ASRInlineValueCard = ({ theme, type }) => {
   return (
     <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] textured-surface ${theme === 'dark' ? 'bg-blue-950/20 border-blue-900/50' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
       <div className="flex items-center gap-4">
-        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
+        <div className={`p-3 rounded-2xl shadow-sm text-blue-600 ${theme === 'dark' ? 'bg-zinc-900' : 'bg-white'}`}>{c.icon}</div>
         <div className="text-left">
           <p className={`text-[10px] font-black opacity-60 uppercase whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{c.desc}</p>
         </div>
       </div>
-      <a href={c.link} target="_blank" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
+      <a href={c.link} target="_blank" rel="noopener noreferrer" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
         {c.btn}
       </a>
     </div>
@@ -1008,43 +1008,43 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  const steps = [
+  const steps = useMemo(() => [
     {
       title: "HOW TO START",
       desc: "Our courses are set in outdoor, public spaces. You can start anytime.",
-      icon: <Compass className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
+      icon: <Compass />
     },
     {
       title: "1. Find a course",
       desc: (
         <>
-          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> to access the latest ASR resources.
+          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> to access the latest ASR resources.
         </>
       ),
-      icon: <MapPin className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
+      icon: <MapPin />
     },
     {
       title: "2. Film your run",
       desc: (
         <>
-          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
+          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
         </>
       ),
-      icon: <Video className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
+      icon: <Video />
     },
     {
       title: "3. Get verified",
       desc: (
         <>
-          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
+          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
         </>
       ),
-      icon: <ShieldCheck className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />,
+      icon: <ShieldCheck />,
       action: "JOIN APEX SKOOL APP"
     }
-  ];
+  ], []);
+
+  if (!isOpen) return null;
 
   const nextStep = () => { if (step < steps.length - 1) setStep(step + 1); };
   const prevStep = () => { if (step > 0) setStep(step - 1); };
@@ -1062,23 +1062,26 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
         
         <button 
           onClick={step > 0 ? prevStep : onClose} 
-          className="absolute top-8 left-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20" 
+          className={`absolute top-8 left-8 p-3 rounded-full transition-colors z-20 ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-black/10'}`} 
           title={step > 0 ? "Go Back" : "Undo / Close"}
         >
           <CornerUpLeft className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
         </button>
 
-        <button onClick={onClose} className="absolute top-8 right-8 p-3 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-20">
+        <button 
+          onClick={onClose} 
+          className={`absolute top-8 right-8 p-3 rounded-full transition-colors z-20 ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+        >
           <X className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
         </button>
         
-        <div className="flex flex-col items-center text-center space-y-10 relative z-10 pt-12 sm:pt-0">
-          <div className={`p-7 rounded-[2.5rem] textured-surface bg-blue-500/10 animate-subtle-pulse mx-auto flex items-center justify-center`}>
-            {React.cloneElement(steps[step].icon, { className: "relative z-10" })}
+        <div className="flex flex-col items-start text-left space-y-8 sm:space-y-10 relative z-10 pt-12 sm:pt-0 w-full">
+          <div className={`self-center w-20 h-20 sm:w-28 sm:h-28 rounded-[1.8rem] sm:rounded-[2.5rem] textured-surface bg-blue-500/10 animate-subtle-pulse flex items-center justify-center shrink-0 shadow-lg`}>
+            {React.cloneElement(steps[step].icon, { className: "relative z-10 w-10 h-10 sm:w-14 sm:h-14 text-blue-500" })}
           </div>
           
-          <div className="space-y-5 w-full max-w-md mx-auto">
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter italic leading-[0.9] whitespace-normal break-words text-center">
+          <div className="space-y-5 w-full">
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter italic leading-[0.9] whitespace-normal break-words text-left">
               {steps[step].title}
             </h2>
             <div className="text-lg sm:text-xl font-black opacity-70 leading-relaxed text-inherit whitespace-normal break-words w-full text-left">
@@ -1086,7 +1089,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
             </div>
           </div>
           
-          <div className="flex gap-2.5 py-2 justify-center">
+          <div className="flex gap-2.5 py-2 justify-start w-full">
             {steps.map((s, i) => (
               <div key={s.title} className={`h-2.5 rounded-full transition-all duration-500 ${i === step ? 'w-14 bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'w-4 bg-current opacity-20'}`} />
             ))}
@@ -1240,12 +1243,12 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
         <ASRRankList title="WOMEN'S TOP 10" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
       </div>
 
-      <div className="space-y-6">
-        <ASRSectionHeading theme={theme} className="text-left !mb-0">COURSE STATS</ASRSectionHeading>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="space-y-6 text-left overflow-visible">
+        <ASRSectionHeading theme={theme} className="!mb-0">COURSE STATS</ASRSectionHeading>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
           {stats.map((s, i) => (
-            <div key={i} className={`p-4 rounded-[1.5rem] border text-left flex flex-col gap-1 ${THEME.CARD(theme)} ios-clip-fix`}>
-              <div className="flex items-center justify-between opacity-60">
+            <div key={i} className={`p-4 rounded-[1.5rem] border text-left flex flex-col gap-1 ${THEME.CARD(theme)} ios-clip-fix overflow-visible`}>
+              <div className="flex items-center justify-between opacity-60 overflow-visible">
                 <span className={`${THEME.LABEL} leading-none`}>{s.label}</span>
                 {s.icon}
               </div>
@@ -1256,9 +1259,9 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
       </div>
       
       {(course.leadSetters || course.assistantsetters) && (
-        <div className="space-y-6 text-left">
+        <div className="space-y-6 text-left overflow-visible">
           <ASRSectionHeading theme={theme} className="!mb-0">COURSE SETTERS</ASRSectionHeading>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-visible">
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Leads</span>
@@ -1320,14 +1323,14 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         ];
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
                       <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} />
                     ))}
                 </div>
-                <div className="space-y-6 overflow-visible">
-                  <ASRSectionHeading theme={theme} className="text-left !mb-0">VERIFIED SETS</ASRSectionHeading>
+                <div className="space-y-6 overflow-visible text-left">
+                  <ASRSectionHeading theme={theme} className="!mb-0">VERIFIED SETS</ASRSectionHeading>
                   <div className="grid grid-cols-1 gap-3 overflow-visible">
                       {setterCourses.length > 0 ? setterCourses.map((c, i) => (
                         <ASRListItem 
@@ -1393,9 +1396,10 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
+    
     if (isAllTime) {
-    isQualifiedInProfile = identity.gender === 'M' ? (runsInContext >= 4) : (runsInContext >= 3);
-  } else {
+      isQualifiedInProfile = identity.gender === 'M' ? (runsInContext >= 4) : (runsInContext >= 3);
+    } else {
       isQualifiedInProfile = runsInContext >= 3;
     }
 
@@ -1416,14 +1420,14 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     ];
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-10 overflow-visible">
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
                   <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
                 ))}
             </div>
-            <div className="space-y-6 overflow-visible">
-              <ASRSectionHeading theme={theme} className="text-left !mb-0">VERIFIED RUNS</ASRSectionHeading>
+            <div className="space-y-6 overflow-visible text-left">
+              <ASRSectionHeading theme={theme} className="!mb-0">VERIFIED RUNS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {courseData.length > 0 ? courseData.map((c, i) => {
                       const target = (allCourses || []).find(x => x.name.toUpperCase() === c.label.toUpperCase());
@@ -1529,7 +1533,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
           ))}
       </div>
       <div className="space-y-12 text-left overflow-visible">
-          <div className="space-y-6 overflow-visible">
+          <div className="space-y-6 overflow-visible text-left">
               <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {regionalPlayersQualified.length > 0 ? regionalPlayersQualified.slice(0, 10).map((p, i) => (
@@ -1545,7 +1549,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                   )}
               </div>
           </div>
-          <div className="space-y-6 overflow-visible">
+          <div className="space-y-6 overflow-visible text-left">
               <ASRSectionHeading theme={theme} className="!mb-0">TOP COURSES</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {regionalCourses.slice(0, 10).map((c, i) => (
@@ -1577,17 +1581,24 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
   );
 };
 
-const TeamDetails = ({ team, theme, openModal }) => {
+const TeamDetails = ({ team, theme, openModal, settersWithImpact }) => {
   // Sort by pts and take top 20
   const topPlayers = [...(team.players || [])]
     .sort((a, b) => (b.pts || 0) - (a.pts || 0))
     .slice(0, 20);
   
-  const avgPts = team.runs > 0 ? (team.pts / team.runs).toFixed(2) : "0.00";
+  const avgPts = (team.runs && team.runs > 0) ? (team.pts / team.runs).toFixed(2) : "0.00";
+
+  // Calculate team setters
+  const teamPlayerNames = new Set((team.players || []).map(p => normalizeName(p.name)));
+  const teamSetters = (settersWithImpact || [])
+      .filter(s => teamPlayerNames.has(normalizeName(s.name)) || normalizeName(s.homeGym) === normalizeName(team.name))
+      .sort((a, b) => (b.impact || 0) - (a.impact || 0))
+      .slice(0, 10);
 
   const teamStats = [
     { label: "PLAYERS", value: String(team.players?.length || 0) },
-    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: theme === 'dark' ? 'text-white' : "text-black" },
+    { label: "POINTS", value: typeof team.pts === 'number' ? team.pts.toFixed(2) : "0.00", colorClass: theme === 'dark' ? 'text-white' : "text-black" },
     { label: "AVG POINTS", value: avgPts },
     { label: "RUNS", value: String(team.runs || 0) }
   ];
@@ -1611,21 +1622,42 @@ const TeamDetails = ({ team, theme, openModal }) => {
             <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} colorClass={s.colorClass} />
           ))}
       </div>
-      <div className="space-y-6 text-left overflow-visible">
-          <ASRSectionHeading theme={theme} className="!mb-0">TOP 20 PLAYERS</ASRSectionHeading>
-          <div className="grid grid-cols-1 gap-3 overflow-visible">
-              {topPlayers.map((p, i) => (
-                  <ASRListItem 
-                    key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
-                    stats={[{ value: (p.pts || 0).toFixed(2) }]}
-                    onClick={() => openModal('player', p)}
-                  />
-              ))}
-              {topPlayers.length === 0 && (
-                <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
-                  <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No players found in this team</span>
-                </div>
-              )}
+      
+      <div className="space-y-12 overflow-visible text-left">
+          <div className="space-y-6 overflow-visible text-left">
+              <ASRSectionHeading theme={theme} className="!mb-0">TOP 20 PLAYERS</ASRSectionHeading>
+              <div className="grid grid-cols-1 gap-3 overflow-visible">
+                  {topPlayers.map((p, i) => (
+                      <ASRListItem 
+                        key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
+                        stats={[{ value: (p.pts || 0).toFixed(2) }]}
+                        onClick={() => openModal('player', p)}
+                      />
+                  ))}
+                  {topPlayers.length === 0 && (
+                    <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                      <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No players found in this team</span>
+                    </div>
+                  )}
+              </div>
+          </div>
+          
+          <div className="space-y-6 text-left overflow-visible">
+              <ASRSectionHeading theme={theme} className="!mb-0">TOP 10 SETTERS</ASRSectionHeading>
+              <div className="grid grid-cols-1 gap-3 overflow-visible">
+                  {teamSetters.map((s, i) => (
+                      <ASRListItem 
+                        key={`setter-${i}`} variant="card" theme={theme} rank={i + 1} title={s.name} subtitle={s.region}
+                        stats={[{ value: String(Math.round(s.impact || 0)) }]}
+                        onClick={() => openModal('setter', s)}
+                      />
+                  ))}
+                  {teamSetters.length === 0 && (
+                    <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                      <Waypoints className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No setters found in this team</span>
+                    </div>
+                  )}
+              </div>
           </div>
       </div>
     </div>
@@ -1692,6 +1724,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
           team={activeModal.data} 
           theme={theme} 
           openModal={openModal} 
+          settersWithImpact={settersWithImpact}
         />
       );
     default:
@@ -2395,7 +2428,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide h-[400px]">
                         {displayData.slice(0, 40).map((c, i) => (
-                            <div key={i} onClick={() => { jumpToLocation(c); if(activeTab === 'cities') onCityClick(c); else if(activeTab === 'countries') onCountryClick(c); else onContinentClick(c); }} className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-300/50'}`}>
+                            <div key={i} onClick={() => { jumpToLocation(c); if(activeTab === 'cities') onCityClick(c); else if(activeTab === 'countries') onCountryClick(c); else onContinentClick(c); }} className={`group cursor-pointer flex items-center justify-between p-3 rounded-2xl border border-transparent transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
                                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
@@ -2423,7 +2456,7 @@ const SetterDisplay = ({ text, onSetterClick }) => {
                 <React.Fragment key={index}>
                     <span 
                         onClick={() => onSetterClick && onSetterClick(n)} 
-                        className={onSetterClick ? "cursor-pointer hover:text-current transition-colors underline decoration-current/50 underline-offset-4" : ""}
+                        className={onSetterClick ? "cursor-pointer hover:text-blue-500 transition-colors underline decoration-blue-500/30 underline-offset-4" : ""}
                     >{n}</span>{index < names.length - 1 && <span className="opacity-40">,</span>}
                 </React.Fragment>
             ))}
@@ -2441,7 +2474,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
                 {displayAthletes.map((athleteRow, i) => {
                     if (!athleteRow) {
                         return (
-                            <div key={`empty-${i}`} className={`flex items-center justify-between p-4 rounded-3xl border opacity-30 ${THEME.CARD(theme)} ios-clip-fix h-auto min-h-[72px]`}>
+                            <div key={`empty-${i}`} className={`flex items-center justify-between p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border opacity-30 ${THEME.CARD(theme)} ios-clip-fix h-auto min-h-[72px] sm:min-h-[80px]`}>
                                 <div className="flex items-center gap-3 flex-1">
                                     <ASRRankBadge rank={i + 1} theme={theme} />
                                     <span className="text-xs sm:text-[15px] font-black uppercase tracking-widest opacity-40">---</span>
@@ -2599,7 +2632,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                 {(stats.topStats[sec.k] || []).map((p, i) => (
                   <div 
                     key={i} 
-                    className="group flex items-center justify-between p-4 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors cursor-pointer active:scale-95" 
+                    className={`group flex items-center justify-between p-4 transition-colors cursor-pointer active:scale-95 ${theme === 'dark' ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.05]'}`} 
                     onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}
                     role="button"
                     tabIndex={0}
@@ -2646,7 +2679,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             </thead>
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-900/30' : 'divide-slate-200'}`}>
               {(stats.medalCount || []).map((c) => (
-                <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className="group hover:bg-black/[0.05] active:bg-blue-600/10 transition-colors cursor-pointer text-inherit">
+                <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className={`group active:bg-blue-600/10 transition-colors cursor-pointer text-inherit ${theme === 'dark' ? 'hover:bg-white/[0.05]' : 'hover:bg-black/[0.05]'}`}>
                   <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
                     <ASRRankBadge rank={c.displayRank} theme={theme} />
                   </td>
@@ -2740,7 +2773,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
                     if (item.isDivider) return (
                       <div 
                         key={`divider-${idx}`} 
-                        className="py-14 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.5em] cursor-default border-y border-transparent hover:border-blue-600/10 hover:bg-blue-600/5"
+                        className={`py-14 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.5em] cursor-default border-y border-transparent ${theme === 'dark' ? 'hover:border-blue-500/10 hover:bg-blue-500/10' : 'hover:border-blue-600/10 hover:bg-blue-600/5'}`}
                       >
                         {item.label}
                       </div>
@@ -2881,7 +2914,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
             onOpenIntro();
           }
         }}
-        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-[#1e40af] border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
+        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-blue-800 border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
@@ -3314,6 +3347,7 @@ export default function App() {
                     <a 
                       href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} 
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md bg-blue-600/10 border-blue-600/30 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95"
                       title="View Map"
                     >
@@ -3508,7 +3542,7 @@ export default function App() {
                 <div className={`relative border rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
                   <div className="overflow-visible w-full text-left scrollbar-hide">
                     {list.length > 0 ? (
-                      <ASRDataTable 
+                       <ASRDataTable 
                         theme={theme} 
                         columns={view === 'setters' ? SETTER_COLS : (view === 'map' ? COURSE_COLS : (view === 'teams' ? TEAM_COLS : PLAYER_COLS))} 
                         sort={view === 'setters' ? viewSorts.setters : (view === 'map' ? viewSorts.courses : (view === 'teams' ? viewSorts.teams : viewSorts.players))} 
