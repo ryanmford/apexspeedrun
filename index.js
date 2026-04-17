@@ -1077,11 +1077,11 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
             {React.cloneElement(steps[step].icon, { className: "relative z-10" })}
           </div>
           
-          <div className="space-y-5">
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter italic leading-[0.9] whitespace-normal break-words">
+          <div className="space-y-5 w-full max-w-md mx-auto">
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter italic leading-[0.9] whitespace-normal break-words text-center">
               {steps[step].title}
             </h2>
-            <div className="text-lg sm:text-xl font-black opacity-70 leading-relaxed max-w-md text-inherit whitespace-normal break-words mx-auto">
+            <div className="text-lg sm:text-xl font-black opacity-70 leading-relaxed text-inherit whitespace-normal break-words w-full text-left">
               {steps[step].desc}
             </div>
           </div>
@@ -2127,7 +2127,7 @@ const useFilteredData = (source, searchTerm, sortConfig, predicate = null) => {
       const matchesPredicate = predicate ? predicate(item) : true;
       return matchesSearch && matchesPredicate;
     });
-    if (sortConfig) {
+    if (sortConfig && sortConfig.key) {
       const dir = sortConfig.direction === 'ascending' ? 1 : -1;
       processed.sort((a, b) => robustSort(a, b, sortConfig.key, dir));
     }
@@ -2218,7 +2218,7 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
             .sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
             .map((c, i) => ({ ...c, displayRank: i + 1 }));
         
-        if (medalSort) {
+        if (medalSort && medalSort.key) {
             const dir = medalSort.direction === 'ascending' ? 1 : -1;
             sortedMedalCount.sort((a, b) => robustSort(a, b, medalSort.key, dir));
         }
@@ -2554,7 +2554,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
     const isActive = medalSort.key === k;
     return (
       <th 
-        className={`${w} px-2 sm:px-4 py-8 ${sortable ? 'group' : 'cursor-default'} select-none transition-all ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} border-b-2 border-transparent`}
+        className={`${w} px-2 sm:px-4 py-8 ${sortable ? 'group cursor-pointer' : 'cursor-default'} select-none transition-all ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} border-b-2 border-transparent`}
         onClick={() => sortable && setMedalSort(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
       >
         <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
@@ -2677,7 +2677,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, paddingC
   const isActive = activeSort && activeSort.key === k;
   return (
     <div 
-        className={`${w} ${paddingClass} py-8 ${sortable ? 'group' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
+        className={`${w} ${paddingClass} py-8 ${sortable ? 'group cursor-pointer' : 'cursor-default'} select-none transition-all stat-card-container ${sortable && isActive ? 'bg-current/[0.08]' : (sortable ? 'hover:bg-current/[0.05]' : '')} text-inherit border-b-2 border-transparent`} 
         onClick={() => sortable && handler(p => ({ key: k, direction: p.key === k && p.direction === 'descending' ? 'ascending' : 'descending' }))}
     >
       <div className={`flex items-center gap-2.5 ${a === 'right' ? 'justify-end' : 'justify-start'}`}>
@@ -2941,25 +2941,25 @@ const ASRControlBar = () => {
 const PLAYER_COLS = [
     { isRank: true },
     { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
-    { label: 'RATING', type: 'number', key: 'rating', decimals: 2, align: 'right', width: 'w-28 sm:w-48' }
+    { label: 'RATING', type: 'number', key: 'rating', decimals: 2, align: 'right', width: 'w-28 sm:w-48', sortable: false }
 ];
 
 const TEAM_COLS = [
     { isRank: true },
     { label: 'TEAM', type: 'profile', key: 'name', subKey: 'location', width: 'w-full', sortable: false },
-    { label: 'POINTS', type: 'number', key: 'pts', align: 'right', width: 'w-28 sm:w-48' }
+    { label: 'POINTS', type: 'number', key: 'pts', align: 'right', width: 'w-28 sm:w-48', sortable: false }
 ];
 
 const SETTER_COLS = [
     { isRank: true },
     { label: 'SETTER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
-    { label: 'IMPACT', type: 'number', key: 'impact', align: 'right', width: 'w-28 sm:w-48' }
+    { label: 'IMPACT', type: 'number', key: 'impact', align: 'right', width: 'w-28 sm:w-48', sortable: false }
 ];
 
 const COURSE_COLS = [
     { isRank: true },
     { label: 'COURSE', type: 'profile', key: 'name', subKey: 'flag', width: 'w-full', sortable: false },
-    { label: 'PLAYERS', type: 'number', key: 'totalAthletes', align: 'right', width: 'w-28 sm:w-48' }
+    { label: 'PLAYERS', type: 'number', key: 'totalAllTimeAthletes', align: 'right', width: 'w-28 sm:w-48', sortable: false }
 ];
 
 export default function App() {
@@ -3515,7 +3515,7 @@ export default function App() {
                         onSort={handleSort} 
                         data={list} 
                         onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : (view === 'teams' ? 'team' : 'player')), item, view === 'setters' ? 'setter' : null)} 
-                        statKeys={view === 'setters' ? ['impact'] : (view === 'map' ? ['totalAthletes'] : (view === 'teams' ? ['pts'] : ['rating']))}
+                        statKeys={view === 'setters' ? ['impact'] : (view === 'map' ? ['totalAllTimeAthletes'] : (view === 'teams' ? ['pts'] : ['rating']))}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center py-40 opacity-30">
