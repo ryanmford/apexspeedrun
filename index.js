@@ -1012,8 +1012,8 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 
   const steps = [
     {
-      title: "GET STARTED",
-      desc: "Because our courses are set in outdoor, public spaces, anyone can start anytime.",
+      title: "HOW TO START",
+      desc: "Our courses are set in outdoor, public spaces. You can start anytime.",
       icon: <Compass className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
     },
     {
