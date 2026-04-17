@@ -17,16 +17,16 @@ const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452
 
 const THEME = {
   CARD: (t) => t === 'dark' 
-    ? "bg-zinc-950/40 border-zinc-900/50 shadow-[0_8px_30px_rgb(0,0,0,0.5)]" 
-    : "bg-white border-slate-200 shadow-premium",
+    ? "bg-zinc-950/40 border-zinc-900/50 shadow-[0_8px_30px_rgb(0,0,0,0.5)] text-white" 
+    : "bg-white border-slate-200 shadow-premium text-black",
   
   GLASS: (t) => t === 'dark'
     ? "bg-zinc-900/80 border-zinc-800/50 backdrop-blur-xl shadow-2xl"
     : "bg-white/80 border-slate-200 backdrop-blur-md shadow-xl",
 
   MODAL_SURFACE: (t) => t === 'dark'
-    ? "bg-[#080808] border-zinc-900 text-slate-100" 
-    : "bg-white border-slate-200 text-slate-900",
+    ? "bg-[#080808] border-zinc-900 text-white" 
+    : "bg-white border-slate-200 text-black",
 
   HEADING_SM: "text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] opacity-70",
   HEADING_HOF: "text-[11px] sm:text-[13px] font-black uppercase tracking-[0.15em] opacity-90",
@@ -36,7 +36,7 @@ const THEME = {
   
   INPUT: (t) => t === 'dark'
     ? "bg-zinc-900/80 text-white focus:bg-black/90 border-zinc-800 focus:border-blue-600/60 shadow-2xl"
-    : "bg-white text-slate-900 border-slate-200 focus:border-blue-600 shadow-xl",
+    : "bg-white text-black border-slate-200 focus:border-blue-600 shadow-xl",
   
   BUTTON_ROUNDED: "rounded-[0.9rem] sm:rounded-[1.8rem] transition-all whitespace-nowrap",
   NAV_ITEM: "px-4 sm:px-10 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] transition-all text-inherit whitespace-nowrap active:scale-95",
@@ -516,7 +516,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
 };
 
 const ASRSectionHeading = ({ children, theme, className = "" }) => (
-    <h3 className={`${THEME.HEADING_SM} px-1 sm:px-2 mb-4 ${theme === 'dark' ? 'text-zinc-400' : 'text-slate-800'} ${className}`}>
+    <h3 className={`${THEME.HEADING_SM} px-1 sm:px-2 mb-4 ${theme === 'dark' ? 'text-zinc-400' : 'text-black'} ${className}`}>
         {children}
     </h3>
 );
@@ -604,7 +604,7 @@ const ASRListItem = ({
   rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, theme, onClick, isUnranked = false,
   badgeContent, shouldFade = false
 }) => {
-  const accentColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
+  const accentColor = theme === 'dark' ? 'text-white' : 'text-black';
   
   if (variant === 'table') {
     return (
@@ -628,7 +628,7 @@ const ASRListItem = ({
         </div>
         <div className="flex-1 flex min-w-0 h-full items-center">
             <div className="flex-1 flex flex-col min-w-[120px] pr-2 pl-4 sm:pl-8 text-left">
-              <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors overflow-hidden line-clamp-2`}>
+              <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors overflow-hidden line-clamp-2`}>
                 {title}
               </span>
               <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
@@ -683,7 +683,7 @@ const ASRListItem = ({
         )}
         <div className="flex flex-col min-w-0 text-left">
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-600' : ''} transition-colors`}>
+            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors`}>
               {title}
             </span>
           </div>
@@ -884,7 +884,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
       <div className="flex items-center gap-4">
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm text-blue-600">{c.icon}</div>
         <div className="text-left">
-          <p className={`text-[10px] font-black opacity-60 uppercase whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{c.desc}</p>
+          <p className={`text-[10px] font-black opacity-60 uppercase whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{c.desc}</p>
         </div>
       </div>
       <a href={c.link} target="_blank" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
@@ -1020,7 +1020,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "1. Find a course",
       desc: (
         <>
-          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" className="underline text-inherit">Apex Skool app</a> to access the latest ASR resources.
+          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> to access the latest ASR resources.
         </>
       ),
       icon: <MapPin className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
@@ -1029,19 +1029,19 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "2. Film your run",
       desc: (
         <>
-          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" className="underline text-inherit">Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
+          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
         </>
       ),
-      icon: <Video className="w-10 h-10 sm:w-11 sm:h-11 text-blue-600" />
+      icon: <Video className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />
     },
     {
       title: "3. Get verified",
       desc: (
         <>
-          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" className="underline text-inherit">Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
+          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
         </>
       ),
-      icon: <ShieldCheck className="w-10 h-10 sm:w-11 sm:h-11 text-blue-600" />,
+      icon: <ShieldCheck className="w-10 h-10 sm:w-11 sm:h-11 text-blue-500" />,
       action: "JOIN APEX SKOOL APP"
     }
   ];
@@ -1055,7 +1055,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       onClick={onClose}
     >
       <div 
-        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-900 text-white' : 'bg-white border-slate-200 text-slate-900'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
+        className={`w-full max-w-xl rounded-[3rem] p-8 sm:p-14 border ${theme === 'dark' ? 'bg-[#050505] border-zinc-900 text-white' : 'bg-white border-slate-200 text-black'} shadow-[0_0_100px_rgba(0,0,0,0.6)] relative overflow-hidden ios-clip-fix mt-[var(--safe-top)]`} 
         onClick={e => e.stopPropagation()}
       >
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/10 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
@@ -1223,8 +1223,8 @@ const ASRBaseModal = ({
 // --- INSPECTOR BODY COMPONENTS ---
 const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
   const stats = [
-    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: theme === 'dark' ? 'text-white' : 'text-blue-600' },
-    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, color: theme === 'dark' ? 'text-white' : 'text-blue-600' },
+    { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, colorClass: theme === 'dark' ? 'text-white' : 'text-black' },
+    { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, colorClass: theme === 'dark' ? 'text-white' : 'text-black' },
     { label: 'Difficulty', value: course.difficulty || '-', icon: <Compass className="w-3.5 h-3.5" /> }, 
     { label: 'Players', value: String(course.totalAllTimeAthletes || 0), icon: <Users className="w-3.5 h-3.5" /> },
     { label: 'Length', value: course.length ? String(Math.round(parseFloat(course.length))) : '-', icon: <Ruler className="w-3.5 h-3.5" /> },
@@ -1249,7 +1249,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
                 <span className={`${THEME.LABEL} leading-none`}>{s.label}</span>
                 {s.icon}
               </div>
-              <span className={`text-[15px] sm:text-[16px] leading-tight ${THEME.VALUE} ${s.color || ''}`}>{s.value}</span>
+              <span className={`text-[15px] sm:text-[16px] leading-tight ${THEME.VALUE} ${s.colorClass || ''}`}>{s.value}</span>
             </div>
           ))}
         </div>
@@ -1262,7 +1262,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Leads</span>
-                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'}`}>
+                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                   <SetterDisplay text={course.leadSetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1270,7 +1270,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
             {course.assistantsetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
                 <span className={`${THEME.HEADING_SM} mb-2`}>Assistants</span>
-                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'}`}>
+                <div className={`text-[15px] sm:text-lg font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                   <SetterDisplay text={course.assistantsetters} onSetterClick={onSetterClick} />
                 </div>
               </div>
@@ -1310,7 +1310,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
 
         const setterStats = [
             { l: 'LEVEL', v: String(setterData.certLevel || '-') },
-            { l: 'IMPACT', v: String(Math.round(impact)), c: theme === 'dark' ? 'text-white' : 'text-blue-600' }, 
+            { l: 'IMPACT', v: String(Math.round(impact)), c: theme === 'dark' ? 'text-white' : 'text-black' }, 
             { l: 'SETS', v: String(setsCount) },
             { l: 'LEADS', v: String(setterData.leads || 0) },
             { l: 'ASSISTS', v: String(setterData.assists || 0) },
@@ -1406,7 +1406,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     
     const playerStats = [
         { l: 'RANK', v: String(currentRankValue) },
-        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: theme === 'dark' ? 'text-white' : 'text-blue-600' }, 
+        { l: 'RATING', v: typeof metaSource.rating === 'number' ? metaSource.rating.toFixed(2) : '0.00', c: theme === 'dark' ? 'text-white' : 'text-black' }, 
         { l: 'POINTS', v: typeof metaSource.pts === 'number' ? metaSource.pts.toFixed(2) : '0.00' }, 
         { l: 'RUNS', v: String(runsInContext) }, 
         { l: 'WINS', v: String(metaSource.wins || 0) }, 
@@ -1587,7 +1587,7 @@ const TeamDetails = ({ team, theme, openModal }) => {
 
   const teamStats = [
     { label: "PLAYERS", value: String(team.players?.length || 0) },
-    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: theme === 'dark' ? 'text-white' : "text-blue-600" },
+    { label: "POINTS", value: (team.pts || 0).toFixed(2), colorClass: theme === 'dark' ? 'text-white' : "text-black" },
     { label: "AVG POINTS", value: avgPts },
     { label: "RUNS", value: String(team.runs || 0) }
   ];
@@ -2368,7 +2368,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
 
     if (!isScriptsLoaded) {
         return (
-            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900 text-white' : 'bg-slate-100 border-slate-200 text-slate-900'}`}>
+            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900 text-white' : 'bg-slate-100 border-slate-200 text-black'}`}>
                 <div className="animate-spin opacity-70 mb-4"><ChevronsRight className="w-6 h-6 text-blue-600" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} /></div>
                 <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP SOURCE...</div>
             </div>
@@ -2387,7 +2387,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                 <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
                     <MapPin size={12} /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
                 </button>
-                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-[2.5px] border-white backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 text-white' : 'bg-white/98 text-slate-900'} ios-clip-fix`}>
+                <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-[2.5px] border-white backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-black/95 text-white' : 'bg-white/98 text-black'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         {['continents', 'countries', 'cities'].map(t => (
                             <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
@@ -2399,12 +2399,12 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
                                     <div className="scale-90 origin-left shrink-0"><ASRRankBadge rank={i + 1} theme={theme} /></div>
                                     <div className="flex flex-col min-w-0">
-                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-blue-50`}>
+                                        <span className={`text-[11px] sm:text-[13px] font-black uppercase tracking-tight whitespace-normal break-words transition-colors ${theme === 'dark' ? 'text-white' : 'text-black'} group-hover:text-blue-500`}>
                                           {c.name} <span className="emoji-slot opacity-80">{c.flag}</span>
                                         </span>
                                     </div>
                                  </div>
-                                 <span className={`text-sm sm:text-base font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-blue-600'} tabular-nums`}>{c.courses}</span>
+                                 <span className={`text-sm sm:text-[18px] tracking-tight font-mono font-black ${theme === 'dark' ? 'text-white' : 'text-black'} tabular-nums`}>{c.courses}</span>
                             </div>
                         ))}
                     </div>
@@ -2548,7 +2548,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
 
 // --- HOF COMPONENT ---
 const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
-  const highlightColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
+  const highlightColor = theme === 'dark' ? 'text-white' : 'text-black';
 
   const MedalHeader = ({ l, k, a = 'left', w = "", sortable = true }) => {
     const isActive = medalSort.key === k;
@@ -2610,15 +2610,15 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                       }
                     }}
                   >
-                    <div className="flex items-center gap-3 text-left">
+                    <div className="flex items-center gap-3 text-left min-w-0 pr-2">
                       <ASRRankBadge rank={i + 1} theme={theme} />
-                      <div className="flex flex-col text-left">
-                        <span className="text-xs font-black uppercase whitespace-normal break-words group-hover:text-blue-600 transition-colors">{p.name}</span>
-                        <span className="text-sm mt-1">{formatFlagsWithSpace(p.region)}</span>
+                      <div className="flex flex-col text-left min-w-0">
+                        <span className="text-[11px] sm:text-[15px] font-black uppercase whitespace-normal break-words group-hover:text-blue-500 transition-colors leading-tight">{p.name}</span>
+                        <span className="text-xs sm:text-sm mt-0.5 opacity-80">{formatFlagsWithSpace(p.region)}</span>
                       </div>
                     </div>
                     
-                    <span className={`text-xs ${highlightColor} ${THEME.VALUE} px-2 py-1 rounded-lg transition-colors`}>
+                    <span className={`text-[13px] sm:text-[18px] tracking-tight ${highlightColor} ${THEME.VALUE} transition-colors shrink-0`}>
                       {sec.k === 'rating' ? (p.rating?.toFixed(2) || '0.00') : 
                       (sec.k === 'winPercentage' ? (p.winPercentage?.toFixed(2) || '0.00') : 
                       (sec.k === 'contributionScore' ? String(Math.round(p.contributionScore || 0)) :
@@ -2634,7 +2634,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         <div className={`p-8 border-b border-inherit ${THEME.HEADING_HOF} text-left`}>WORLDWIDE MEDAL COUNT</div>
         <div className="overflow-auto scrollbar-hide">
           <table className="min-w-full table-fixed border-collapse">
-            <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300 border-zinc-900' : 'bg-white/95 text-slate-700 border-slate-200'}`}>
+            <thead className={`sticky top-0 z-20 backdrop-blur-2xl border-b border-subtle ${theme === 'dark' ? 'bg-[#000000]/95 text-white border-zinc-900' : 'bg-white/95 text-black border-slate-200'}`}>
               <tr className="h-20">
                 <th className="w-20 sm:w-24 pl-4 sm:pl-10 text-left select-none uppercase text-[10px] sm:text-[12px] font-black">RANK</th>
                 <MedalHeader l="COUNTRY" k="name" a="left" sortable={false} />
@@ -2652,14 +2652,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   </td>
                   <td className="px-2 sm:px-4 py-6 text-left">
                     <div className="flex items-center gap-3 text-left">
-                      <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-600 transition-colors">{c.name}</span>
+                      <span className="text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight group-hover:text-blue-500 transition-colors">{c.name}</span>
                       <span className="emoji-slot text-xl sm:text-2xl shrink-0">{formatFlagsWithSpace(c.flag)}</span>
                     </div>
                   </td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.gold)}</td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.silver)}</td>
-                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.bronze)}</td>
-                  <td className={`w-24 sm:w-36 pl-2 sm:pl-4 pr-4 sm:pr-12 text-right text-sm sm:text-lg ${THEME.VALUE}`}>{String(c.total)}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-amber-500 text-sm sm:text-[20px] tracking-tight ${THEME.VALUE}`}>{String(c.gold)}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-[20px] tracking-tight ${THEME.VALUE}`}>{String(c.silver)}</td>
+                  <td className={`w-12 sm:w-24 px-2 sm:px-4 text-right text-sm sm:text-[20px] tracking-tight ${THEME.VALUE}`}>{String(c.bronze)}</td>
+                  <td className={`w-24 sm:w-36 pl-2 sm:pl-4 pr-4 sm:pr-12 text-right text-sm sm:text-[20px] tracking-tight ${THEME.VALUE}`}>{String(c.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2718,11 +2718,11 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
     }, [data, visibleCount]);
 
     const topOffset = "top-[calc(var(--safe-top)+var(--nav-height-mobile)+var(--announcement-height)+var(--ticker-height))] sm:top-[calc(var(--safe-top)+var(--nav-height-desktop)+var(--announcement-height)+var(--ticker-height))]";
-    const dataColor = theme === 'dark' ? 'text-white' : 'text-blue-600';
+    const dataColor = theme === 'dark' ? 'text-white' : 'text-black';
 
     return (
         <div className="min-w-full flex flex-col overflow-visible">
-            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-slate-300 border-zinc-900' : 'bg-white/95 text-slate-700 border-slate-200'}`}>
+            <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b flex items-center ${theme === 'dark' ? 'bg-[#000000]/95 text-white border-zinc-900' : 'bg-white/95 text-black border-slate-200'}`}>
                 <div className="w-20 sm:w-24 pl-4 sm:pl-10 py-8 text-left font-black text-[10px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
                   {columns.filter(c => !c.isRank).map((col) => (
@@ -2781,7 +2781,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
 
 const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
     return (
-        <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-900 text-slate-100 shadow-xl' : 'bg-white/80 border-slate-200 text-slate-900 shadow-sm'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)]`}>
+        <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#000000]/90 border-zinc-900 text-white shadow-xl' : 'bg-white/80 border-slate-200 text-black shadow-sm'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)]`}>
             <div 
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group active:scale-95 transition-transform" 
                 onClick={() => {
@@ -2844,7 +2844,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 
   return (
     <div className="floating-nav-dock">
-      <div className={`floating-nav-inner transition-all duration-500 ${theme === 'dark' ? 'bg-zinc-900/98 text-white' : 'bg-white/98 text-zinc-900'} backdrop-blur-3xl`}>
+      <div className={`floating-nav-inner transition-all duration-500 ${theme === 'dark' ? 'bg-zinc-900/98 text-white' : 'bg-white/98 text-black'} backdrop-blur-3xl`}>
         {items.map(item => {
           const isActive = view === item.id;
           return (
@@ -3441,7 +3441,7 @@ export default function App() {
   }), [filteredCourses, dnMap]);
 
   return (
-    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors duration-500 font-sans flex flex-col antialiased ${theme === 'dark' ? 'bg-[#000000] text-white' : 'bg-[#f8fafc] text-black'}`}>
       <CustomStyles />
       <ASRTopShield theme={theme} />
       
