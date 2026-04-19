@@ -1691,7 +1691,7 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
                     <ASRStatCard label="🥇" value={String(stats.medals.gold)} theme={theme} glowClass="glow-gold" />
                     <ASRStatCard label="🥈" value={String(stats.medals.silver)} theme={theme} glowClass="glow-silver" />
                     <ASRStatCard label="🥉" value={String(stats.medals.bronze)} theme={theme} glowClass="glow-bronze" />
-                    <ASRStatCard label="🔥" value={String(stats.fires)} theme={theme} colorClass="text-blue-500" glowClass="glow-blue" />
+                    <ASRStatCard label="🔥" value={String(stats.fires)} theme={theme} glowClass="glow-blue" />
                 </div>
                 <div className="space-y-6 overflow-visible text-left">
                     <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
@@ -2865,15 +2865,15 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
                       const val = item[k];
                       const forceAlignment = ['rating', 'avgCR', 'pts'];
                       const forceRound = ['impact', 'avgLength', 'contributionScore', 'runs'];
-                      const blueKeys = ['pts'];
+                      const highlightKeys = ['pts']; // Determines explicit white/black emphasis
 
                       if (forceRound.includes(k)) {
                         return { value: String(Math.round(parseFloat(val) || 0)) };
                       }
                       if (forceAlignment.includes(k) || (typeof val === 'number' && !Number.isInteger(val))) {
-                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2), color: blueKeys.includes(k) ? dataColor : '' };
+                        return { value: typeof val === 'number' ? val.toFixed(2) : (parseFloat(val) || 0).toFixed(2), color: highlightKeys.includes(k) ? dataColor : '' };
                       }
-                      return { value: val !== undefined && val !== null ? String(val) : "0", color: blueKeys.includes(k) ? dataColor : '' };
+                      return { value: val !== undefined && val !== null ? String(val) : "0", color: highlightKeys.includes(k) ? dataColor : '' };
                     });
 
                     return (
@@ -3600,7 +3600,7 @@ export default function App() {
           currentIndex={historyIndex}
         >
           <InspectorBody 
-             activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
+                          activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
              atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={navigateToEntity}
              onSetterClick={(setter) => { 
                 const sName = typeof setter === 'string' ? setter : String(setter.name);
