@@ -442,28 +442,38 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     'RATING': "RATING = POINTS / RUNS",
     'AVG POINTS': "AVERAGE POINTS PER RUN",
     'TOP RATING': "RATING = POINTS / RUNS",
-    '🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
-    'MOST 🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
-    '🪙': "CONTRIBUTOR COINS EARNED FROM RUNS, WINS, & SETS.",
-    'MOST 🪙': "CONTRIBUTOR COINS EARNED FROM RUNS, WINS, & SETS.",
-    'IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
-    'MOST IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
-    'WINS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
-    'MOST RECORDS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
+    '🔥': "FIRE BONUS 🔥 🔥 🔥",
+    'MOST 🔥': "FIRE BONUS 🔥 🔥 🔥",
+    '🪙': "COINS EARNED FROM RUNS, WINS, & SETS",
+    'MOST 🪙': "COINS EARNED FROM RUNS, WINS, & SETS",
+    'IMPACT': "TOTAL RUNS ON COURSES BY THIS SETTER",
+    'MOST IMPACT': "TOTAL RUNS ON COURSES BY THIS SETTER",
+    'AVG IMPACT': "AVERAGE IMPACT PER SETTER",
+    'WINS': "TOTAL COURSE RECORDS HELD",
+    'MOST RECORDS': "TOTAL COURSE RECORDS HELD",
     'WIN %': "WIN % = WINS / RUNS",
     'HIGHEST WIN %': "WIN % = WINS / RUNS",
-    'FILMS': "TOTAL RUNS FILMED FOR OTHER PLAYERS.",
-    'AVG LENGTH': "AVERAGE COURSE LENGTH (METERS).",
-    'AVG TIME': "AVERAGE RUN TIME (SECONDS).",
-    'LEVEL': "ASR COURSE SETTER CERTIFICATION LEVEL",
-    'RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
-    'MOST RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
-    'SETS': "TOTAL NUMBER OF COURSES SET.",
-    'MOST SETS': "TOTAL NUMBER OF COURSES SET.",
-    'PLAYERS': "TOTAL UNIQUE PLAYERS AFFILIATED WITH THIS ENTITY."
+    'FILMS': "TOTAL RUNS FILMED",
+    'AVG LENGTH': "AVERAGE COURSE LENGTH (M)",
+    'AVG TIME': "AVERAGE RUN TIME (SEC)",
+    'LEVEL': "ASR COURSE SETTER CERT LEVEL",
+    'RUNS': "TOTAL RUNS COMPLETED",
+    'MOST RUNS': "TOTAL RUNS COMPLETED",
+    'SETS': "TOTAL COURSES SET",
+    'MOST SETS': "TOTAL COURSES SET",
+    'PLAYERS': "TOTAL PLAYERS",
+    'SETTERS': "TOTAL SETTERS",
+    'COURSES': "TOTAL COURSES",
+    'LEADS': "TOTAL LEAD SETS",
+    'ASSISTS': "TOTAL SET ASSISTS",
+    'RANK': "CURRENT WORLDWIDE RANK",
+    'POINTS': "TOTAL POINTS EARNED",
+    '🥇': "TOTAL GOLD MEDALS",
+    '🥈': "TOTAL SILVER MEDALS",
+    '🥉': "TOTAL BRONZE MEDALS"
   };
 
-  const labelStr = String(label || "").toUpperCase();
+  const labelStr = String(label || "").trim().toUpperCase();
   const description = tooltip || statInfoMap[labelStr];
 
   return (
@@ -3566,7 +3576,7 @@ export default function App() {
         </div>
       );
     }
-    if (type === 'team') {
+if (type === 'team') {
       return (
         <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
           <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} sizeCls="text-xl sm:text-4xl" /></div>
