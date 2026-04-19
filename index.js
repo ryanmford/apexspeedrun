@@ -1303,6 +1303,13 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     return identity.pKey || displayKey;
   }, [identity, atPerfs, opPerfs]);
 
+  // Hook moved to the top level to avoid Rules of Hooks violation
+  const validOpenRankings = useMemo(() => {
+    return (openRankings || [])
+        .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, false))
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  }, [openRankings, identity.gender]);
+
   const renderRoleContent = (roleId) => {
     const isSetter = roleId === 'setter';
     
@@ -1394,12 +1401,6 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         if (aGold && bGold) return (a.num || 0) - (b.num || 0);
         return (b.points || 0) - (a.points || 0);
     });
-
-    const validOpenRankings = useMemo(() => {
-        return (openRankings || [])
-            .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, false))
-            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    }, [openRankings, identity.gender]);
 
     const currentOpenRankIndex = validOpenRankings.findIndex(p => p.pKey === pKey);
     const currentOpenRank = currentOpenRankIndex !== -1 ? currentOpenRankIndex + 1 : "UR";
@@ -3405,7 +3406,7 @@ export default function App() {
   const handleShare = useCallback(() => {
     const url = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: document.title, url }).catch(() => {});
+ navigator.share({ title: document.title, url }).catch(() => {});
     } else {
       const el = document.createElement('textarea');
       el.value = url;
