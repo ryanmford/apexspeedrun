@@ -1292,6 +1292,10 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
 const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal }) => {
   const [activeRole, setActiveRole] = useState(initialRole || 'asr-open');
   
+  useEffect(() => {
+    setActiveRole(initialRole || 'asr-open');
+  }, [initialRole, identity.pKey]);
+
   const pKey = useMemo(() => {
     if (identity.pKey && (atPerfs[identity.pKey] || opPerfs[identity.pKey])) return identity.pKey;
     const displayKey = normalizeName(identity.name);
@@ -1391,7 +1395,6 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         return (b.points || 0) - (a.points || 0);
     });
 
-    // Fix applied here: filter open rankings by gender and ensure they are qualified before deriving rank index
     const validOpenRankings = useMemo(() => {
         return (openRankings || [])
             .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, false))
@@ -2825,6 +2828,7 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
             <div 
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group active:scale-95 transition-transform" 
                 onClick={() => {
+                    window.scrollTo(0, 0);
                     window.location.hash = '#/players';
                     setEventType('open');
                 }}
@@ -2833,6 +2837,7 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
+                    window.scrollTo(0, 0);
                     window.location.hash = '#/players';
                     setEventType('open');
                   }
@@ -2891,6 +2896,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
             <button
               key={item.id}
               onClick={() => {
+                  window.scrollTo(0, 0);
                   window.location.hash = `#/${item.id}`;
               }}
               className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] w-full relative h-full ${isActive ? 'text-blue-600' : 'opacity-30 hover:opacity-100 text-inherit'}`}
@@ -3034,13 +3040,22 @@ export default function App() {
   // Handle global scroll to top on major transitions
   useLayoutEffect(() => {
     const resetScroll = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     };
 
     resetScroll();
-    const timer = requestAnimationFrame(resetScroll);
-    return () => cancelAnimationFrame(timer);
+    const timer = setTimeout(resetScroll, 50); // slight delay to guarantee DOM is settled
+    return () => clearTimeout(timer);
   }, [view, eventType]);
+
+  // Disable automatic scroll restoration so it doesn't fight our scrollTo top logic
+  useEffect(() => {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
 
   const masterCourseList = useMemo(() => {
     const courseNames = Array.from(new Set([...Object.keys(cMet || {}), ...Object.keys(lbAT.M || {}), ...Object.keys(lbAT.F || {})])).filter(Boolean);
@@ -3246,6 +3261,7 @@ export default function App() {
             setView(firstSegment);
             setModalHistory([]);
             setHistoryIndex(-1);
+            window.scrollTo(0, 0); // Reset scroll cleanly when returning to a main layout
         }
     };
 
@@ -3538,7 +3554,15 @@ export default function App() {
               <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
             </div>
           ) : view === 'hof' ? (
-            <ASRHallOfFame stats={hofStats} theme={theme} onPlayerClick={p => navigateToEntity('player', p)} onSetterClick={s => navigateToEntity('setter', s)} onRegionClick={r => navigateToEntity('region', r)} medalSort={medalSort} setMedalSort={setMedalSort} />
+            <ASRHallOfFame 
+              stats={hofStats} 
+              theme={theme} 
+              onPlayerClick={(p, roleOverride) => navigateToEntity('player', p, roleOverride)} 
+              onSetterClick={s => navigateToEntity('setter', s)} 
+              onRegionClick={r => navigateToEntity('region', r)} 
+              medalSort={medalSort} 
+              setMedalSort={setMedalSort} 
+            />
           ) : (
             <div className="space-y-4 overflow-visible">
               <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
