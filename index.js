@@ -443,10 +443,8 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   }, [isFlipped]);
 
   const statInfoMap = {
-    'RANK': "CURRENT LEADERBOARD STANDING.",
     'RATING': "RATING = POINTS / RUNS",
-    'POINTS': "TOTAL POINTS EARNED ACROSS ALL RUNS.",
-    'AVG POINTS': "AVERAGE POINTS PER RUN.",
+    'AVG POINTS': "AVERAGE POINTS PER RUN",
     'TOP RATING': "RATING = POINTS / RUNS",
     '🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
     'MOST 🔥': "FIRE BONUS FOR THE FASTEST RUNS.",
@@ -454,7 +452,6 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     'MOST 🪙': "CONTRIBUTOR COINS EARNED FROM RUNS, WINS, & SETS.",
     'IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
     'MOST IMPACT': "TOTAL RUNS ON ALL COURSES BY THIS SETTER.",
-    'AVG IMPACT': "AVERAGE COURSE RUNS PER SETTER.",
     'WINS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
     'MOST RECORDS': "TOTAL COURSE RECORDS CURRENTLY HELD.",
     'WIN %': "WIN % = WINS / RUNS",
@@ -462,19 +459,12 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
     'FILMS': "TOTAL RUNS FILMED FOR OTHER PLAYERS.",
     'AVG LENGTH': "AVERAGE COURSE LENGTH (METERS).",
     'AVG TIME': "AVERAGE RUN TIME (SECONDS).",
-    'LEVEL': "ASR COURSE SETTER CERTIFICATION LEVEL.",
+    'LEVEL': "ASR COURSE SETTER CERTIFICATION LEVEL",
     'RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
     'MOST RUNS': "TOTAL NUMBER OF RUNS COMPLETED.",
     'SETS': "TOTAL NUMBER OF COURSES SET.",
     'MOST SETS': "TOTAL NUMBER OF COURSES SET.",
-    'LEADS': "TOTAL COURSES DESIGNED AS LEAD SETTER.",
-    'ASSISTS': "TOTAL COURSES CONTRIBUTED TO AS ASSISTANT.",
-    'PLAYERS': "TOTAL UNIQUE PLAYERS AFFILIATED WITH THIS ENTITY.",
-    'COURSES': "TOTAL NUMBER OF VERIFIED COURSES.",
-    'SETTERS': "TOTAL NUMBER OF SETTERS AFFILIATED WITH THIS ENTITY.",
-    '🥇': "TOTAL GOLD MEDALS EARNED.",
-    '🥈': "TOTAL SILVER MEDALS EARNED.",
-    '🥉': "TOTAL BRONZE MEDALS EARNED."
+    'PLAYERS': "TOTAL UNIQUE PLAYERS AFFILIATED WITH THIS ENTITY."
   };
 
   const labelStr = String(label || "").toUpperCase();
@@ -3612,66 +3602,74 @@ export default function App() {
           <InspectorBody 
                           activeModal={activeModal} theme={theme} allCourses={masterCourseList} openRankings={openData} atPerfs={atPerfs} opPerfs={opPerfs} 
              atMet={atMet} dnMap={dnMap} settersWithImpact={settersWithImpact} openModal={navigateToEntity}
-             onSetterClick={(setter) => {const setterObj = typeof setter === 'string' 
-                ? (settersWithImpact.find(s => normalizeName(s.name) === normalizeName(setter)) || { name: setter }) 
-                : setter;
-              navigateToEntity('setter', setterObj);
-            }}
+             onSetterClick={(setter) => { 
+                const sName = typeof setter === 'string' ? setter : String(setter.name);
+                const sObj = settersWithImpact.find(s => normalizeName(s.name) === normalizeName(sName)); 
+                if (sObj) navigateToEntity('setter', sObj); 
+             }}
           />
         </ASRBaseModal>
 
         <ASRControlBar />
-
-        <main className="flex-1 w-full max-w-[2000px] mx-auto px-4 sm:px-12 flex flex-col items-center z-10 relative">
-          <div className="w-full text-center mt-4 sm:mt-8 mb-8 sm:mb-16">
-            <h1 className={`text-4xl sm:text-[80px] font-black uppercase tracking-tighter italic leading-none transition-all duration-500 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-              {currentTitle}
-            </h1>
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-12 flex-grow w-full overflow-visible pb-10">
+          <div className="w-full flex flex-col mb-4 animate-in fade-in duration-500">
+             <h1 className="text-inherit text-3xl sm:text-[42px] leading-tight font-black uppercase tracking-[0.3em] text-left px-1 drop-shadow-md">
+                {currentTitle}
+             </h1>
           </div>
 
-          {view !== 'hof' && (
-            <ASRSearchInput
-              search={search} setSearch={setSearch}
-              gen={gen} setGen={setGen}
-              theme={theme} view={view}
-              mapMode={mapMode} setMapMode={setMapMode}
+          {isLoading && data.length === 0 ? (
+            <div className={`border-2 rounded-[3.5rem] h-96 animate-pulse flex flex-col items-center justify-center gap-8 ${theme === 'dark' ? 'bg-zinc-950 border-zinc-900' : 'bg-slate-200 border-slate-300'}`}>
+              <ChevronsRight className="w-12 h-12 text-blue-600 animate-pulse" strokeWidth={3} style={{ transform: 'skewX(-18deg)' }} />
+              <span className="text-xs font-black uppercase tracking-[0.4em] opacity-40">SCANNING LIVE STATS</span>
+            </div>
+          ) : view === 'hof' ? (
+            <ASRHallOfFame 
+              stats={hofStats} 
+              theme={theme} 
+              onPlayerClick={(p, roleOverride) => navigateToEntity('player', p, roleOverride)} 
+              onSetterClick={s => navigateToEntity('setter', s)} 
+              onRegionClick={r => navigateToEntity('region', r)} 
+              medalSort={medalSort} 
+              setMedalSort={setMedalSort} 
             />
-          )}
-
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
-              <ChevronsRight size={56} className="mb-6 animate-subtle-pulse" />
-              <h3 className="text-xl font-black uppercase tracking-[0.3em]">LOADING VAULT DATA...</h3>
-            </div>
           ) : (
-            <div className="w-full transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
-              {view === 'players' && <ASRDataTable columns={PLAYER_COLS} data={list} sort={viewSorts.players} onSort={(s) => handleSortFunc('players', s)} theme={theme} onRowClick={(p) => navigateToEntity('player', p)} statKeys={['rating']} />}
-              {view === 'teams' && <ASRDataTable columns={TEAM_COLS} data={list} sort={viewSorts.teams} onSort={(s) => handleSortFunc('teams', s)} theme={theme} onRowClick={(t) => navigateToEntity('team', t)} statKeys={['pts']} />}
-              {view === 'setters' && <ASRDataTable columns={SETTER_COLS} data={list} sort={viewSorts.setters} onSort={(s) => handleSortFunc('setters', s)} theme={theme} onRowClick={(s) => navigateToEntity('setter', s)} statKeys={['impact']} />}
-              {view === 'map' && mapMode === 'map' && (
-                <ASRGlobalMap
-                  courses={filteredCourses} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries}
-                  theme={theme}
-                  onCourseClick={(type, c) => navigateToEntity('course', c)}
-                  onCountryClick={(c) => navigateToEntity('region', { ...c, type: 'country' })}
-                  onCityClick={(c) => navigateToEntity('region', { ...c, type: 'city' })}
-                  onContinentClick={(c) => navigateToEntity('region', { ...c, type: 'continent' })}
-                />
+            <div className="space-y-4 overflow-visible">
+              <ASRSearchInput search={search} setSearch={setSearch} gen={gen} setGen={setGen} theme={theme} view={view} mapMode={mapMode} setMapMode={setMapMode} />
+
+              {view === 'map' && mapMode === 'map' ? (
+                <ASRGlobalMap courses={filteredCourses} continents={mapRegionStats.continents} cities={mapRegionStats.cities} countries={mapRegionStats.countries} theme={theme} onCourseClick={(t, item) => navigateToEntity('course', item)} onCountryClick={c => navigateToEntity('region', {...c, type: 'country'})} onCityClick={c => navigateToEntity('region', {...c, type: 'city'})} onContinentClick={c => navigateToEntity('region', {...c, type: 'continent'})} />
+              ) : (
+                <div className={`relative border rounded-[2rem] sm:rounded-[3.5rem] shadow-premium overflow-visible flex flex-col ${theme === 'dark' ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
+                  <div className="overflow-visible w-full text-left scrollbar-hide">
+                    {list.length > 0 ? (
+                       <ASRDataTable 
+                        theme={theme} 
+                        columns={view === 'setters' ? SETTER_COLS : (view === 'map' ? COURSE_COLS : (view === 'teams' ? TEAM_COLS : PLAYER_COLS))} 
+                        sort={view === 'setters' ? viewSorts.setters : (view === 'map' ? viewSorts.courses : (view === 'teams' ? viewSorts.teams : viewSorts.players))} 
+                        onSort={handleSort} 
+                        data={list} 
+                        onRowClick={item => navigateToEntity(view === 'setters' ? 'setter' : (view === 'map' ? 'course' : (view === 'teams' ? 'team' : 'player')), item, view === 'setters' ? 'setter' : null)} 
+                        statKeys={view === 'setters' ? ['impact'] : (view === 'map' ? ['totalAllTimeAthletes'] : (view === 'teams' ? ['pts'] : ['rating']))}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-40 opacity-30">
+                        <ChevronsRight className="w-8 h-8 text-blue-600 mb-20 scale-[4.5]" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} />
+                        <h3 className="text-sm sm:text-2xl font-black uppercase tracking-[0.5em]">{search ? "NO RESULTS FOUND" : "SCANNING LIVE STATS"}</h3>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-              {view === 'map' && mapMode === 'list' && (
-                <ASRDataTable columns={COURSE_COLS} data={list} sort={viewSorts.courses} onSort={(s) => handleSortFunc('courses', s)} theme={theme} onRowClick={(c) => navigateToEntity('course', c)} statKeys={['totalAllTimeAthletes']} />
-              )}
-              {view === 'hof' && (
-                <ASRHallOfFame
-                  stats={hofStats} theme={theme}
-                  onPlayerClick={(p) => navigateToEntity('player', p, 'all-time')}
-                  onSetterClick={(s) => navigateToEntity('setter', s)}
-                  onRegionClick={(r) => navigateToEntity('region', r)}
-                  medalSort={medalSort} setMedalSort={setMedalSort}
-                />
-              )}
+
+              <div className="animate-in fade-in duration-1000 slide-in-from-bottom-4 overflow-visible pt-8">
+                {(view === 'map' || view === 'setters') && <ASRPromotionBanner type="setter" theme={theme} />}
+                {(view === 'players' || view === 'teams') && <ASRPromotionBanner type="coach" theme={theme} />}
+              </div>
             </div>
           )}
+          <footer className="mt-20 text-center opacity-30 font-black uppercase tracking-[0.6em] text-[11px]">© 2026 APEX SPEED RUN</footer>
         </main>
       </div>
     </div>
