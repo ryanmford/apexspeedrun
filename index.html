@@ -2,28 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Prevents unwanted zooming on mobile for a native app feel -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="Apex Speed Run - Global Parkour Leaderboards and Course Directory">
     <title>Apex Speed Run</title>
 
     <!-- PWA Setup -->
-    <!-- Removed leading slash from href to ensure it works on GitHub Pages/subfolders -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="asr.png">
-    <meta name="theme-color" content="#09090b">
+    
+    <!-- Theme color adapts to system default to prevent flashing before React mounts -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#09090b">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc">
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
+    <!-- Preconnect to external domains for performance (Maps, Fonts, Icons) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://basemaps.cartocdn.com">
+
+    <!-- Google Consent Mode v2 Default Setup -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+      
+      // Default to 'granted' to ensure analytics flow immediately.
+      // IMPORTANT: If you receive EU traffic and add a cookie banner (CMP), 
+      // change these to 'denied' and let the banner update them to 'granted'.
+      gtag('consent', 'default', {
+        'ad_storage': 'granted',
+        'ad_user_data': 'granted',
+        'ad_personalization': 'granted',
+        'analytics_storage': 'granted'
+      });
+    </script>
 
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B4W7YVST8N"></script>
+    <script>
+      gtag('js', new Date());
       gtag('config', 'G-B4W7YVST8N');
     </script>
     
+    <!-- Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <link rel="stylesheet" href="styles.css">
@@ -33,22 +56,34 @@
             font-family: 'Noto Sans', sans-serif;
             margin: 0;
             background-color: #000;
+            /* Prevent bounce scrolling on iOS */
+            overscroll-behavior-y: none;
         }
-        /* Loading State Styling */
-        #root:empty::before {
-            content: "SCANNING LIVE STATS";
-            position: fixed;
-            inset: 0;
+        
+        /* Premium Loading State Styling */
+        #root:empty {
+            height: 100dvh;
+            width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
+            background-color: #000;
+        }
+        
+        #root:empty::before {
+            content: "SCANNING LIVE STATS";
             color: #2563eb;
             font-weight: 900;
             letter-spacing: 0.4em;
             font-size: 12px;
-            animation: pulse 2s infinite;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            text-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
         }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        @keyframes pulse { 
+            0%, 100% { opacity: 1; transform: scale(1); } 
+            50% { opacity: 0.5; transform: scale(0.98); } 
+        }
     </style>
 </head>
 <body>
@@ -57,14 +92,14 @@
     <script type="module" src="index.js"></script>
 
     <!-- Registering the Service Worker -->
-<script type="module">
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register(new URL('sw.js', import.meta.url), { type: 'module' })
-        .then(reg => console.log('Service Worker registered', reg))
-        .catch(err => console.error('Service Worker registration failed', err));
-    });
-  }
-</script>
+    <script type="module">
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register(new URL('sw.js', import.meta.url), { type: 'module' })
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+        });
+      }
+    </script>
 </body>
 </html>
