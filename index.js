@@ -548,7 +548,7 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   const grad = GRADIENTS[hash % GRADIENTS.length];
 
   return (
-    <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black shadow-md rounded-inherit ${sizeCls} textured-surface ios-clip-fix`}>
+    <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black shadow-md rounded-[inherit] ${sizeCls} textured-surface ios-clip-fix`}>
       <span className="relative z-10">{getInitials(name)}</span>
     </div>
   );
@@ -621,7 +621,7 @@ const ASRListItem = ({
           }
         }}
         className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 outline-none
-          ${onClick ? `cursor-pointer active:bg-blue-600/5 focus:bg-blue-600/5 ${tableHover}` : 'cursor-default'} 
+          ${onClick ? `cursor-pointer active:bg-blue-600/10 focus:bg-blue-600/10 ${tableHover}` : 'cursor-default'} 
           ${shouldFade ? 'opacity-50' : 'opacity-100'}`}
       >
         <div className="w-20 sm:w-24 pl-4 sm:pl-10 shrink-0">
@@ -1391,8 +1391,15 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         return (b.points || 0) - (a.points || 0);
     });
 
-    const currentOpenRankIndex = openRankings?.findIndex(p => p.pKey === pKey);
-    const currentOpenRank = (currentOpenRankIndex !== undefined && currentOpenRankIndex !== -1) ? currentOpenRankIndex + 1 : "UR";
+    // Fix applied here: filter open rankings by gender and ensure they are qualified before deriving rank index
+    const validOpenRankings = useMemo(() => {
+        return (openRankings || [])
+            .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, false))
+            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }, [openRankings, identity.gender]);
+
+    const currentOpenRankIndex = validOpenRankings.findIndex(p => p.pKey === pKey);
+    const currentOpenRank = currentOpenRankIndex !== -1 ? currentOpenRankIndex + 1 : "UR";
     
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
@@ -2535,7 +2542,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                   value={search || ''} 
                   onChange={e => setSearch(e.target.value)}
                   placeholder=""
-                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4.5 w-full font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
+                  className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4 w-full font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
@@ -2916,7 +2923,7 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
         }}
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-blue-800 border-blue-400/20 text-blue-50' : 'bg-blue-600 border-blue-700 text-white'}`}
       >
-        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-full justify-center font-sans font-black flex-nowrap text-inherit">
+        <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
             <div className="flex items-center gap-4 sm:gap-8 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
               <div className="flex items-center gap-1.5">
