@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v59_teams'; 
+const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v60_teams'; 
 const REFRESH_INTERVAL = 300000; // 5 mins
 const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
 
@@ -1591,87 +1591,151 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
   );
 };
 
-const TeamDetails = ({ team, theme, openModal, settersWithImpact }) => {
-  // Sort by pts and take top 20
-  const topPlayers = [...(team.players || [])]
-    .sort((a, b) => (b.pts || 0) - (a.pts || 0))
-    .slice(0, 20);
-  
-  const avgPts = (team.runs && team.runs > 0) ? (team.pts / team.runs).toFixed(2) : "0.00";
+const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atPerfs, opPerfs, settersWithImpact }) => {
+    const [activeTab, setActiveTab] = useState(initialRole === 'open' ? 'asr-open' : (initialRole || 'asr-open'));
 
-  // Calculate team setters
-  const teamPlayerNames = new Set((team.players || []).map(p => normalizeName(p.name)));
-  const teamSetters = (settersWithImpact || [])
-      .filter(s => teamPlayerNames.has(normalizeName(s.name)) || normalizeName(s.homeGym) === normalizeName(team.name))
-      .sort((a, b) => (b.impact || 0) - (a.impact || 0))
-      .slice(0, 10);
+    useEffect(() => {
+        setActiveTab(initialRole === 'open' ? 'asr-open' : (initialRole || 'asr-open'));
+    }, [initialRole, team.name]);
 
-  const teamStats = [
-    { label: "PLAYERS", value: String(team.players?.length || 0) },
-    { label: "POINTS", value: typeof team.pts === 'number' ? team.pts.toFixed(2) : "0.00", colorClass: theme === 'dark' ? 'text-white' : "text-black" },
-    { label: "AVG POINTS", value: avgPts },
-    { label: "RUNS", value: String(team.runs || 0) }
-  ];
+    const teamNameNorm = normalizeName(team.name);
 
-  const medalStats = [
-      { label: "🥇", value: String(team.medals?.gold || 0) },
-      { label: "🥈", value: String(team.medals?.silver || 0) },
-      { label: "🥉", value: String(team.medals?.bronze || 0) },
-      { label: "🔥", value: String(team.fires || 0), colorClass: "text-blue-500" }
-  ];
+    const getTeamStats = (isAllTime) => {
+        const sourcePlayers = isAllTime ? Object.values(atMet || {}) : (openData || []);
+        const teamPlayers = sourcePlayers.filter(p => {
+            const gym = p.homeGym || "";
+            return normalizeName(gym) === teamNameNorm && !isPlaceholderPlayer(p.name);
+        });
 
-  return (
-    <div className="space-y-12 overflow-visible">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
-          {teamStats.map((s, i) => (
-            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} colorClass={s.colorClass} />
-          ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
-          {medalStats.map((s, i) => (
-            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} colorClass={s.colorClass} />
-          ))}
-      </div>
-      
-      <div className="space-y-12 overflow-visible text-left">
-          <div className="space-y-6 overflow-visible text-left">
-              <ASRSectionHeading theme={theme} className="!mb-0">TOP 20 PLAYERS</ASRSectionHeading>
-              <div className="grid grid-cols-1 gap-3 overflow-visible">
-                  {topPlayers.map((p, i) => (
-                      <ASRListItem 
-                        key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
-                        stats={[{ value: (p.pts || 0).toFixed(2) }]}
-                        onClick={() => openModal('player', p)}
-                      />
-                  ))}
-                  {topPlayers.length === 0 && (
-                    <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
-                      <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No players found in this team</span>
+        let pts = 0;
+        let runs = 0;
+        let fires = 0;
+        let medals = { gold: 0, silver: 0, bronze: 0 };
+
+        teamPlayers.forEach(p => {
+            const playerRuns = p.runs !== undefined ? p.runs : (atPerfs[p.pKey]?.length || 0);
+            if (playerRuns === 0) return;
+
+            pts += (p.pts || 0);
+            runs += playerRuns;
+            fires += isAllTime ? (p.allTimeFireCount || 0) : (p.openFireCount || 0);
+
+            const perfSource = isAllTime ? (atPerfs[p.pKey] || []) : (opPerfs[p.pKey] || []);
+            perfSource.forEach(perf => {
+                if (perf.rank === 1) medals.gold++;
+                else if (perf.rank === 2) medals.silver++;
+                else if (perf.rank === 3) medals.bronze++;
+            });
+        });
+
+        return {
+            players: teamPlayers.filter(p => (p.runs || 0) > 0).sort((a, b) => (b.pts || 0) - (a.pts || 0)),
+            pts, runs, fires, medals
+        };
+    };
+
+    const renderTabContent = () => {
+        if (activeTab === 'setter') {
+            const allTimeRoster = Object.values(atMet || {}).filter(p => normalizeName(p.homeGym) === teamNameNorm);
+            const teamPlayerNames = new Set(allTimeRoster.map(p => normalizeName(p.name)));
+
+            const teamSetters = (settersWithImpact || [])
+                .filter(s => teamPlayerNames.has(normalizeName(s.name)) || normalizeName(s.homeGym) === teamNameNorm)
+                .sort((a, b) => (b.impact || 0) - (a.impact || 0));
+
+            const topSetters = teamSetters.slice(0, 20);
+            const totalImpact = teamSetters.reduce((sum, s) => sum + (s.impact || 0), 0);
+            const totalSets = teamSetters.reduce((sum, s) => sum + (s.sets || 0), 0);
+
+            return (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
+                        <ASRStatCard label="SETTERS" value={String(teamSetters.length)} theme={theme} />
+                        <ASRStatCard label="IMPACT" value={String(Math.round(totalImpact))} theme={theme} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
+                        <ASRStatCard label="SETS" value={String(totalSets)} theme={theme} />
+                        <ASRStatCard label="AVG IMPACT" value={teamSetters.length > 0 ? String(Math.round(totalImpact / teamSetters.length)) : "0"} theme={theme} />
                     </div>
-                  )}
-              </div>
-          </div>
-          
-          <div className="space-y-6 text-left overflow-visible">
-              <ASRSectionHeading theme={theme} className="!mb-0">TOP 10 SETTERS</ASRSectionHeading>
-              <div className="grid grid-cols-1 gap-3 overflow-visible">
-                  {teamSetters.map((s, i) => (
-                      <ASRListItem 
-                        key={`setter-${i}`} variant="card" theme={theme} rank={i + 1} title={s.name} subtitle={s.region}
-                        stats={[{ value: String(Math.round(s.impact || 0)) }]}
-                        onClick={() => openModal('setter', s)}
-                      />
-                  ))}
-                  {teamSetters.length === 0 && (
-                    <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
-                      <Waypoints className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No setters found in this team</span>
+                    <div className="space-y-6 text-left overflow-visible">
+                        <ASRSectionHeading theme={theme} className="!mb-0">TOP SETTERS</ASRSectionHeading>
+                        <div className="grid grid-cols-1 gap-3 overflow-visible">
+                            {topSetters.map((s, i) => (
+                                <ASRListItem 
+                                    key={`setter-${i}`} variant="card" theme={theme} rank={i + 1} title={s.name} subtitle={s.region}
+                                    stats={[{ value: String(Math.round(s.impact || 0)) }]}
+                                    onClick={() => openModal('setter', s, 'setter')}
+                                />
+                            ))}
+                            {topSetters.length === 0 && (
+                                <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                                    <Waypoints className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No setters found in this team</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                  )}
-              </div>
-          </div>
-      </div>
-    </div>
-  );
+                </div>
+            );
+        }
+
+        const isAllTime = activeTab === 'all-time';
+        const stats = getTeamStats(isAllTime);
+        const topPlayers = stats.players.slice(0, 20);
+        const avgPts = stats.runs > 0 ? (stats.pts / stats.runs).toFixed(2) : "0.00";
+
+        return (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
+                    <ASRStatCard label="PLAYERS" value={String(stats.players.length)} theme={theme} />
+                    <ASRStatCard label="POINTS" value={stats.pts.toFixed(2)} theme={theme} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
+                    <ASRStatCard label="AVG POINTS" value={avgPts} theme={theme} />
+                    <ASRStatCard label="RUNS" value={String(stats.runs)} theme={theme} />
+                    <ASRStatCard label="🥇" value={String(stats.medals.gold)} theme={theme} glowClass="glow-gold" />
+                    <ASRStatCard label="🥈" value={String(stats.medals.silver)} theme={theme} glowClass="glow-silver" />
+                    <ASRStatCard label="🥉" value={String(stats.medals.bronze)} theme={theme} glowClass="glow-bronze" />
+                    <ASRStatCard label="🔥" value={String(stats.fires)} theme={theme} colorClass="text-blue-500" glowClass="glow-blue" />
+                </div>
+                <div className="space-y-6 overflow-visible text-left">
+                    <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
+                    <div className="grid grid-cols-1 gap-3 overflow-visible">
+                        {topPlayers.map((p, i) => (
+                            <ASRListItem 
+                                key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
+                                stats={[{ value: (p.pts || 0).toFixed(2) }]}
+                                onClick={() => openModal('player', p, activeTab)}
+                            />
+                        ))}
+                        {topPlayers.length === 0 && (
+                            <div className="py-12 text-center opacity-30 flex flex-col items-center gap-4">
+                                <Users className="w-8 h-8" /><span className="text-[10px] font-black uppercase">No players found in this team</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const tabs = [
+        { id: 'asr-open', label: 'OPEN' },
+        { id: 'all-time', label: 'ALL-TIME' },
+        { id: 'setter', label: 'SETS' }
+    ];
+
+    return (
+        <div className="space-y-8 overflow-visible">
+            <div className={`flex p-1.5 rounded-2xl border w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.GLASS(theme)} ios-clip-fix`}>
+                {tabs.map(tab => (
+                    <button 
+                        key={tab.id} 
+                        onClick={() => setActiveTab(tab.id)} 
+                        className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap ${activeTab === tab.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+            {renderTabContent()}
+        </div>
+    );
 };
 
 const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, opPerfs, atMet, dnMap, settersWithImpact, openModal, onSetterClick }) => {
@@ -1688,7 +1752,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
       const pKey = athleteData.pKey || pKeyFromData;
       const openAthleteData = openRankings.find(p => p.pKey === pKey) || openRankings.find(p => normalizeName(p.name) === normalizeName(athleteData.name));
       const setterData = settersWithImpact.find(s => normalizeName(s.name) === pKey) || settersWithImpact.find(s => normalizeName(s.name) === normalizeName(athleteData.name));
-      const targetRole = activeModal.roleOverride || (activeModal.type === 'player' ? 'asr-open' : 'setter');
+      const targetRole = activeModal.roleOverride === 'open' ? 'asr-open' : (activeModal.roleOverride || (activeModal.type === 'player' ? 'asr-open' : 'setter'));
       
       return (
         <PlayerDetails 
@@ -1728,15 +1792,22 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
           openModal={openModal} 
         />
       );
-    case 'team':
-      return (
-        <TeamDetails 
-          team={activeModal.data} 
-          theme={theme} 
-          openModal={openModal} 
-          settersWithImpact={settersWithImpact}
-        />
-      );
+    case 'team': {
+        const targetRole = activeModal.roleOverride === 'open' ? 'asr-open' : (activeModal.roleOverride || 'asr-open');
+        return (
+            <TeamDetails 
+                team={activeModal.data} 
+                initialRole={targetRole}
+                theme={theme} 
+                openModal={openModal} 
+                atMet={atMet}
+                openData={openRankings}
+                atPerfs={atPerfs}
+                opPerfs={opPerfs}
+                settersWithImpact={settersWithImpact}
+            />
+        );
+    }
     default:
       return null;
   }
@@ -3510,7 +3581,7 @@ export default function App() {
       />
       <ASRAnnouncementBar theme={theme} onOpenIntro={() => setShowIntro(true)} eventType={eventType} stats={kpiStats} />
 
-      <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
+ <ASRNavBar theme={theme} setTheme={setTheme} view={view} setView={setView} eventType={eventType} setEventType={setEventType} />
       <ASRBottomNav view={view} theme={theme} onOpenIntro={() => setShowIntro(true)} />
       <ASROnboarding isOpen={showIntro} onClose={() => setShowIntro(false)} theme={theme} />
       
