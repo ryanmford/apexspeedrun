@@ -1,7 +1,3 @@
-you are my technical co founder and you are advising me. how can we simplify and shorten our code to be more robust, organized, clean, fast, etc? give me the top things we can do to make our app more professional and polished
-
-we're not gonna break up the monolith yet. focus more on things we can do right now just by updating the code
-
 import React, { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect, useReducer, useContext, createContext } from 'react';
 import { 
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
