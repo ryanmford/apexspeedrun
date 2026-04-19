@@ -3408,7 +3408,8 @@ function MainAppContent({ theme, setTheme }) {
       if (playerRuns === 0) return;
 
       const gym = p.homeGym || "";
-      if (!gym || isPlaceholderPlayer(p.name)) return;
+      // Skip placeholder players, empty gyms, AND the Unaffiliated team
+      if (!gym || gym === CONFIG.FALLBACKS.UNAFFILIATED || isPlaceholderPlayer(p.name)) return;
       
       const key = gym.toUpperCase();
       if (!teams[key]) {
