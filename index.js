@@ -2297,6 +2297,8 @@ const useASRData = () => {
         console.warn("Could not write cache to localStorage (Quota exceeded?).", storageError);
       }
     } catch(e) { 
+        // Track the fatal loading exception into GA4 specifically
+        trackEvent('exception', { description: 'sheet_fetch_failed', error: e.message, fatal: true });
         setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
     }
   }, []);
@@ -3566,7 +3568,7 @@ export default function App() {
                       href={data.demoVideo || '#'} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md ${!data.demoVideo ? 'opacity-20 grayscale cursor-not-allowed' : 'bg-rose-600/10 border-rose-600/30 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 hover:scale-110 active:scale-95'}`}
+className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md ${!data.demoVideo ? 'opacity-20 grayscale cursor-not-allowed' : 'bg-rose-600/10 border-rose-600/30 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 hover:scale-110 active:scale-95'}`}
                       onClick={(e) => {
                         if (!data.demoVideo) return e.preventDefault();
                         trackEvent('outbound_click', { link_url: data.demoVideo, link_type: 'video_rules' });
