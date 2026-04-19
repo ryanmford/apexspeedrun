@@ -44,6 +44,23 @@ const THEME = {
   ICON: "shrink-0 transition-colors"
 };
 
+// --- GA4 TRACKING HELPERS ---
+const trackEvent = (eventName, params = {}) => {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', eventName, params);
+  }
+};
+
+const trackPageview = (path) => {
+  if (typeof window !== 'undefined' && window.gtag) {
+    const cleanPath = path.replace(/^#\/?/, '') || 'players';
+    window.gtag('event', 'page_view', {
+      page_path: `/${cleanPath}`,
+      page_title: `ASR - ${cleanPath.toUpperCase()}`
+    });
+  }
+};
+
 // --- UTILITIES & HELPERS ---
 const isPlaceholderPlayer = (name) => {
   if (!name) return false;
@@ -477,6 +494,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
       onClick={(e) => {
         if (description) {
           e.stopPropagation();
+          trackEvent('flip_stat_card', { stat_label: labelStr });
           setIsFlipped(!isFlipped);
         }
       }}
@@ -486,6 +504,7 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
         if (description && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           e.stopPropagation();
+          trackEvent('flip_stat_card', { stat_label: labelStr });
           setIsFlipped(!isFlipped);
         }
       }}
@@ -711,7 +730,7 @@ const ASRListItem = ({
           {videoUrl && (
             <a 
               href={videoUrl} target="_blank" rel="noopener noreferrer" 
-              onClick={e => e.stopPropagation()} 
+              onClick={e => { e.stopPropagation(); trackEvent('outbound_click', { link_url: videoUrl, link_type: 'video' }); }} 
               className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
             >
               <Play className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={2.5} />
@@ -759,6 +778,7 @@ const ASRPromotionBanner = ({ type, theme }) => {
       href={config.link} 
       target="_blank" 
       rel="noopener noreferrer"
+      onClick={() => trackEvent('outbound_click', { link_url: config.link, link_type: type })}
       className={`group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm ${theme === 'dark' ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100'}`}
     >
       <div className="flex items-center gap-4 sm:gap-5 min-w-0 pr-2">
@@ -788,6 +808,10 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       return clean.length > 0 ? clean[0].toUpperCase() : 'A';
     };
 
+    const handleSponsorClick = () => {
+      trackEvent('outbound_click', { link_url: sponsorLink, link_type: 'sponsor' });
+    };
+
     const goldBg = theme === 'dark' ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10' : 'bg-gradient-to-br from-amber-100 to-amber-50';
     const goldBorder = theme === 'dark' ? 'border-amber-500/60' : 'border-amber-500/50';
     const goldTextPrimary = theme === 'dark' ? 'text-amber-500' : 'text-amber-700';
@@ -802,7 +826,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
     if (!compact) {
       if (hasSponsor) {
         return (
-          <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
+          <a href={sponsorLink} onClick={handleSponsorClick} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform uppercase tracking-tighter`}>
@@ -822,7 +846,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       }
       
       return (
-        <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
+        <a href={sponsorLink} onClick={handleSponsorClick} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-3 rounded-[1.5rem] border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] group ${fadedBg} ${fadedBorder} shadow-sm hover:shadow-lg ios-clip-fix h-[72px]`}>
             <div className="flex items-center gap-3 sm:gap-4 flex-1">
               <div className={`p-2.5 rounded-xl transition-colors ${theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-white text-slate-400 shadow-sm'} group-hover:text-amber-500 group-hover:bg-amber-500/10`}>
                 <Building2 className="w-4 h-4" />
@@ -840,7 +864,7 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 
     if (hasSponsor) {
       return (
-        <a href={sponsorLink} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-[0.98] group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
+        <a href={sponsorLink} onClick={handleSponsorClick} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-md transition-all hover:scale-[1.05] active:scale-[0.98] group shadow-md ${goldBg} ${goldBorder} ios-clip-fix h-[50px]`}>
             <div className={`w-5 h-5 rounded-full ${goldIconBg} flex items-center justify-center text-[8px] ${goldIconText} font-black italic shadow-[0_0_5px_rgba(245,158,11,0.3)] uppercase tracking-tighter`}>
               {getInitials(sponsorName)}
             </div>
@@ -878,7 +902,7 @@ const ASRInlineValueCard = ({ theme, type }) => {
   const c = cards[type];
   if (!c) return null;
   return (
-    <a href={c.link} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix`}>
+    <a href={c.link} onClick={() => trackEvent('outbound_click', { link_url: c.link, link_type: type })} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix`}>
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
         <div className={`p-2.5 sm:p-3 rounded-xl shrink-0 ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
           {c.icon}
@@ -920,14 +944,22 @@ const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
                 </span>
 
                 <span 
-                  onClick={(e) => { e.stopPropagation(); onPlayerClick(item.athlete); }}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    trackEvent('select_content', { content_type: 'ticker_player', item_id: item.athleteName });
+                    onPlayerClick(item.athlete); 
+                  }}
                   className={`transition-colors cursor-pointer font-black hover:text-blue-500 mr-2 shrink-0`}
                 >
                   {item.athleteName} {item.athlete?.region || ''}
                 </span>
                 
                 <span 
-                  onClick={(e) => { e.stopPropagation(); onCourseClick(item.course); }}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    trackEvent('select_content', { content_type: 'ticker_course', item_id: item.courseName });
+                    onCourseClick(item.course); 
+                  }}
                   className={`font-black transition-colors cursor-pointer hover:text-blue-400 shrink-0`}
                 >
                   {item.courseName}
@@ -1003,6 +1035,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setStep(0);
+      trackEvent('view_item', { item_name: 'onboarding_modal', item_category: 'modal' });
     } else {
       document.body.style.overflow = '';
     }
@@ -1019,7 +1052,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "1. Find a course",
       desc: (
         <>
-          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> to access the latest ASR resources.
+          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> to access the latest ASR resources.
         </>
       ),
       icon: <MapPin />
@@ -1028,7 +1061,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "2. Film your run",
       desc: (
         <>
-          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
+          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
         </>
       ),
       icon: <Video />
@@ -1037,7 +1070,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "3. Get verified",
       desc: (
         <>
-          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors">Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
+          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
         </>
       ),
       icon: <ShieldCheck />,
@@ -1047,8 +1080,17 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 
   if (!isOpen) return null;
 
-  const nextStep = () => { if (step < steps.length - 1) setStep(step + 1); };
-  const prevStep = () => { if (step > 0) setStep(step - 1); };
+  const nextStep = () => { 
+    if (step < steps.length - 1) {
+      setStep(step + 1); 
+      trackEvent('tutorial_next', { step: step + 1 });
+    }
+  };
+  const prevStep = () => { 
+    if (step > 0) {
+      setStep(step - 1); 
+    }
+  };
 
   return (
     <div 
@@ -1103,6 +1145,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
                   href={SKOOL_LINK} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_action' })}
                   className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-2xl whitespace-nowrap active:scale-95"
                 >
                   {steps[step].action} <CornerUpRight className="w-5 h-5" strokeWidth={2.5} />
@@ -1117,7 +1160,10 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
               )}
             </div>
             <button 
-              onClick={onClose}
+              onClick={() => {
+                trackEvent('tutorial_skip', { step: step });
+                onClose();
+              }}
               className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-opacity"
             >
               Skip
@@ -1357,7 +1403,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); trackEvent('outbound_click', { link_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`, link_type: 'map' }); }}
                               className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                               title="View Map"
                             >
@@ -1459,7 +1505,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target.coordinates)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); trackEvent('outbound_click', { link_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target.coordinates)}`, link_type: 'map' }); }}
                               className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                               title="View Map"
                             >
@@ -1503,7 +1549,10 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         {tabs.map(tab => (
           <button 
             key={tab.id} 
-            onClick={() => setActiveRole(tab.id)} 
+            onClick={() => {
+              setActiveRole(tab.id);
+              trackEvent('select_content', { content_type: 'tab', item_id: tab.id });
+            }} 
             className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap ${activeRole === tab.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
           >
             {tab.label}
@@ -1580,7 +1629,7 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); trackEvent('outbound_click', { link_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`, link_type: 'map' }); }}
                             className="p-2.5 rounded-xl transition-all hover:scale-125 active:scale-90 text-slate-500 hover:text-blue-600 flex items-center justify-center"
                             title="View Map"
                           >
@@ -1736,7 +1785,10 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
                 {tabs.map(tab => (
                     <button 
                         key={tab.id} 
-                        onClick={() => setActiveTab(tab.id)} 
+                        onClick={() => {
+                          setActiveTab(tab.id);
+                          trackEvent('select_content', { content_type: 'tab', item_id: tab.id });
+                        }} 
                         className={`flex-1 sm:flex-none px-6 sm:px-10 py-3 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap ${activeTab === tab.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-70 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                     >
                         {tab.label}
@@ -2483,17 +2535,20 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
     const handleFindMe = () => {
       if (!mapRef.current || !navigator.geolocation) return;
       setIsLocating(true);
+      trackEvent('map_find_me_click', { status: 'requested' });
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
           mapRef.current.flyTo([latitude, longitude], 12, { duration: 1.5 });
           setIsLocating(false);
+          trackEvent('map_find_me_success');
         }, () => setIsLocating(false), { enableHighAccuracy: true }
       );
     };
 
     const jumpToLocation = (item) => {
       if (!mapRef.current || !item.coords) return;
+      trackEvent('select_content', { content_type: 'map_region', item_id: item.name });
       mapRef.current.flyTo(item.coords, activeTab === 'cities' ? 12 : 5, { duration: 1.5 });
     };
 
@@ -2525,7 +2580,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-[2.5px] border-white backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-zinc-950/95 text-white border-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'bg-white/98 text-black'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         {['continents', 'countries', 'cities'].map(t => (
-                            <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
+                            <button key={t} onClick={() => { setActiveTab(t); trackEvent('filter_change', { filter_type: 'map_region_tab', filter_value: t }); }} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
                         ))}
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide h-[400px]">
@@ -2649,7 +2704,11 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                            <button key={g.id} onClick={() => setGen(g.id)} className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-90 ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}>
+                            <button 
+                              key={g.id} 
+                              onClick={() => { setGen(g.id); trackEvent('filter_change', { filter_type: 'gender', filter_value: g.id }); }} 
+                              className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-90 ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                            >
                               {g.l}
                             </button>
                         ))}
@@ -2660,14 +2719,14 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         <button 
-                          onClick={() => setMapMode('map')} 
+                          onClick={() => { setMapMode('map'); trackEvent('filter_change', { filter_type: 'map_mode', filter_value: 'map' }); }} 
                           className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="View / Map Mode"
                         >
                           <MapIcon size={16} />
                         </button>
                         <button 
-                          onClick={() => setMapMode('list')} 
+                          onClick={() => { setMapMode('list'); trackEvent('filter_change', { filter_type: 'map_mode', filter_value: 'list' }); }} 
                           className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="List View"
                         >
@@ -2735,12 +2794,16 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   <div 
                     key={i} 
                     className={`group flex items-center justify-between p-4 transition-colors cursor-pointer active:scale-95 ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`} 
-                    onClick={() => ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time')}
+                    onClick={() => {
+                      trackEvent('select_content', { content_type: 'hof_stat', item_id: p.name, content_id: sec.k });
+                      ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time');
+                    }}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
+                        trackEvent('select_content', { content_type: 'hof_stat', item_id: p.name, content_id: sec.k });
                         ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time');
                       }
                     }}
@@ -2781,7 +2844,14 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
             </thead>
             <tbody className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/40' : 'divide-slate-200'}`}>
               {(stats.medalCount || []).map((c) => (
-                <tr key={c.name} onClick={() => onRegionClick({ ...c, type: 'country' })} className={`group active:bg-blue-600/10 transition-colors cursor-pointer text-inherit ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`}>
+                <tr 
+                  key={c.name} 
+                  onClick={() => {
+                    trackEvent('select_content', { content_type: 'hof_country', item_id: c.name });
+                    onRegionClick({ ...c, type: 'country' });
+                  }} 
+                  className={`group active:bg-blue-600/10 transition-colors cursor-pointer text-inherit ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`}
+                >
                   <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
                     <ASRRankBadge rank={c.displayRank} theme={theme} />
                   </td>
@@ -2915,7 +2985,10 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           stats={rowStats}
-                          onClick={() => onRowClick?.(item)}
+                          onClick={() => {
+                            trackEvent('select_content', { content_type: view, item_id: item.pKey || item.name || 'unknown' });
+                            onRowClick?.(item);
+                          }}
                         />
                     );
                 })}
@@ -2928,39 +3001,29 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
 const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
     return (
         <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#050505]/90 border-zinc-800/80 text-zinc-100 shadow-[0_4px_20px_rgba(0,0,0,0.4)]' : 'bg-white/80 border-slate-200 text-black shadow-sm'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)]`}>
-            <div 
+            <a 
+                href="#/players"
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group active:scale-95 transition-transform" 
                 onClick={() => {
                     window.scrollTo(0, 0);
-                    window.location.hash = '#/players';
                     setEventType('open');
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    window.scrollTo(0, 0);
-                    window.location.hash = '#/players';
-                    setEventType('open');
-                  }
                 }}
             >
                 <div className="flex flex-col leading-none">
                     <span className="font-black text-sm sm:text-xl lg:text-2xl uppercase italic tracking-tighter">APEX SPEED RUN</span>
                 </div>
-            </div>
+            </a>
 
             {view !== 'hof' && view !== 'setters' && (
               <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
                 <button 
-                  onClick={() => setEventType('open')} 
+                  onClick={() => { setEventType('open'); trackEvent('filter_change', { filter_type: 'event_type', filter_value: 'open' }); }} 
                   className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   OPEN
                 </button>
                 <button 
-                  onClick={() => setEventType('all-time')} 
+                  onClick={() => { setEventType('all-time'); trackEvent('filter_change', { filter_type: 'event_type', filter_value: 'all-time' }); }} 
                   className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
                 >
                   ALL-TIME
@@ -2970,7 +3033,7 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
 
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3 h-full">
                 <button 
-                  onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} 
+                  onClick={() => { setTheme(t => t === 'dark' ? 'light' : 'dark'); trackEvent('theme_toggle', { new_theme: theme === 'dark' ? 'light' : 'dark' }); }} 
                   className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/40 border-zinc-700 text-zinc-300 hover:border-blue-500 hover:text-blue-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Toggle Theme"
                 >
@@ -2996,11 +3059,11 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
         {items.map(item => {
           const isActive = view === item.id;
           return (
-            <button
+            <a
               key={item.id}
+              href={`#/${item.id}`}
               onClick={() => {
                   window.scrollTo(0, 0);
-                  window.location.hash = `#/${item.id}`;
               }}
               className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] w-full relative h-full ${isActive ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
             >
@@ -3008,7 +3071,7 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
                 {item.icon}
               </div>
               {isActive && <div className="floating-nav-item-active-dot" />}
-            </button>
+            </a>
           );
         })}
       </div>
@@ -3132,6 +3195,13 @@ export default function App() {
 
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
+
+  // --- Search Tracking Hook ---
+  useEffect(() => {
+    if (debouncedSearch) {
+      trackEvent('search', { search_term: debouncedSearch, view: view });
+    }
+  }, [debouncedSearch, view]);
 
   useEffect(() => {
     setSearch('');
@@ -3328,12 +3398,15 @@ export default function App() {
 
   useEffect(() => {
     const handleHashChange = () => {
+        const hash = window.location.hash || '#/players';
+        // Trigger GA4 Pageview tracking
+        trackPageview(hash);
+
         if (isInternalNavRef.current) {
             isInternalNavRef.current = false;
             return;
         }
 
-        const hash = window.location.hash || '#/players';
         const cleanPath = hash.replace(/^#\/?/, '');
         const parts = cleanPath.split('/').filter(Boolean);
         const firstSegment = parts[0] || 'players';
@@ -3356,6 +3429,7 @@ export default function App() {
                 if (type === 'team') foundData = teamsAggregated.find(t => normalizeName(t.name) === slug);
 
                 if (foundData) {
+                    trackEvent('view_item', { item_name: foundData.name, item_category: type });
                     const index = idxRef.current;
                     const nextItem = { type, data: foundData };
                     setModalHistory(prev => [...prev.slice(0, index + 1), nextItem]);
@@ -3438,6 +3512,9 @@ export default function App() {
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
+    // Track share intent
+    trackEvent('share', { method: 'link_copy', content_type: view, content_id: window.location.hash || 'home' });
+    
     if (navigator.share) {
        navigator.share({ title: document.title, url }).catch(() => {});
     } else {
@@ -3448,7 +3525,7 @@ export default function App() {
       document.execCommand('copy');
       document.body.removeChild(el);
     }
-  }, []);
+  }, [view]);
 
   const activeModal = historyIndex >= 0 ? modalHistory[historyIndex] : null;
 
@@ -3476,6 +3553,10 @@ export default function App() {
                       href={data.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordinates)}` : "#"} 
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (!data.coordinates) return e.preventDefault();
+                        trackEvent('outbound_click', { link_url: data.coordinates, link_type: 'map' });
+                      }}
                       className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md bg-blue-600/10 border-blue-600/30 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95"
                       title="View Map"
                     >
@@ -3486,7 +3567,10 @@ export default function App() {
                       target="_blank" 
                       rel="noopener noreferrer"
                       className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 transition-all duration-300 shadow-md ${!data.demoVideo ? 'opacity-20 grayscale cursor-not-allowed' : 'bg-rose-600/10 border-rose-600/30 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 hover:scale-110 active:scale-95'}`}
-                      onClick={(e) => !data.demoVideo && e.preventDefault()}
+                      onClick={(e) => {
+                        if (!data.demoVideo) return e.preventDefault();
+                        trackEvent('outbound_click', { link_url: data.demoVideo, link_type: 'video_rules' });
+                      }}
                       title="View Rules"
                     >
                       <Play size={14} strokeWidth={3} />
