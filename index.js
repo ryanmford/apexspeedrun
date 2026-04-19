@@ -57,7 +57,7 @@ const normalizeName = (n) => {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") 
-    .replace(/[^a-z0-9]/g, '')      
+    .replace(/[^a-z0-9]/g, '')     
     .trim();
 };
 
@@ -195,8 +195,8 @@ const isQualifiedAthlete = (p, isAllTime = true) => {
 
 const isNameInList = (name, listStr) => {
     if (!listStr || !name) return false;
-    const searchName = name.toLowerCase().trim();
-    const parts = listStr.split(/[,&/]| and /i).map(n => n.trim().toLowerCase());
+    const searchName = normalizeName(name);
+    const parts = listStr.split(/[,&/]| and /i).map(n => normalizeName(n));
     return parts.some(p => p === searchName || p.includes(searchName) || searchName.includes(p));
 };
 
@@ -535,9 +535,10 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   const getInitials = (n) => {
     if (!n) return '??'; 
     if (initialsOverride) return initialsOverride.toUpperCase();
-    const w = String(n).trim().split(/\s+/).filter(Boolean);
+    const clean = String(n).trim();
+    const w = clean.split(/\s+/).filter(Boolean);
     if (w.length === 0) return '??';
-    return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : String(n).slice(0, 2)).toUpperCase();
+    return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : clean.slice(0, 2)).toUpperCase();
   };
 
   const hash = stringToHash(name);
@@ -550,12 +551,13 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
   );
 };
 
-const formatLocationSubtitle = (hometown, country, flags) => {
-    const h = String(hometown || "").trim();
-    const c = String(country || "").trim();
+const formatLocationSubtitle = (primaryLoc, secondaryLoc, flags) => {
+    const p = String(primaryLoc || "").trim();
+    const s = String(secondaryLoc || "").trim();
     const f = formatFlagsWithSpace(String(flags || "").trim());
 
-    let displayLoc = h || c;
+    let displayLoc = p || s;
+    if (p && s && p.toUpperCase() !== s.toUpperCase()) displayLoc = `${p}, ${s}`;
     
     if (!displayLoc && !f) return <span className="opacity-40 text-[9px] uppercase tracking-widest">LOCATION UNKNOWN <span className="emoji-slot">🏳️</span></span>;
 
@@ -980,11 +982,11 @@ const ASRCountdownTimer = ({ className = "" }) => {
     return (
         <div className={`flex items-center gap-1 font-sans font-black tabular-nums tracking-normal ${className}`}>
             <span>{String(timeLeft.d).padStart(2, '0')}D</span>
-            <span className="opacity-40">:</span>
+            <span className="opacity-40 text-white">:</span>
             <span>{String(timeLeft.h).padStart(2, '0')}H</span>
-            <span className="opacity-40">:</span>
+            <span className="opacity-40 text-white">:</span>
             <span>{String(timeLeft.m).padStart(2, '0')}M</span>
-            <span className="opacity-40">:</span>
+            <span className="opacity-40 text-white">:</span>
             <span className="text-inherit">{String(timeLeft.s).padStart(2, '0')}S</span>
         </div>
     );
@@ -1285,7 +1287,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
   );
 };
 
-const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal }) => {
+const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal, allPlayers }) => {
   const [activeRole, setActiveRole] = useState(initialRole || 'asr-open');
   
   useEffect(() => {
@@ -1299,12 +1301,17 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     return identity.pKey || displayKey;
   }, [identity, atPerfs, opPerfs]);
 
-  // Hook moved to the top level to avoid Rules of Hooks violation
   const validOpenRankings = useMemo(() => {
     return (openRankings || [])
         .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, false))
         .sort((a, b) => (b.rating || 0) - (a.rating || 0));
   }, [openRankings, identity.gender]);
+
+  const validAllTimeRankings = useMemo(() => {
+      return (allPlayers || [])
+          .filter(p => p.gender === identity.gender && isQualifiedAthlete(p, true))
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  }, [allPlayers, identity.gender]);
 
   const renderRoleContent = (roleId) => {
     const isSetter = roleId === 'setter';
@@ -1401,6 +1408,9 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     const currentOpenRankIndex = validOpenRankings.findIndex(p => p.pKey === pKey);
     const currentOpenRank = currentOpenRankIndex !== -1 ? currentOpenRankIndex + 1 : "UR";
     
+    const currentAllTimeRankIndex = validAllTimeRankings.findIndex(p => p.pKey === pKey);
+    const currentAllTimeRank = currentAllTimeRankIndex !== -1 ? currentAllTimeRankIndex + 1 : "UR";
+
     const runsInContext = metaSource.runs || 0;
     let isQualifiedInProfile = false;
     
@@ -1410,7 +1420,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
       isQualifiedInProfile = runsInContext >= 3;
     }
 
-    const currentRankValue = String(isQualifiedInProfile ? (isAllTime ? (identity.allTimeRank || "UR") : currentOpenRank) : "UR");
+    const currentRankValue = String(isQualifiedInProfile ? (isAllTime ? currentAllTimeRank : currentOpenRank) : "UR");
 
     const totalRunTime = courseData.reduce((sum, run) => sum + (run.num || 0), 0);
     const avgRunTime = runsInContext > 0 ? (totalRunTime / runsInContext).toFixed(2) : '0.00';
@@ -1761,6 +1771,7 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
           atPerfs={atPerfs} 
           opPerfs={opPerfs} 
           openModal={openModal} 
+          allPlayers={Object.values(atMet)}
         />
       );
     }
@@ -2049,7 +2060,7 @@ const useASRData = () => {
         const OPEN_END = new Date('2026-05-31T23:59:59Z');
         const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
         const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
-        const openAthleteSetCount = {}; const athleteDisplayNameMap = {};
+        const openAthleteTotalSubmissions = {}; const athleteDisplayNameMap = {};
         const filmerCreditsCount = {};
         
         dataRows.forEach(vals => {
@@ -2107,7 +2118,7 @@ const useASRData = () => {
             if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
                 openCourseLeaderboards[pGender][normC][pKey] = numericValue;
             }
-            openAthleteSetCount[pKey] = (openAthleteSetCount[pKey] || 0) + 1;
+            openAthleteTotalSubmissions[pKey] = (openAthleteTotalSubmissions[pKey] || 0) + 1;
           }
         });
 
@@ -2146,7 +2157,7 @@ const useASRData = () => {
         result.openLeaderboards = openCourseLeaderboards;
         result.athleteDisplayNameMap = athleteDisplayNameMap;
         result.atRawBest = allTimeAthleteBestTimes;
-        result.opRawBest = openAthleteSetCount;
+        result.opRawBest = openAthleteTotalSubmissions;
         result.filmerCredits = filmerCreditsCount;
         
         const chronologicalRuns = [...dataRows].sort((a, b) => {
@@ -2191,7 +2202,7 @@ const useASRData = () => {
             return {
               ...meta, id: `open-${pKey}`, rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, 
               runs: perfs.length, wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
-              sets: openAthleteSetCount[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
+              sets: openAthleteTotalSubmissions[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
             };
           }).sort((a, b) => b.rating - a.rating); 
         return result;
@@ -2200,8 +2211,18 @@ const useASRData = () => {
       const pM = processRankingData(rM || "", 'M'); 
       const pF = processRankingData(rF || "", 'F');
       const initialMetadata = {};
-      pM.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'M', allTimeRank: i + 1 });
-      pF.forEach((p, i) => initialMetadata[p.pKey] = { ...p, gender: 'F', allTimeRank: i + 1 });
+      
+      const assignRanks = (arr, gender) => {
+          const qualified = arr.filter(p => isQualifiedAthlete(p, true)).sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          arr.forEach(p => {
+              const rankIdx = qualified.findIndex(q => q.pKey === p.pKey);
+              initialMetadata[p.pKey] = { ...p, gender, allTimeRank: rankIdx !== -1 ? rankIdx + 1 : "UR" };
+          });
+      };
+
+      assignRanks(pM, 'M');
+      assignRanks(pF, 'F');
+
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
       
       const allSetters = [...processSettersData(rM || ""), ...processSettersData(rF || "")] ;
@@ -2803,7 +2824,7 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, paddingC
   );
 };
 
-const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys = [] }) => {
+const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, statKeys = [] }) => {
     const [visibleCount, setVisibleCount] = useState(50);
     const observerTarget = useRef(null);
     useEffect(() => { setVisibleCount(50); }, [data, sort]);
@@ -2862,7 +2883,7 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
                       const val = item[k];
                       const forceAlignment = ['rating', 'avgCR', 'pts'];
                       const forceRound = ['impact', 'avgLength', 'contributionScore', 'runs'];
-                      const highlightKeys = ['pts']; // Determines explicit white/black emphasis
+                      const highlightKeys = ['pts']; 
 
                       if (forceRound.includes(k)) {
                         return { value: String(Math.round(parseFloat(val) || 0)) };
@@ -2873,10 +2894,21 @@ const ASRDataTable = ({ columns, data, sort, onSort, theme, onRowClick, statKeys
                       return { value: val !== undefined && val !== null ? String(val) : "0", color: highlightKeys.includes(k) ? dataColor : '' };
                     });
 
+                    let subtitleContent;
+                    if (view === 'teams') {
+                        subtitleContent = formatLocationSubtitle(item.location, "", item.flag || item.gymFlag);
+                    } else if (view === 'map') {
+                        subtitleContent = formatLocationSubtitle(item.city, item.country, item.flag);
+                    } else if (view === 'setters') {
+                        subtitleContent = formatLocationSubtitle(item.location, item.countryName, item.flag || item.region);
+                    } else {
+                        subtitleContent = formatFlagsWithSpace(item.region || item.flag || item.gymFlag || '');
+                    }
+
                     return (
                         <ASRListItem 
                           key={item.id || idx} variant="table" theme={theme} columns={columns}
-                          rank={item.currentRank} title={item.name} subtitle={formatFlagsWithSpace(item.region || item.flag || item.gymFlag || '')} 
+                          rank={item.currentRank} title={item.name} subtitle={subtitleContent} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
                           stats={rowStats}
@@ -2984,6 +3016,8 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
 const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
     const isAllTime = eventType === 'all-time';
 
+    const barColors = "btn-blue-gradient border-blue-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]";
+
     return (
       <div 
         onClick={onOpenIntro}
@@ -2995,39 +3029,39 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
             onOpenIntro();
           }
         }}
-        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer group/bar active:scale-[0.98] ${theme === 'dark' ? 'bg-blue-950 border-blue-800 shadow-[inset_0_1px_0_rgba(59,130,246,0.1)] text-blue-100' : 'bg-blue-600 border-blue-700 text-white'}`}
+        className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer hover:brightness-110 active:scale-[0.99] ${barColors}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
           {isAllTime ? (
             <div className="flex items-center gap-4 sm:gap-8 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap overflow-x-auto scrollbar-hide py-1 italic text-inherit">
-              <div className="flex items-center gap-1.5">
-                <span className="opacity-60">PLAYERS:</span>
+              <div className="flex items-center gap-1.5 drop-shadow-sm">
+                <span className="text-blue-200">PLAYERS:</span>
                 <ASRCountUp end={stats.players} />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="opacity-60">COURSES:</span>
+              <div className="flex items-center gap-1.5 drop-shadow-sm">
+                <span className="text-blue-200">COURSES:</span>
                 <ASRCountUp end={stats.courses} />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="opacity-60">CITIES:</span>
+              <div className="flex items-center gap-1.5 drop-shadow-sm">
+                <span className="text-blue-200">CITIES:</span>
                 <ASRCountUp end={stats.cities} />
               </div>
-              <div className="hidden sm:flex items-center gap-1.5">
-                <span className="opacity-60">COUNTRIES:</span>
+              <div className="hidden sm:flex items-center gap-1.5 drop-shadow-sm">
+                <span className="text-blue-200">COUNTRIES:</span>
                 <ASRCountUp end={stats.countries} />
               </div>
-              <div className="hidden sm:flex items-center gap-1.5">
-                <span className="opacity-60">RUNS:</span>
+              <div className="hidden sm:flex items-center gap-1.5 drop-shadow-sm">
+                <span className="text-blue-200">RUNS:</span>
                 <ASRCountUp end={stats.runs} />
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 text-inherit">
-              <span className="animate-pulse text-xs leading-none shrink-0">●</span>
-              <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0">
+              <span className="animate-pulse text-xs leading-none shrink-0 text-blue-300">●</span>
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] whitespace-nowrap shrink-0 text-blue-100 drop-shadow-sm">
                 ASR OPEN CLIPS DUE IN:
               </span>
-              <div className="shrink-0 flex items-center">
+              <div className="shrink-0 flex items-center text-white drop-shadow-sm">
                 <ASRCountdownTimer className="!text-[10px] sm:!text-[11px] tracking-[0.2em]" />
               </div>
             </div>
@@ -3501,7 +3535,7 @@ export default function App() {
                     <div className="text-[9px] sm:text-[11px] leading-tight tracking-widest flex items-center gap-1.5 flex-wrap">
                         <span className="opacity-50 shrink-0">HOME TOWN:</span>
                         <span className="shrink-0">{htown || 'UNKNOWN'}</span>
-                        {townFlag && <span className="flex items-center gap-0.5 ml-1">{townFlag}</span>}
+                       {townFlag && <span className="flex items-center gap-0.5 ml-1">{townFlag}</span>}
                     </div>
                     {gym && (
                         <div className="text-[9px] sm:text-[11px] leading-tight tracking-widest flex items-center gap-1.5 flex-wrap">
@@ -3521,7 +3555,7 @@ export default function App() {
           </div>
         );
     }
-    if (type === 'region') {
+ if (type === 'region') {
       return (
         <div className="flex items-start gap-4 sm:gap-6 min-w-0 w-full text-left animate-in fade-in duration-300">
           <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border shadow-xl shrink-0 overflow-hidden relative ${theme === 'dark' ? 'border-zinc-800 bg-black/50' : 'border-slate-200 bg-white'} ios-clip-fix`}><FallbackAvatar name={String(data.name)} initialsOverride={data.name === 'GLOBAL' ? 'GL' : ''} sizeCls="text-xl sm:text-4xl" /></div>
