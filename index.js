@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect, useReducer, useContext, createContext } from 'react';
 import { 
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
   ChevronDown, Sun, Moon, MapPin, Globe, Instagram, Play, Trophy,
@@ -10,10 +10,34 @@ import {
   Clock, Flag
 } from 'lucide-react';
 
-// --- CONSTANTS & THEME TOKENS ---
-const SNAPSHOT_KEY = 'asr_data_vault_v1_integrated_v60_teams'; 
-const REFRESH_INTERVAL = 300000; // 5 mins
-const SKOOL_LINK = "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93";
+// --- CONTEXT & UTILS ---
+const ThemeContext = createContext('dark');
+
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+// --- CONFIGURATION & CONSTANTS ---
+const CONFIG = {
+  SNAPSHOT_KEY: 'asr_data_vault_v1_integrated_v60_teams',
+  REFRESH_INTERVAL: 300000, // 5 mins
+  SKOOL_LINK: "https://www.skool.com/apexmovement/about?ref=cdbeb6ddf53f452ab40ac16f6a8deb93",
+  SPREADSHEET_ID: '1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4',
+  SHEET_GIDS: {
+    MENS: '595214914',
+    WOMENS: '566627843',
+    LIVE: '623600169',
+    SETS: '1961325686'
+  },
+  DATES: {
+    OPEN_START: '2026-03-02T00:00:00Z',
+    OPEN_END: '2026-05-31T23:59:59Z',
+    COUNTDOWN_TARGET: '2026-06-01T07:00:00Z'
+  },
+  FALLBACKS: {
+    UNKNOWN_LOCATION: 'UNKNOWN',
+    UNKNOWN_FLAG: '🏳️',
+    UNAFFILIATED: 'UNAFFILIATED'
+  }
+};
 
 const THEME = {
   CARD: (t) => t === 'dark' 
@@ -36,13 +60,45 @@ const THEME = {
   
   INPUT: (t) => t === 'dark'
     ? "bg-zinc-900/50 text-white focus:bg-zinc-900 border-zinc-800 focus:border-blue-600/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-    : "bg-white text-black border-slate-200 focus:border-blue-600 shadow-xl",
-  
-  BUTTON_ROUNDED: "rounded-[0.9rem] sm:rounded-[1.8rem] transition-all whitespace-nowrap",
-  NAV_ITEM: "px-4 sm:px-10 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] transition-all text-inherit whitespace-nowrap active:scale-95",
-  
-  ICON: "shrink-0 transition-colors"
+    : "bg-white text-black border-slate-200 focus:border-blue-600 shadow-xl"
 };
+
+// --- ERROR BOUNDARY ---
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorInfo: null };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("App crashed:", error, errorInfo);
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'exception', { description: 'fatal_react_crash', fatal: true });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-black text-white p-6 text-center font-sans">
+          <div className="border border-zinc-800 p-8 sm:p-12 rounded-[2.5rem] bg-zinc-950 shadow-2xl max-w-md w-full">
+            <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-6" strokeWidth={2} />
+            <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-100 mb-3">System Error</h1>
+            <p className="text-zinc-400 text-xs uppercase tracking-widest mb-8 leading-relaxed">We encountered an unexpected issue while loading the data vault.</p>
+            <button onClick={() => window.location.reload()} className="w-full py-4 bg-blue-600 hover:bg-blue-500 transition-colors text-white text-sm font-black uppercase tracking-widest rounded-2xl active:scale-95">
+              Reload System
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // --- GA4 TRACKING HELPERS ---
 const trackEvent = (eventName, params = {}) => {
@@ -61,7 +117,7 @@ const trackPageview = (path) => {
   }
 };
 
-// --- UTILITIES & HELPERS ---
+// --- DATA PARSING HELPERS & LOGIC (MOVED OFF COMPONENT) ---
 const isPlaceholderPlayer = (name) => {
   if (!name) return false;
   const n = String(name).toUpperCase();
@@ -70,18 +126,11 @@ const isPlaceholderPlayer = (name) => {
 
 const normalizeName = (n) => {
   if (!n) return "";
-  return String(n)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") 
-    .replace(/[^a-z0-9]/g, '')     
-    .trim();
+  return String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '').trim();
 };
 
 const normalizeCountryName = (name) => {
-    let n = String(name || "").toUpperCase().trim();
-    n = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
+    let n = String(name || "").toUpperCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const map = {
         'UNITED STATES OF AMERICA': 'USA', 'UNITED STATES': 'USA', 'US': 'USA', 'USA': 'USA',
         'UNITED KINGDOM': 'UK', 'GREAT BRITAIN': 'UK', 'ENGLAND': 'UK', 'UK': 'UK',
@@ -97,30 +146,25 @@ const normalizeCountryName = (name) => {
 const fixCountryEntity = (name, flag) => {
     let n = String(name || "").trim();
     let f = String(flag || "").trim();
-
     const flagRegex = /[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/;
-    if (flagRegex.test(n)) return { name: "UNKNOWN", flag: n };
-    if (flagRegex.test(f)) return { name: n || "UNKNOWN", flag: f };
+    
+    if (flagRegex.test(n)) return { name: CONFIG.FALLBACKS.UNKNOWN_LOCATION, flag: n };
+    if (flagRegex.test(f)) return { name: n || CONFIG.FALLBACKS.UNKNOWN_LOCATION, flag: f };
 
     const normalized = normalizeCountryName(n);
-
     const flagMandatoryMap = {
-      "USA": "🇺🇸", "UNITED STATES": "🇺🇸", "UNITED STATES OF AMERICA": "🇺🇸", "US": "🇺🇸",
-      "UK": "🇬🇧", "UNITED KINGDOM": "🇬🇧", "GREAT BRITAIN": "🇬🇧", "ENGLAND": "🇬🇧", "SCOTLAND": "🇬🇧", "WALES": "🇬🇧",
-      "CANADA": "🇨🇦", "MEXICO": "🇲🇽", "FRANCE": "🇫🇷", "GERMANY": "🇩🇪",
-      "SPAIN": "🇪🇸", "ITALY": "🇮🇹", "JAPAN": "🇯🇵", "AUSTRALIA": "🇦🇺",
-      "BRAZIL": "🇧🇷", "PUERTO RICO": "🇵🇷", "CZECHIA": "🇨🇿", "CZECH REPUBLIC": "🇨🇿",
-      "NETHERLANDS": "🇳🇱", "SWITZERLAND": "🇨🇭", "AUSTRIA": "🇦🇹", "BELGIUM": "🇧🇪",
-      "SWEDEN": "🇸🇪", "NORWAY": "🇳🇴", "FINLAND": "🇫🇮", "DENMARK": "🇩🇰",
-      "KOREA": "🇰🇷", "SOUTH KOREA": "🇰🇷", "CHINA": "🇨🇳", "MACAU": "🇲🇴", "MACAO": "🇲🇴", "HONG KONG": "🇭🇰",
-      "NEW ZEALAND": "🇳🇿", "SINGAPORE": "🇸🇬", "IRELAND": "🇮🇪", "PORTUGAL": "🇵🇹",
-      "POLAND": "🇵🇱", "SOUTH AFRICA": "🇿🇦", "ARGENTINA": "🇦🇷", "CHILE": "🇨🇱", "ISRAEL": "🇮🇱", "TAIWAN": "🇹🇼",
-      "RUSSIA": "🇷🇺", "UKRAINE": "🇺🇦", "VIETNAM": "🇻🇳", "THAILAND": "🇹🇭", "MALAYSIA": "🇲🇾", "PHILIPPINES": "🇵🇭"
+      "USA": "🇺🇸", "UK": "🇬🇧", "CANADA": "🇨🇦", "MEXICO": "🇲🇽", "FRANCE": "🇫🇷", "GERMANY": "🇩🇪",
+      "SPAIN": "🇪🇸", "ITALY": "🇮🇹", "JAPAN": "🇯🇵", "AUSTRALIA": "🇦🇺", "BRAZIL": "🇧🇷", "PUERTO RICO": "🇵🇷", 
+      "CZECHIA": "🇨🇿", "NETHERLANDS": "🇳🇱", "SWITZERLAND": "🇨🇭", "AUSTRIA": "🇦🇹", "BELGIUM": "🇧🇪",
+      "SWEDEN": "🇸🇪", "NORWAY": "🇳🇴", "FINLAND": "🇫🇮", "DENMARK": "🇩🇰", "KOREA": "🇰🇷", "CHINA": "🇨🇳", 
+      "MACAU": "🇲🇴", "HONG KONG": "🇭🇰", "NEW ZEALAND": "🇳🇿", "SINGAPORE": "🇸🇬", "IRELAND": "🇮🇪", 
+      "PORTUGAL": "🇵🇹", "POLAND": "🇵🇱", "SOUTH AFRICA": "🇿🇦", "ARGENTINA": "🇦🇷", "CHILE": "🇨🇱", 
+      "ISRAEL": "🇮🇱", "TAIWAN": "🇹🇼", "RUSSIA": "🇷🇺", "UKRAINE": "🇺🇦", "VIETNAM": "🇻🇳", "THAILAND": "🇹🇭", 
+      "MALAYSIA": "🇲🇾", "PHILIPPINES": "🇵🇭"
     };
 
-    const finalName = normalized || "UNKNOWN";
-    const finalFlag = flagMandatoryMap[finalName] || (f && f !== "🏳️" ? f : "🏳️");
-
+    const finalName = normalized || CONFIG.FALLBACKS.UNKNOWN_LOCATION;
+    const finalFlag = flagMandatoryMap[finalName] || (f && f !== "🏳️" ? f : CONFIG.FALLBACKS.UNKNOWN_FLAG);
     return { name: finalName, flag: finalFlag };
 };
 
@@ -129,7 +173,7 @@ const cleanNumeric = (v) => {
   const clean = String(v).replace(/,/g, '').replace(/[^\d.-]/g, '').trim();
   if (clean === "") return null;
   const num = parseFloat(clean);
-  return (isNaN(num)) ? null : num;
+  return isNaN(num) ? null : num;
 };
 
 const parseLine = (line = '') => {
@@ -200,14 +244,30 @@ const useDebounce = (value, delay) => {
     return debouncedValue; 
 };
 
+// Optimized scroll chunking hook to replace raw IntersectionObserver inside UI components
+const useChunkedData = (data, chunkSize = 50) => {
+    const [visibleCount, setVisibleCount] = useState(chunkSize);
+    const observerTarget = useRef(null);
+
+    useEffect(() => { setVisibleCount(chunkSize); }, [data, chunkSize]);
+
+    useEffect(() => {
+        if (!observerTarget.current) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => { if (entry.isIntersecting) setVisibleCount(p => Math.min(p + chunkSize, data.length)); },
+            { threshold: 0.1, rootMargin: '400px' }
+        );
+        observer.observe(observerTarget.current);
+        return () => observer.disconnect();
+    }, [data.length, chunkSize]);
+
+    return { visibleCount, observerTarget };
+};
+
 const isQualifiedAthlete = (p, isAllTime = true) => {
     if (!p || isPlaceholderPlayer(p.name)) return false;
     const runs = p.runs || 0;
-    if (isAllTime) {
-      return p.gender === 'M' ? (runs >= 4) : (runs >= 3);
-    } else {
-      return runs >= 3;
-    }
+    return isAllTime ? (p.gender === 'M' ? runs >= 4 : runs >= 3) : runs >= 3;
 };
 
 const isNameInList = (name, listStr) => {
@@ -235,7 +295,6 @@ const getContinentData = (country) => {
         'oc': { name: 'AUSTRALIA / OCEANIA', flag: '🌏' },
         'af': { name: 'AFRICA', flag: '🌍' }
     };
-
     for (const [regionCode, countriesArr] of Object.entries(continents)) {
         if (countriesArr.includes(c)) return regionMap[regionCode];
     }
@@ -256,8 +315,352 @@ const getFireCountForRun = (time, gender) => {
   return 0;
 };
 
+// --- DATA PARSING GLOBALS (MOVED FROM HOOK FOR PERFORMANCE) ---
+const RANKING_MAPPING = {
+  name: ['athlete', 'name', 'player'],
+  country: ['country'],
+  flag: ['flag'],
+  rating: ['ovr', 'overall', 'rating'],
+  pts: ['pts', 'points', 'asr'],
+  runs: ['runs', 'totalruns', 'total', '#'],
+  wins: ['wins', 'victories'],
+  sets: ['sets', 'total sets'],
+  contribution: ['🪙', 'contribution'],
+  fire: ['🔥', 'fire'],
+  ig: ['ig', 'instagram', 'social'],
+  avg: ['avg time', 'average', 'avg'],
+  cert: ['cert', 'level', 'certification'],
+  location: ['location', 'city', 'region', 'hometown'], 
+  homeGym: ['gym', 'home gym']
+};
+
+const SET_LIST_MAPPING = {
+  course: ['course', 'track', 'level'],
+  length: ['length', 'dist'],
+  elev: ['elev', 'gain'],
+  rating: ['rating', 'diff', 'difficulty'],
+  type: ['type', 'style'],
+  city: ['city', 'location'],
+  country: ['country', 'nation'],
+  flag: ['flag', 'emoji'],
+  dateSet: ['set on', 'updated', 'date set'],
+  demo: ['demo', 'rules', 'video', 'url'],
+  coords: ['coord', 'gps', 'location', 'pin'],
+  state: ['state', 'prov', 'region'],
+  leads: ['lead', 'lead setter', 'leads', 'leadsetters'],
+  assists: ['assistant', 'assistants', 'assistant setter', 'assistantsetters']
+};
+
+const SETTER_MAPPING = {
+  name: ['setter', 'name'],
+  leads: ['leads'],
+  assists: ['assist', 'assists', 'assistant'],
+  sets: ['sets', 'total sets'],
+  country: ['country', 'nation'],
+  flag: ['flag', 'emoji', 'region'],
+  ig: ['ig', 'instagram'],
+  contribution: ['🪙', 'contribution'],
+  cert: ['cert', 'level', 'certification'],
+  location: ['location', 'city'],
+  homeGym: ['gym', 'home gym']
+};
+
+const LIVE_FEED_MAPPING = {
+  athlete: ['athlete', 'name', 'player'],
+  course: ['course', 'track', 'level'],
+  result: ['result', 'time', 'pb'],
+  gender: ['div', 'gender', 'sex'],
+  date: ['date', 'day', 'timestamp'],
+  tag: ['tag', 'event', 'category', 'season'],
+  proof: ['proof', 'link', 'video', 'url'],
+  fire: ['🔥'],
+  filmer: ['filmer', 'videographer', 'filmed by']
+};
+
+const processRankingData = (csv, gender) => {
+  const dataRows = csvToObjects(csv, RANKING_MAPPING);
+  return dataRows.map((vals, i) => {
+    const pName = (vals.name || "").trim() || "UNKNOWN";
+    if (pName.length < 2 || isPlaceholderPlayer(pName)) return null; 
+    
+    const fixed = fixCountryEntity(vals.country, vals.flag);
+    const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
+    
+    const pLocation = (vals.__raw ? (vals.__raw[18] || "") : (vals.location || "")).trim() || CONFIG.FALLBACKS.UNKNOWN_LOCATION;
+    const pHomeGym = (vals.__raw ? (vals.__raw[20] || "") : (vals.homeGym || "")).trim() || CONFIG.FALLBACKS.UNAFFILIATED;
+    const pTeamLocation = (vals.__raw ? (vals.__raw[21] || "") : "").trim(); 
+
+    const townFlagRaw = (vals.__raw ? (vals.__raw[19] || "") : "").trim();
+    const gymFlagRaw = (vals.__raw ? (vals.__raw[22] || "") : "").trim();
+    const townEntity = fixCountryEntity("", townFlagRaw);
+    const gymEntity = fixCountryEntity("", gymFlagRaw);
+
+    const searchKey = `${pName} ${fixed.name} ${rawIg} ${pLocation} ${pHomeGym}`.toLowerCase();
+    return { 
+      id: `${gender}-${normalizeName(pName)}-${i}`, 
+      name: pName, pKey: normalizeName(pName), gender, 
+      countryName: fixed.name, 
+      region: fixed.flag, 
+      location: pLocation,
+      homeGym: pHomeGym,
+      teamLocation: pTeamLocation, 
+      townFlag: townEntity.flag,
+      gymFlag: gymEntity.flag,
+      igHandle: rawIg,
+      rating: cleanNumeric(vals.rating) || 0, 
+      runs: Math.floor(cleanNumeric(vals.runs) || 0), 
+      wins: Math.floor(cleanNumeric(vals.wins) || 0), 
+      pts: cleanNumeric(vals.pts) || 0, 
+      sets: Math.floor(cleanNumeric(vals.sets) || 0), 
+      contributionScore: cleanNumeric(vals.contribution) || 0, 
+      allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0),
+      avgTime: cleanNumeric(vals.avg) || 0,
+      certLevel: (vals.cert || "").trim().toUpperCase() || "NONE",
+      searchKey
+    };
+  }).filter(Boolean);
+};
+
+const processSetListData = (csv) => {
+    const dataRows = csvToObjects(csv, SET_LIST_MAPPING);
+    const map = {};
+    dataRows.forEach(vals => {
+      const course = (vals.course || "").trim().toUpperCase();
+      if (course) {
+          const fixed = fixCountryEntity(vals.country, vals.flag);
+          const valAG = vals.__raw ? String(vals.__raw[32] || "").toUpperCase().trim() : "";
+          const rulesVideoFromCol = vals.__raw ? String(vals.__raw[31] || "").trim() : "";
+          const sponsorName = vals.__raw ? (vals.__raw[34] || "").trim() : "";
+          const sponsorLink = vals.__raw ? (vals.__raw[35] || "").trim() : "";
+          
+          const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
+          map[course] = { 
+              is2026, flag: fixed.flag || '🏳️',
+              city: (vals.city || "").trim().toUpperCase() || "UNKNOWN", 
+              stateProv: (vals.state || "").trim().toUpperCase(),
+              country: fixed.name.toUpperCase() || "UNKNOWN", 
+              difficulty: (vals.rating || "").trim(),
+              length: (vals.length || "").trim(),
+              elevation: (vals.elevation || "").trim(),
+              type: (vals.type || "").trim(),
+              dateSet: (vals.dateSet || "").trim(),
+              setter: (vals.leads || "") + ((vals.assists) ? `, ${vals.assists}` : ""),
+              leadSetters: (vals.leads || "").trim(),
+              assistantsetters: (vals.assists || "").trim(),
+              demoVideo: rulesVideoFromCol || (vals.demo || "").trim(),
+              coordinates: (vals.coords || "").trim(),
+              sponsorName,
+              sponsorLink,
+              searchKey: `${course} ${vals.city} ${fixed.name}`.toLowerCase()
+          };
+      }
+    });
+    return map;
+};
+
+const processSettersData = (csv) => {
+    const dataRows = csvToObjects(csv, SETTER_MAPPING);
+    return dataRows.map((vals, i) => {
+        const name = vals.name;
+        if (!name || isPlaceholderPlayer(name)) return null;
+        const fixed = fixCountryEntity(vals.country, vals.flag);
+        
+        const pLocation = (vals.__raw ? (vals.__raw[18] || "") : (vals.location || "")).trim() || CONFIG.FALLBACKS.UNKNOWN_LOCATION;
+        const pHomeGym = (vals.__raw ? (vals.__raw[20] || "") : (vals.homeGym || "")).trim() || CONFIG.FALLBACKS.UNAFFILIATED;
+
+        const townFlagRaw = (vals.__raw ? (vals.__raw[19] || "") : "").trim();
+        const gymFlagRaw = (vals.__raw ? (vals.__raw[22] || "") : "").trim();
+        const townEntity = fixCountryEntity("", townFlagRaw);
+        const gymEntity = fixCountryEntity("", gymFlagRaw);
+
+        return {
+            id: `setter-${normalizeName(name)}-${i}`,
+            name: name.trim(),
+            region: fixed.flag || '🏳️',
+            location: pLocation,
+            homeGym: pHomeGym,
+            townFlag: townEntity.flag,
+            gymFlag: gymEntity.flag,
+            countryName: fixed.name,
+            igHandle: (vals.ig || "").replace(/@/g, '').trim(),
+            sets: cleanNumeric(vals.sets) || 0,
+            leads: cleanNumeric(vals.leads) || 0,
+            assists: cleanNumeric(vals.assists) || 0,
+            contributionScore: cleanNumeric(vals.contribution) || 0,
+            certLevel: (vals.cert || "").trim().toUpperCase() || "NONE",
+            searchKey: `${name} ${fixed.name} ${pLocation} ${pHomeGym}`.toLowerCase()
+        };
+    }).filter(Boolean);
+};
+
+const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
+  const result = { 
+    allTimePerformances: {}, openPerformances: {}, openRankings: [], 
+    allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, 
+    athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, 
+    atRawBest: {}, opRawBest: {}, filmerCredits: {}, recentFeed: []
+  };
+  if (!csv) return result;
+  const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  let hIdx = -1;
+  for(let i=0; i<Math.min(10, lines.length); i++) {
+    if (/athlete|name|course|track|pb|result/i.test(lines[i])) { hIdx = i; break; }
+  }
+  if (hIdx === -1) return result;
+  
+  const dataRows = csvToObjects(csv, LIVE_FEED_MAPPING, hIdx);
+  const OPEN_START = new Date(CONFIG.DATES.OPEN_START);
+  const OPEN_END = new Date(CONFIG.DATES.OPEN_END);
+  const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
+  const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
+  const openAthleteTotalSubmissions = {}; const athleteDisplayNameMap = {};
+  const filmerCreditsCount = {};
+  
+  dataRows.forEach(vals => {
+    const pName = (vals.athlete || "").trim();
+    const rawCourse = (vals.course || "").trim();
+    const numericValue = cleanNumeric(vals.result);
+    if (!pName || !rawCourse || numericValue === null) return;
+
+    const rawGenderValue = (vals.gender || "").toUpperCase().trim();
+    const baseKey = normalizeName(pName);
+    const pGender = athleteMetadata[baseKey]?.gender || 
+                    ((rawGenderValue.startsWith('W') || rawGenderValue.startsWith('F')) ? 'F' : 'M');
+
+    let pKey = baseKey;
+    if (isPlaceholderPlayer(pName)) pKey = `${baseKey}-${pGender.toLowerCase()}`;
+
+    const normC = rawCourse.toUpperCase();
+    const isCourseOpen = courseSetMap[normC]?.is2026;
+    
+    if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
+
+    const rawFilmer = (vals.filmer || (vals.__raw && vals.__raw[8]) || "").trim();
+    if (rawFilmer) {
+      const filmerKey = normalizeName(rawFilmer);
+      filmerCreditsCount[filmerKey] = (filmerCreditsCount[filmerKey] || 0) + 1;
+    }
+    
+    if (!athleteMetadata[pKey]) {
+        athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', homeGym: '', teamLocation: '', countryName: '', searchKey: pName.toLowerCase() };
+    } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
+        athleteMetadata[pKey].name = pName;
+        athleteDisplayNameMap[pKey] = pName;
+    }
+
+    if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
+    if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
+      allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
+    }
+    if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
+    if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
+        allTimeCourseLeaderboards[pGender][normC][pKey] = numericValue;
+    }
+    const runDate = vals.date ? new Date(vals.date) : null;
+    const isASROpenTag = (vals.tag || "").toUpperCase().includes("OPEN");
+    const isInOpenWindow = runDate && !isNaN(runDate.getTime()) && runDate >= OPEN_START && runDate <= OPEN_END;
+    
+    if ((isASROpenTag || isInOpenWindow) && isCourseOpen) {
+      if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
+      if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
+        openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
+      }
+      if (!openCourseLeaderboards[pGender][normC]) openCourseLeaderboards[pGender][normC] = {};
+      if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
+          openCourseLeaderboards[pGender][normC][pKey] = numericValue;
+      }
+      openAthleteTotalSubmissions[pKey] = (openAthleteTotalSubmissions[pKey] || 0) + 1;
+    }
+  });
+
+  const buildPerfs = (source, isAllTimeBuild = false) => {
+    const res = {};
+    Object.keys(source).forEach(pKey => {
+      const pGender = athleteMetadata[pKey]?.gender || 'M';
+      let fireTotal = 0;
+      res[pKey] = Object.entries(source[pKey]).map(([normL, data]) => {
+        const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
+        const record = Math.min(...Object.values(board));
+        const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
+        const rank = sorted.findIndex(e => e[0] === pKey) + 1;
+        const fires = getFireCountForRun(data.num, pGender);
+        fireTotal += fires;
+        return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl, fireCount: fires };
+      });
+      
+      if (athleteMetadata[pKey]) {
+        if (isAllTimeBuild) {
+          if (!athleteMetadata[pKey].allTimeFireCount || fireTotal > athleteMetadata[pKey].allTimeFireCount) {
+            athleteMetadata[pKey].allTimeFireCount = fireTotal;
+          }
+        } else {
+          athleteMetadata[pKey].openFireCount = fireTotal;
+        }
+        athleteMetadata[pKey].films = filmerCreditsCount[pKey] || 0;
+      }
+    });
+    return res;
+  };
+
+  result.allTimePerformances = buildPerfs(allTimeAthleteBestTimes, true);
+  result.openPerformances = buildPerfs(openAthleteBestTimes, false);
+  result.allTimeLeaderboards = allTimeCourseLeaderboards;
+  result.openLeaderboards = openCourseLeaderboards;
+  result.athleteDisplayNameMap = athleteDisplayNameMap;
+  result.atRawBest = allTimeAthleteBestTimes;
+  result.opRawBest = openAthleteTotalSubmissions;
+  result.filmerCredits = filmerCreditsCount;
+  
+  const chronologicalRuns = [...dataRows].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA; 
+  }).slice(0, 20); 
+
+  result.recentFeed = chronologicalRuns.map((run, i) => {
+    const pName = (run.athlete || "").trim();
+    const normC = (run.course || "").trim().toUpperCase();
+    const numericValue = cleanNumeric(run.result);
+    const pKey = normalizeName(pName);
+    const athleteMeta = athleteMetadata[pKey];
+    const pGender = athleteMeta?.gender || 'M';
+    
+    const courseRecords = (allTimeCourseLeaderboards[pGender] || {})[normC] || {};
+    const sortedResults = Object.entries(courseRecords).sort((a, b) => a[1] - b[1]);
+    const runRank = sortedResults.findIndex(entry => entry[1] === numericValue) + 1;
+    const fireCount = getFireCountForRun(numericValue, pGender);
+    
+    return {
+      id: `feed-${i}`,
+      athleteName: pName,
+      athlete: athleteMeta,
+      courseName: run.course,
+      course: { name: run.course, ...(courseSetMap[normC] || {}) },
+      result: run.result,
+      isCR: runRank === 1 && !isPlaceholderPlayer(pName),
+      rank: runRank,
+      fireCount: fireCount,
+      timeString: run.date || 'LATEST'
+    };
+  });
+
+  result.openRankings = Object.keys(athleteMetadata)
+    .filter(k => !isPlaceholderPlayer(athleteMetadata[k].name))
+    .map(pKey => {
+      const meta = athleteMetadata[pKey];
+      const perfs = result.openPerformances[pKey] || [];
+      const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
+      return {
+        ...meta, id: `open-${pKey}`, rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, 
+        runs: perfs.length, wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
+        sets: openAthleteTotalSubmissions[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
+      };
+    }).sort((a, b) => b.rating - a.rating); 
+  return result;
+};
+
 // --- COMPONENT: COUNT UP ANIMATION ---
-const ASRCountUp = ({ end, duration = 2000 }) => {
+const ASRCountUp = React.memo(({ end, duration = 2000 }) => {
   const [count, setCount] = useState(0);
   const countRef = useRef(0);
   
@@ -281,10 +684,10 @@ const ASRCountUp = ({ end, duration = 2000 }) => {
   }, [end, duration]);
 
   return <span>{count.toLocaleString()}</span>;
-};
+});
 
 // --- STYLES ---
-const CustomStyles = () => (
+const CustomStyles = React.memo(() => (
   <style>{`
     @keyframes subtle-pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -438,10 +841,11 @@ const CustomStyles = () => (
         box-shadow: 0 15px 40px rgba(0,0,0,0.2), 0 0 0 2px rgba(37,99,235,0.4);
     }
   `}</style>
-);
+));
 
-// --- ATOMIC UI COMPONENTS ---
-const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon, isHeader = false }) => {
+// --- ATOMIC UI COMPONENTS (MEMOIZED FOR PERFORMANCE) ---
+const ASRStatCard = React.memo(({ label, value, colorClass, glowClass, tooltip, icon, isHeader = false }) => {
+  const theme = useContext(ThemeContext);
   const [isFlipped, setIsFlipped] = useState(false);
 
   useEffect(() => {
@@ -489,8 +893,11 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
   const labelStr = String(label || "").trim().toUpperCase();
   const description = tooltip || statInfoMap[labelStr];
 
+  const ContainerElement = description ? 'button' : 'div';
+
   return (
-    <div 
+    <ContainerElement 
+      type={description ? "button" : undefined}
       onClick={(e) => {
         if (description) {
           e.stopPropagation();
@@ -498,17 +905,11 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
           setIsFlipped(!isFlipped);
         }
       }}
-      role={description ? "button" : undefined}
-      tabIndex={description ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (description && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          e.stopPropagation();
-          trackEvent('flip_stat_card', { stat_label: labelStr });
-          setIsFlipped(!isFlipped);
-        }
-      }}
-      className={`stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none ${description ? 'cursor-pointer hover:border-blue-500/50 active:scale-95' : 'cursor-default'} ${isHeader ? 'p-0 border-none' : 'p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ' + THEME.CARD(theme)}`}
+      className={cn(
+        "stat-card-container ios-clip-fix relative flex flex-col border transition-all duration-300 select-none text-left w-full",
+        description ? "cursor-pointer hover:border-blue-500/50 active:scale-95" : "cursor-default",
+        isHeader ? "p-0 border-none" : `p-3.5 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] ${THEME.CARD(theme)}`
+      )}
     >
         <div className={`transition-all duration-300 flex flex-col h-full w-full ${isFlipped ? 'opacity-0 scale-95 pointer-events-none absolute' : 'opacity-100 scale-100'}`}>
           <span className={`${isHeader ? THEME.HEADING_HOF : THEME.LABEL} mb-1.5 flex items-center justify-between gap-1.5 text-inherit whitespace-nowrap shrink-0 overflow-visible ${isHeader ? 'opacity-100' : ''}`}>
@@ -532,17 +933,20 @@ const ASRStatCard = ({ label, value, theme, colorClass, glowClass, tooltip, icon
               </p>
           </div>
         )}
-    </div>
+    </ContainerElement>
   );
-};
+});
 
-const ASRSectionHeading = ({ children, theme, className = "" }) => (
+const ASRSectionHeading = React.memo(({ children, className = "" }) => {
+  const theme = useContext(ThemeContext);
+  return (
     <h3 className={`${THEME.HEADING_SM} px-1 sm:px-2 mb-4 ${theme === 'dark' ? 'text-zinc-400' : 'text-slate-900'} ${className}`}>
         {children}
     </h3>
-);
+  );
+});
 
-const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
+const FallbackAvatar = React.memo(({ name, sizeCls = "text-xl sm:text-4xl", initialsOverride = "" }) => {
   const GRADIENTS = [
     'from-blue-600 to-indigo-700', 'from-emerald-600 to-cyan-700',
     'from-cyan-600 to-blue-700', 'from-teal-600 to-emerald-700',
@@ -574,7 +978,7 @@ const FallbackAvatar = ({ name, sizeCls = "text-xl sm:text-4xl", initialsOverrid
       <span className="relative z-10">{getInitials(name)}</span>
     </div>
   );
-};
+});
 
 const formatLocationSubtitle = (primaryLoc, secondaryLoc, flags) => {
     const p = String(primaryLoc || "").trim();
@@ -594,7 +998,8 @@ const formatLocationSubtitle = (primaryLoc, secondaryLoc, flags) => {
     );
 };
 
-const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
+const ASRRankBadge = React.memo(({ rank, size = 'md' }) => {
+  const theme = useContext(ThemeContext);
   const isUnranked = String(rank || "").trim() === "UR";
   const rankNum = isUnranked ? "UR" : (rank === "-" ? "?" : rank);
   const dim = size === 'lg' ? 'w-10 h-10 sm:w-11 sm:h-11' : 'w-7 h-7 sm:w-10 sm:h-10';
@@ -613,20 +1018,21 @@ const ASRRankBadge = ({ rank, theme, size = 'md' }) => {
       {rankNum}
     </span>
   );
-};
+});
 
-const ASRPerformanceBadge = ({ type, count = 1 }) => {
+const ASRPerformanceBadge = React.memo(({ type, count = 1 }) => {
     const badges = { 1: "🥇", 2: "🥈", 3: "🥉", fire: "🔥" };
     const glows = { 1: "glow-gold", 2: "glow-silver", 3: "glow-bronze", fire: "glow-blue" };
     return <span className={`inline-flex items-center gap-0 select-none shrink-0 ${glows[type]}`}>
         {Array.from({ length: count }).map((_, i) => <span key={i} className="emoji-slot">{badges[type]}</span>)}
     </span>;
-};
+});
 
-const ASRListItem = ({ 
-  rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, theme, onClick, isUnranked = false,
+const ASRListItem = React.memo(({ 
+  rank, title, subtitle, variant = 'table', stats = [], columns = [], videoUrl, icon, onClick, isUnranked = false,
   badgeContent, shouldFade = false
 }) => {
+  const theme = useContext(ThemeContext);
   const accentColor = theme === 'dark' ? 'text-white' : 'text-black';
   const tableHover = theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]';
   const cardHover = theme === 'dark' ? 'hover:bg-zinc-800/50' : 'hover:bg-slate-50';
@@ -643,12 +1049,14 @@ const ASRListItem = ({
             onClick(e);
           }
         }}
-        className={`group flex items-center transition-all duration-200 ios-clip-fix py-5 sm:py-6 px-0 outline-none
-          ${onClick ? `cursor-pointer active:bg-blue-600/10 focus:bg-blue-600/10 ${tableHover}` : 'cursor-default'} 
-          ${shouldFade ? 'opacity-40 grayscale' : 'opacity-100'}`}
+        className={cn(
+          "group flex items-center transition-all duration-200 ios-clip-fix py-5 sm:py-6 px-0 outline-none w-full text-left",
+          onClick ? `cursor-pointer active:bg-blue-600/10 focus:bg-blue-600/10 ${tableHover}` : 'cursor-default',
+          shouldFade ? 'opacity-40 grayscale' : 'opacity-100'
+        )}
       >
         <div className="w-20 sm:w-24 pl-4 sm:pl-10 shrink-0">
-            <ASRRankBadge rank={rank} theme={theme} />
+            <ASRRankBadge rank={rank} />
         </div>
         <div className="flex-1 flex min-w-0 h-full items-center">
             <div className="flex-1 flex flex-col min-w-0 pr-2 pl-4 sm:pl-8 text-left">
@@ -686,13 +1094,15 @@ const ASRListItem = ({
           onClick(e);
         }
       }}
-      className={`group flex items-center justify-between transition-all duration-200 ios-clip-fix outline-none
-        p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border h-auto min-h-[72px] sm:min-h-[80px]
-        ${onClick ? `cursor-pointer active:scale-[0.98] focus:scale-[0.98] focus:border-blue-500 ${cardHover}` : 'cursor-default'}
-        ${theme === 'dark' 
+      className={cn(
+        "group flex items-center justify-between transition-all duration-200 ios-clip-fix outline-none text-left w-full",
+        "p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border h-auto min-h-[72px] sm:min-h-[80px]",
+        onClick ? `cursor-pointer active:scale-[0.98] focus:scale-[0.98] focus:border-blue-500 ${cardHover}` : 'cursor-default',
+        theme === 'dark' 
           ? 'bg-zinc-900/40 border-zinc-800/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_4px_12px_rgba(0,0,0,0.2)]' 
-          : 'bg-white border-slate-200 shadow-md'}
-        ${shouldFade ? 'opacity-40 grayscale' : 'opacity-100'}`}
+          : 'bg-white border-slate-200 shadow-md',
+        shouldFade ? 'opacity-40 grayscale' : 'opacity-100'
+      )}
     >
       <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
         {icon ? (
@@ -701,7 +1111,7 @@ const ASRListItem = ({
           </div>
         ) : (
           <div className="shrink-0">
-            <ASRRankBadge rank={rank} theme={theme} />
+            <ASRRankBadge rank={rank} />
           </div>
         )}
         <div className="flex flex-col min-w-0 text-left">
@@ -740,33 +1150,34 @@ const ASRListItem = ({
       </div>
     </div>
   );
-};
+});
 
-const ASRPromotionBanner = ({ type, theme }) => {
+const ASRPromotionBanner = React.memo(({ type }) => {
+  const theme = useContext(ThemeContext);
   const configs = useMemo(() => ({
     setter: {
       title: "COURSE SETTER CERT",
       subtitle: "Become an Apex certified setter.",
       icon: <Eye className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
-      link: SKOOL_LINK
+      link: CONFIG.SKOOL_LINK
     },
     coach: {
       title: "SPEED PARKOUR COACHING",
       subtitle: "Become an Apex certified coach.",
       icon: <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
-      link: SKOOL_LINK
+      link: CONFIG.SKOOL_LINK
     },
     masterclass: {
         title: "VERIFY YOUR RUN",
         subtitle: "Get your runs verified on Skool.",
         icon: <Zap className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
-        link: SKOOL_LINK
+        link: CONFIG.SKOOL_LINK
     },
     community: {
         title: "JOIN APEX SKOOL APP",
         subtitle: "Join the worldwide community.",
         icon: <Users className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
-        link: SKOOL_LINK
+        link: CONFIG.SKOOL_LINK
     }
   }), []);
 
@@ -779,7 +1190,10 @@ const ASRPromotionBanner = ({ type, theme }) => {
       target="_blank" 
       rel="noopener noreferrer"
       onClick={() => trackEvent('outbound_click', { link_url: config.link, link_type: type })}
-      className={`group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm ${theme === 'dark' ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100'}`}
+      className={cn(
+        "group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm text-left",
+        theme === 'dark' ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100'
+      )}
     >
       <div className="flex items-center gap-4 sm:gap-5 min-w-0 pr-2">
         <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shrink-0 ${theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
@@ -795,9 +1209,10 @@ const ASRPromotionBanner = ({ type, theme }) => {
       </div>
     </a>
   );
-};
+});
 
-const ASRPatronPill = ({ course, theme, compact = false }) => {
+const ASRPatronPill = React.memo(({ course, compact = false }) => {
+    const theme = useContext(ThemeContext);
     const hasSponsor = !!course.sponsorName;
     const sponsorName = course.sponsorName;
     const sponsorLink = course.sponsorLink || `mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`;
@@ -876,33 +1291,34 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
       );
     }
     return null;
-};
+});
 
-const ASRInlineValueCard = ({ theme, type }) => {
+const ASRInlineValueCard = React.memo(({ type }) => {
+  const theme = useContext(ThemeContext);
   const cards = {
     skool_training: {
       desc: "Join our worldwide network on Apex Skool app",
       icon: <Users className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
-      link: SKOOL_LINK,
+      link: CONFIG.SKOOL_LINK,
       btn: "JOIN COMMUNITY"
     },
     shop_gear: {
       desc: "Submit your video proof on Apex Skool app",
       icon: <Video className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
-      link: SKOOL_LINK,
+      link: CONFIG.SKOOL_LINK,
       btn: "GET VERIFIED"
     },
     pro_setter: {
       desc: "Take our course setter certification on Skool",
       icon: <Waypoints className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
-      link: SKOOL_LINK,
+      link: CONFIG.SKOOL_LINK,
       btn: "LEARN MORE"
     }
   };
   const c = cards[type];
   if (!c) return null;
   return (
-    <a href={c.link} onClick={() => trackEvent('outbound_click', { link_url: c.link, link_type: type })} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix`}>
+    <a href={c.link} onClick={() => trackEvent('outbound_click', { link_url: c.link, link_type: type })} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix text-left`}>
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
         <div className={`p-2.5 sm:p-3 rounded-xl shrink-0 ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
           {c.icon}
@@ -917,10 +1333,10 @@ const ASRInlineValueCard = ({ theme, type }) => {
       </div>
     </a>
   );
-};
+});
 
 // --- LIVE TICKER COMPONENT ---
-const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
+const ASRLiveTicker = ({ feed = [], onPlayerClick, onCourseClick }) => {
   if (!feed || feed.length === 0) return null;
 
   const tickerItems = [...feed, ...feed];
@@ -989,7 +1405,7 @@ const ASRLiveTicker = ({ feed = [], theme, onPlayerClick, onCourseClick }) => {
 
 // --- COUNTDOWN TIMER COMPONENT ---
 const ASRCountdownTimer = ({ className = "" }) => {
-    const targetDate = useMemo(() => new Date('2026-06-01T07:00:00Z'), []);
+    const targetDate = useMemo(() => new Date(CONFIG.DATES.COUNTDOWN_TARGET), []);
     const [timeLeft, setTimeLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
 
     useEffect(() => {
@@ -1028,7 +1444,8 @@ const ASRCountdownTimer = ({ className = "" }) => {
 };
 
 // --- MODALS ---
-const ASROnboarding = ({ isOpen, onClose, theme }) => {
+const ASROnboarding = ({ isOpen, onClose }) => {
+  const theme = useContext(ThemeContext);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -1052,7 +1469,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "1. Find a course",
       desc: (
         <>
-          Use our map and course guides to find a course near you. Join <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> to access the latest ASR resources.
+          Use our map and course guides to find a course near you. Join <a href={CONFIG.SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: CONFIG.SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> to access the latest ASR resources.
         </>
       ),
       icon: <MapPin />
@@ -1061,7 +1478,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "2. Film your run",
       desc: (
         <>
-          Video proof is everything. Check <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
+          Video proof is everything. Check <a href={CONFIG.SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: CONFIG.SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for filming requirements and official rules to ensure that your best runs count.
         </>
       ),
       icon: <Video />
@@ -1070,7 +1487,7 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
       title: "3. Get verified",
       desc: (
         <>
-          Post your fastest runs in <a href={SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
+          Post your fastest runs in <a href={CONFIG.SKOOL_LINK} target="_blank" rel="noopener noreferrer" className="underline text-inherit hover:text-blue-500 transition-colors" onClick={() => trackEvent('outbound_click', { link_url: CONFIG.SKOOL_LINK, link_type: 'onboarding_skool' })}>Apex Skool app</a> for official review. Once verified, your stats will update and broadcast live on our website.
         </>
       ),
       icon: <ShieldCheck />,
@@ -1142,10 +1559,10 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
             <div className="flex gap-4 w-full">
               {steps[step].action ? (
                 <a 
-                  href={SKOOL_LINK} 
+                  href={CONFIG.SKOOL_LINK} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  onClick={() => trackEvent('outbound_click', { link_url: SKOOL_LINK, link_type: 'onboarding_action' })}
+                  onClick={() => trackEvent('outbound_click', { link_url: CONFIG.SKOOL_LINK, link_type: 'onboarding_action' })}
                   className="flex-1 py-5 btn-blue-gradient active rounded-2xl font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 text-xs sm:text-sm shadow-2xl whitespace-nowrap active:scale-95"
                 >
                   {steps[step].action} <CornerUpRight className="w-5 h-5" strokeWidth={2.5} />
@@ -1177,8 +1594,9 @@ const ASROnboarding = ({ isOpen, onClose, theme }) => {
 
 const ASRBaseModal = ({ 
   isOpen, onClose, onBack, onForward, canGoForward, onShare,
-  theme, header, breadcrumbs, onBreadcrumbClick, currentIndex, children 
+  header, breadcrumbs, onBreadcrumbClick, currentIndex, children 
 }) => {
+  const theme = useContext(ThemeContext);
   const scrollContainerRef = useRef(null);
   const historyScrollPositions = useRef({});
   const prevIndexRef = useRef(-1);
@@ -1221,11 +1639,11 @@ const ASRBaseModal = ({
         <div className={`shrink-0 flex flex-col p-6 sm:p-10 pt-8 sm:pt-10 gap-6 bg-gradient-to-b ${theme === 'dark' ? 'from-zinc-800/40' : 'from-white'} to-transparent relative z-[140]`}>
           <div className="flex items-start justify-between gap-4 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                  <button aria-label="Go Back" onClick={onBack} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Go Back">
+                  <button type="button" aria-label="Go Back" onClick={onBack} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Go Back">
                       <CornerUpLeft className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                   </button>
                   {canGoForward && (
-                      <button aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0 animate-in fade-in duration-300" title="Go Forward">
+                      <button type="button" aria-label="Go Forward" onClick={onForward} className="group p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0 animate-in fade-in duration-300" title="Go Forward">
                           <CornerUpRight className="w-5 h-5 sm:w-5 sm:h-5 text-slate-200" strokeWidth={2.5} />
                       </button>
                   )}
@@ -1233,7 +1651,7 @@ const ASRBaseModal = ({
                       <div className={`ml-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide text-[9px] sm:text-[11px] font-black uppercase tracking-[0.15em] whitespace-nowrap px-4 py-3 rounded-full border shadow-xl shrink min-w-0 ${THEME.GLASS(theme)}`}>
                           {breadcrumbs.map((b, i) => (
                               <React.Fragment key={i}>
-                                  <button 
+                                  <button type="button"
                                       onClick={(e) => { e.stopPropagation(); onBreadcrumbClick(i); }}
                                       className={`transition-colors outline-none whitespace-nowrap ${i === currentIndex ? 'opacity-100 font-black' : 'opacity-40 cursor-pointer hover:opacity-100'}`}
                                   >
@@ -1246,10 +1664,10 @@ const ASRBaseModal = ({
                   )}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Share Link">
+                <button type="button" onClick={onShare} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Share Link">
                     <Share size={18} strokeWidth={2.5} />
                 </button>
-                <button aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Close">
+                <button type="button" aria-label="Close Modal" onClick={onClose} className="p-3.5 sm:p-3 bg-black/30 hover:bg-black/50 active:scale-90 rounded-full text-white transition-all shrink-0" title="Close">
                     <X size={20} strokeWidth={2.5} />
                 </button>
               </div>
@@ -1271,7 +1689,8 @@ const ASRBaseModal = ({
 };
 
 // --- INSPECTOR BODY COMPONENTS ---
-const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
+const CourseDetails = ({ course, athleteMetadata, athleteDisplayNameMap, onPlayerClick, onSetterClick }) => {
+  const theme = useContext(ThemeContext);
   const stats = [
     { label: 'CR (M)', value: typeof course.allTimeMRecord === 'number' ? course.allTimeMRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, colorClass: theme === 'dark' ? 'text-white' : 'text-black' },
     { label: 'CR (W)', value: typeof course.allTimeFRecord === 'number' ? course.allTimeFRecord.toFixed(2) : '-', icon: <Zap className="w-3.5 h-3.5" />, colorClass: theme === 'dark' ? 'text-white' : 'text-black' },
@@ -1286,12 +1705,12 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
   return (
     <div className="animate-in fade-in duration-300 space-y-12 overflow-visible">
       <div className="grid grid-cols-1 gap-12 sm:gap-14 overflow-visible">
-        <ASRRankList title="MEN'S TOP 10" athletes={course.allTimeAthletesM || []} genderRecord={course.allTimeMRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
-        <ASRRankList title="WOMEN'S TOP 10" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} theme={theme} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
+        <ASRRankList title="MEN'S TOP 10" athletes={course.allTimeAthletesM || []} genderRecord={course.allTimeMRecord} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
+        <ASRRankList title="WOMEN'S TOP 10" athletes={course.allTimeAthletesF || []} genderRecord={course.allTimeFRecord} athleteMetadata={athleteMetadata} athleteDisplayNameMap={athleteDisplayNameMap} onPlayerClick={onPlayerClick} />
       </div>
 
       <div className="space-y-6 text-left overflow-visible">
-        <ASRSectionHeading theme={theme} className="!mb-0">COURSE STATS</ASRSectionHeading>
+        <ASRSectionHeading className="!mb-0">COURSE STATS</ASRSectionHeading>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
           {stats.map((s, i) => (
             <div key={i} className={`p-4 rounded-[1.5rem] border text-left flex flex-col gap-1 ${THEME.CARD(theme)} ios-clip-fix overflow-visible`}>
@@ -1307,7 +1726,7 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
       
       {(course.leadSetters || course.assistantsetters) && (
         <div className="space-y-6 text-left overflow-visible">
-          <ASRSectionHeading theme={theme} className="!mb-0">COURSE SETTERS</ASRSectionHeading>
+          <ASRSectionHeading className="!mb-0">COURSE SETTERS</ASRSectionHeading>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-visible">
             {course.leadSetters && (
               <div className={`p-6 rounded-3xl border flex flex-col justify-center ${THEME.CARD(theme)} ios-clip-fix`}>
@@ -1330,13 +1749,14 @@ const CourseDetails = ({ course, theme, athleteMetadata, athleteDisplayNameMap, 
       )}
 
       <div className="pt-4 flex flex-col gap-4">
-        <ASRPromotionBanner type="setter" theme={theme} />
+        <ASRPromotionBanner type="setter" />
       </div>
     </div>
   );
 };
 
-const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings, atPerfs, opPerfs, openModal, allPlayers }) => {
+const PlayerDetails = ({ identity, initialRole, allCourses, openRankings, atPerfs, opPerfs, openModal, allPlayers }) => {
+  const theme = useContext(ThemeContext);
   const [activeRole, setActiveRole] = useState(initialRole || 'asr-open');
   
   useEffect(() => {
@@ -1389,15 +1809,15 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
-                      <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} tooltip={s.t} colorClass={s.c} />
+                      <ASRStatCard key={i} index={i} label={s.l} value={s.v} tooltip={s.t} colorClass={s.c} />
                     ))}
                 </div>
                 <div className="space-y-6 overflow-visible text-left">
-                  <ASRSectionHeading theme={theme} className="!mb-0">VERIFIED SETS</ASRSectionHeading>
+                  <ASRSectionHeading className="!mb-0">VERIFIED SETS</ASRSectionHeading>
                   <div className="grid grid-cols-1 gap-3 overflow-visible">
                       {setterCourses.length > 0 ? setterCourses.map((c, i) => (
                         <ASRListItem 
-                          key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
+                          key={i} variant="card" title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                           icon={c.coordinates ? (
                             <a 
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
@@ -1423,7 +1843,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                       )}
                   </div>
                 </div>
-                <div className="pt-4"><ASRPromotionBanner type="setter" theme={theme} /></div>
+                <div className="pt-4"><ASRPromotionBanner type="setter" /></div>
             </div>
         );
     }
@@ -1489,17 +1909,17 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
-                  <ASRStatCard key={i} index={i} label={s.l} value={s.v} theme={theme} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
+                  <ASRStatCard key={i} index={i} label={s.l} value={s.v} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
                 ))}
             </div>
             <div className="space-y-6 overflow-visible text-left">
-              <ASRSectionHeading theme={theme} className="!mb-0">VERIFIED RUNS</ASRSectionHeading>
+              <ASRSectionHeading className="!mb-0">VERIFIED RUNS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {courseData.length > 0 ? courseData.map((c, i) => {
                       const target = (allCourses || []).find(x => x.name.toUpperCase() === c.label.toUpperCase());
                       return (
                         <ASRListItem 
-                          key={i} variant="card" theme={theme} title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
+                          key={i} variant="card" title={c.label} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                           icon={target?.coordinates ? (
                             <a 
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target.coordinates)}`}
@@ -1532,7 +1952,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
                   )}
               </div>
             </div>
-            <div className="pt-4"><ASRPromotionBanner type="coach" theme={theme} /></div>
+            <div className="pt-4"><ASRPromotionBanner type="coach" /></div>
         </div>
     );
   };
@@ -1547,7 +1967,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
     <div className="space-y-8 overflow-visible">
       <div className={`flex p-1.5 rounded-2xl border w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.GLASS(theme)} ios-clip-fix`}>
         {tabs.map(tab => (
-          <button 
+          <button type="button"
             key={tab.id} 
             onClick={() => {
               setActiveRole(tab.id);
@@ -1564,7 +1984,7 @@ const PlayerDetails = ({ identity, initialRole, theme, allCourses, openRankings,
   );
 };
 
-const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformances, openModal }) => {
+const RegionDetails = ({ region, allCourses, allPlayers, playerPerformances, openModal }) => {
   const regionalCourses = (allCourses || []).filter(c => 
       (region.type === 'city' && c.city === region.name) ||
       (region.type === 'country' && c.country === region.name) ||
@@ -1598,16 +2018,16 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
     <div className="space-y-12 overflow-visible">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-visible">
           {regionalStats.map((s, i) => (
-            <ASRStatCard key={i} index={i} label={s.label} value={s.value} theme={theme} />
+            <ASRStatCard key={i} index={i} label={s.label} value={s.value} />
           ))}
       </div>
       <div className="space-y-12 text-left overflow-visible">
           <div className="space-y-6 overflow-visible text-left">
-              <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
+              <ASRSectionHeading className="!mb-0">TOP PLAYERS</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {regionalPlayersQualified.length > 0 ? regionalPlayersQualified.slice(0, 10).map((p, i) => (
                       <ASRListItem 
-                        key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
+                        key={i} variant="card" rank={i + 1} title={p.name} subtitle={p.region}
                         stats={[{ value: typeof p.rating === 'number' ? p.rating.toFixed(2) : '0.00' }]}
                         onClick={() => openModal('player', p)}
                       />
@@ -1619,11 +2039,11 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
               </div>
           </div>
           <div className="space-y-6 overflow-visible text-left">
-              <ASRSectionHeading theme={theme} className="!mb-0">TOP COURSES</ASRSectionHeading>
+              <ASRSectionHeading className="!mb-0">TOP COURSES</ASRSectionHeading>
               <div className="grid grid-cols-1 gap-3 overflow-visible">
                   {regionalCourses.slice(0, 10).map((c, i) => (
                       <ASRListItem 
-                        key={i} variant="card" theme={theme} title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
+                        key={i} variant="card" title={c.name} subtitle={`${c.city || 'Unknown'} ${c.flag}`}
                         icon={c.coordinates ? (
                           <a 
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.coordinates)}`}
@@ -1650,7 +2070,8 @@ const RegionDetails = ({ region, theme, allCourses, allPlayers, playerPerformanc
   );
 };
 
-const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atPerfs, opPerfs, settersWithImpact }) => {
+const TeamDetails = ({ team, initialRole, openModal, atMet, openData, atPerfs, opPerfs, settersWithImpact }) => {
+    const theme = useContext(ThemeContext);
     const [activeTab, setActiveTab] = useState(initialRole === 'open' ? 'asr-open' : (initialRole || 'asr-open'));
 
     useEffect(() => {
@@ -1709,17 +2130,17 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
             return (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
-                        <ASRStatCard label="SETTERS" value={String(teamSetters.length)} theme={theme} />
-                        <ASRStatCard label="IMPACT" value={String(Math.round(totalImpact))} theme={theme} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
-                        <ASRStatCard label="SETS" value={String(totalSets)} theme={theme} />
-                        <ASRStatCard label="AVG IMPACT" value={teamSetters.length > 0 ? String(Math.round(totalImpact / teamSetters.length)) : "0"} theme={theme} />
+                        <ASRStatCard label="SETTERS" value={String(teamSetters.length)} />
+                        <ASRStatCard label="IMPACT" value={String(Math.round(totalImpact))} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
+                        <ASRStatCard label="SETS" value={String(totalSets)} />
+                        <ASRStatCard label="AVG IMPACT" value={teamSetters.length > 0 ? String(Math.round(totalImpact / teamSetters.length)) : "0"} />
                     </div>
                     <div className="space-y-6 text-left overflow-visible">
-                        <ASRSectionHeading theme={theme} className="!mb-0">TOP SETTERS</ASRSectionHeading>
+                        <ASRSectionHeading className="!mb-0">TOP SETTERS</ASRSectionHeading>
                         <div className="grid grid-cols-1 gap-3 overflow-visible">
                             {topSetters.map((s, i) => (
                                 <ASRListItem 
-                                    key={`setter-${i}`} variant="card" theme={theme} rank={i + 1} title={s.name} subtitle={s.region}
+                                    key={`setter-${i}`} variant="card" rank={i + 1} title={s.name} subtitle={s.region}
                                     stats={[{ value: String(Math.round(s.impact || 0)) }]}
                                     onClick={() => openModal('setter', s, 'setter')}
                                 />
@@ -1743,21 +2164,21 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
         return (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
-                    <ASRStatCard label="PLAYERS" value={String(stats.players.length)} theme={theme} />
-                    <ASRStatCard label="POINTS" value={stats.pts.toFixed(2)} theme={theme} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
-                    <ASRStatCard label="AVG POINTS" value={avgPts} theme={theme} />
-                    <ASRStatCard label="RUNS" value={String(stats.runs)} theme={theme} />
-                    <ASRStatCard label="🥇" value={String(stats.medals.gold)} theme={theme} glowClass="glow-gold" />
-                    <ASRStatCard label="🥈" value={String(stats.medals.silver)} theme={theme} glowClass="glow-silver" />
-                    <ASRStatCard label="🥉" value={String(stats.medals.bronze)} theme={theme} glowClass="glow-bronze" />
-                    <ASRStatCard label="🔥" value={String(stats.fires)} theme={theme} glowClass="glow-blue" />
+                    <ASRStatCard label="PLAYERS" value={String(stats.players.length)} />
+                    <ASRStatCard label="POINTS" value={stats.pts.toFixed(2)} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
+                    <ASRStatCard label="AVG POINTS" value={avgPts} />
+                    <ASRStatCard label="RUNS" value={String(stats.runs)} />
+                    <ASRStatCard label="🥇" value={String(stats.medals.gold)} glowClass="glow-gold" />
+                    <ASRStatCard label="🥈" value={String(stats.medals.silver)} glowClass="glow-silver" />
+                    <ASRStatCard label="🥉" value={String(stats.medals.bronze)} glowClass="glow-bronze" />
+                    <ASRStatCard label="🔥" value={String(stats.fires)} glowClass="glow-blue" />
                 </div>
                 <div className="space-y-6 overflow-visible text-left">
-                    <ASRSectionHeading theme={theme} className="!mb-0">TOP PLAYERS</ASRSectionHeading>
+                    <ASRSectionHeading className="!mb-0">TOP PLAYERS</ASRSectionHeading>
                     <div className="grid grid-cols-1 gap-3 overflow-visible">
                         {topPlayers.map((p, i) => (
                             <ASRListItem 
-                                key={i} variant="card" theme={theme} rank={i + 1} title={p.name} subtitle={p.region}
+                                key={i} variant="card" rank={i + 1} title={p.name} subtitle={p.region}
                                 stats={[{ value: (p.pts || 0).toFixed(2) }]}
                                 onClick={() => openModal('player', p, activeTab)}
                             />
@@ -1783,7 +2204,7 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
         <div className="space-y-8 overflow-visible">
             <div className={`flex p-1.5 rounded-2xl border w-full sm:w-fit mx-auto sm:mx-0 overflow-x-auto scrollbar-hide ${THEME.GLASS(theme)} ios-clip-fix`}>
                 {tabs.map(tab => (
-                    <button 
+                    <button type="button"
                         key={tab.id} 
                         onClick={() => {
                           setActiveTab(tab.id);
@@ -1800,7 +2221,7 @@ const TeamDetails = ({ team, initialRole, theme, openModal, atMet, openData, atP
     );
 };
 
-const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, opPerfs, atMet, dnMap, settersWithImpact, openModal, onSetterClick }) => {
+const InspectorBody = ({ activeModal, allCourses, openRankings, atPerfs, opPerfs, atMet, dnMap, settersWithImpact, openModal, onSetterClick }) => {
   if (!activeModal) return null;
 
   switch (activeModal.type) {
@@ -1820,7 +2241,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
         <PlayerDetails 
           identity={{ ...athleteData, setterData, openStats: openAthleteData }} 
           initialRole={targetRole} 
-          theme={theme} 
           allCourses={allCourses} 
           openRankings={openRankings} 
           atPerfs={atPerfs} 
@@ -1836,7 +2256,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
       return (
         <CourseDetails 
           course={richCourse} 
-          theme={theme} 
           athleteMetadata={atMet} 
           athleteDisplayNameMap={dnMap} 
           onPlayerClick={(p) => openModal('player', p)} 
@@ -1848,7 +2267,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
       return (
         <RegionDetails 
           region={activeModal.data} 
-          theme={theme} 
           allCourses={allCourses} 
           allPlayers={Object.values(atMet)} 
           playerPerformances={atPerfs} 
@@ -1861,7 +2279,6 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
             <TeamDetails 
                 team={activeModal.data} 
                 initialRole={targetRole}
-                theme={theme} 
                 openModal={openModal} 
                 atMet={atMet}
                 openData={openRankings}
@@ -1876,27 +2293,47 @@ const InspectorBody = ({ activeModal, theme, allCourses, openRankings, atPerfs, 
   }
 };
 
+// --- DATA REDUCER & HOOK ---
+const INITIAL_DATA_STATE = {
+  data: [], openData: [], atPerfs: {}, opPerfs: {},
+  lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: [],
+  atRawBest: {}, opRawBest: {}, recentFeed: [],
+  isLoading: true, hasError: false, hasPartialError: false
+};
+
+function dataReducer(state, action) {
+  switch (action.type) {
+    case 'CACHE_RESTORE':
+      return { ...state, ...action.payload, isLoading: false };
+    case 'FETCH_SUCCESS':
+      return { 
+        ...state, 
+        ...action.payload, 
+        isLoading: false, 
+        hasError: action.payload.hasError || false, 
+        hasPartialError: action.payload.hasPartialError || false 
+      };
+    case 'FETCH_ERROR':
+      return { ...state, isLoading: false, hasError: true, hasPartialError: false };
+    default:
+      return state;
+  }
+}
+
 const useASRData = () => {
-  const [state, setState] = useState({
-    data: [], openData: [], atPerfs: {}, opPerfs: {},
-    lbAT: {M:{},F:{}}, lbOpen: {M:{},F:{}}, atMet: {}, dnMap: {}, cMet: {}, settersData: [],
-    atRawBest: {}, opRawBest: {}, recentFeed: [],
-    isLoading: true, hasError: false, hasPartialError: false
-  });
+  const [state, dispatch] = useReducer(dataReducer, INITIAL_DATA_STATE);
 
   const fetchData = useCallback(async () => {
     try {
-        const cached = localStorage.getItem(SNAPSHOT_KEY);
+        const cached = localStorage.getItem(CONFIG.SNAPSHOT_KEY);
         if (cached) {
             const parsedCache = JSON.parse(cached);
-            setState(prev => ({ ...prev, ...parsedCache, isLoading: false }));
+            dispatch({ type: 'CACHE_RESTORE', payload: parsedCache });
         }
     } catch (e) { console.warn("Cache recovery fail-safe."); }
 
-    const cacheBucket = Math.floor(Date.now() / REFRESH_INTERVAL); 
-    const SPREADSHEET_ID = '1DcLZyAO2QZij_176vsC7_rWWTVbxwt8X9Jw7YWM_7j4';
-    
-    const getDocsUrl = (gid) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}&cb=${cacheBucket}`;
+    const cacheBucket = Math.floor(Date.now() / CONFIG.REFRESH_INTERVAL); 
+    const getDocsUrl = (gid) => `https://docs.google.com/spreadsheets/d/${CONFIG.SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}&cb=${cacheBucket}`;
 
     const safeFetch = async (url) => {
         try {
@@ -1908,360 +2345,14 @@ const useASRData = () => {
 
     try {
       const [rM, rF, rLive, rSet] = await Promise.all([
-        safeFetch(getDocsUrl('595214914')), 
-        safeFetch(getDocsUrl('566627843')), 
-        safeFetch(getDocsUrl('623600169')), 
-        safeFetch(getDocsUrl('1961325686'))
+        safeFetch(getDocsUrl(CONFIG.SHEET_GIDS.MENS)), 
+        safeFetch(getDocsUrl(CONFIG.SHEET_GIDS.WOMENS)), 
+        safeFetch(getDocsUrl(CONFIG.SHEET_GIDS.LIVE)), 
+        safeFetch(getDocsUrl(CONFIG.SHEET_GIDS.SETS))
       ]);
       
       const hasTotalError = rM === null && rF === null && rLive === null;
       const hasPartialError = !hasTotalError && (rM === null || rF === null || rLive === null || rSet === null);
-
-      const RANKING_MAPPING = {
-        name: ['athlete', 'name', 'player'],
-        country: ['country'],
-        flag: ['flag'],
-        rating: ['ovr', 'overall', 'rating'],
-        pts: ['pts', 'points', 'asr'],
-        runs: ['runs', 'totalruns', 'total', '#'],
-        wins: ['wins', 'victories'],
-        sets: ['sets', 'total sets'],
-        contribution: ['🪙', 'contribution'],
-        fire: ['🔥', 'fire'],
-        ig: ['ig', 'instagram', 'social'],
-        avg: ['avg time', 'average', 'avg'],
-        cert: ['cert', 'level', 'certification'],
-        location: ['location', 'city', 'region', 'hometown'], 
-        homeGym: ['gym', 'home gym']
-      };
-
-      const SET_LIST_MAPPING = {
-        course: ['course', 'track', 'level'],
-        length: ['length', 'dist'],
-        elev: ['elev', 'gain'],
-        rating: ['rating', 'diff', 'difficulty'],
-        type: ['type', 'style'],
-        city: ['city', 'location'],
-        country: ['country', 'nation'],
-        flag: ['flag', 'emoji'],
-        dateSet: ['set on', 'updated', 'date set'],
-        demo: ['demo', 'rules', 'video', 'url'],
-        coords: ['coord', 'gps', 'location', 'pin'],
-        state: ['state', 'prov', 'region'],
-        leads: ['lead', 'lead setter', 'leads', 'leadsetters'],
-        assists: ['assistant', 'assistants', 'assistant setter', 'assistantsetters']
-      };
-
-      const SETTER_MAPPING = {
-        name: ['setter', 'name'],
-        leads: ['leads'],
-        assists: ['assist', 'assists', 'assistant'],
-        sets: ['sets', 'total sets'],
-        country: ['country', 'nation'],
-        flag: ['flag', 'emoji', 'region'],
-        ig: ['ig', 'instagram'],
-        contribution: ['🪙', 'contribution'],
-        cert: ['cert', 'level', 'certification'],
-        location: ['location', 'city'],
-        homeGym: ['gym', 'home gym']
-      };
-
-      const LIVE_FEED_MAPPING = {
-        athlete: ['athlete', 'name', 'player'],
-        course: ['course', 'track', 'level'],
-        result: ['result', 'time', 'pb'],
-        gender: ['div', 'gender', 'sex'],
-        date: ['date', 'day', 'timestamp'],
-        tag: ['tag', 'event', 'category', 'season'],
-        proof: ['proof', 'link', 'video', 'url'],
-        fire: ['🔥'],
-        filmer: ['filmer', 'videographer', 'filmed by']
-      };
-
-      const processRankingData = (csv, gender) => {
-        const dataRows = csvToObjects(csv, RANKING_MAPPING);
-        return dataRows.map((vals, i) => {
-          const pName = (vals.name || "").trim();
-          if (pName.length < 2 || isPlaceholderPlayer(pName)) return null; 
-          
-          const fixed = fixCountryEntity(vals.country, vals.flag);
-          const rawIg = (vals.ig || "").replace(/(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\?.*/, '').replace(/@/g, '').replace(/\/$/, '').trim();
-          
-          const pLocation = vals.__raw ? (vals.__raw[18] || "").trim() : (vals.location || "").trim();
-          const pHomeGym = vals.__raw ? (vals.__raw[20] || "").trim() : (vals.homeGym || "").trim();
-          const pTeamLocation = vals.__raw ? (vals.__raw[21] || "").trim() : ""; 
-
-          const townFlagRaw = vals.__raw ? (vals.__raw[19] || "").trim() : "";
-          const gymFlagRaw = vals.__raw ? (vals.__raw[22] || "").trim() : "";
-          
-          const townEntity = fixCountryEntity("", townFlagRaw);
-          const gymEntity = fixCountryEntity("", gymFlagRaw);
-
-          const searchKey = `${pName} ${fixed.name} ${rawIg} ${pLocation} ${pHomeGym}`.toLowerCase();
-          return { 
-            id: `${gender}-${normalizeName(pName)}-${i}`, 
-            name: pName, pKey: normalizeName(pName), gender, 
-            countryName: fixed.name, 
-            region: fixed.flag, 
-            location: pLocation,
-            homeGym: pHomeGym,
-            teamLocation: pTeamLocation, 
-            townFlag: townEntity.flag,
-            gymFlag: gymEntity.flag,
-            igHandle: rawIg,
-            rating: cleanNumeric(vals.rating) || 0, 
-            runs: Math.floor(cleanNumeric(vals.runs) || 0), 
-            wins: Math.floor(cleanNumeric(vals.wins) || 0), 
-            pts: cleanNumeric(vals.pts) || 0, 
-            sets: Math.floor(cleanNumeric(vals.sets) || 0), 
-            contributionScore: cleanNumeric(vals.contribution) || 0, 
-            allTimeFireCount: Math.floor(cleanNumeric(vals.fire) || 0),
-            avgTime: cleanNumeric(vals.avg) || 0,
-            certLevel: (vals.cert || "").trim().toUpperCase(),
-            searchKey
-          };
-        }).filter(Boolean);
-      };
-
-      const processSetListData = (csv) => {
-          const dataRows = csvToObjects(csv, SET_LIST_MAPPING);
-          const map = {};
-          dataRows.forEach(vals => {
-              const course = (vals.course || "").trim().toUpperCase();
-              if (course) {
-                  const fixed = fixCountryEntity(vals.country, vals.flag);
-                  const valAG = vals.__raw ? String(vals.__raw[32] || "").toUpperCase().trim() : "";
-                  const rulesVideoFromCol = vals.__raw ? String(vals.__raw[31] || "").trim() : "";
-                  const sponsorName = vals.__raw ? (vals.__raw[34] || "").trim() : "";
-                  const sponsorLink = vals.__raw ? (vals.__raw[35] || "").trim() : "";
-                  
-                  const is2026 = valAG === 'YES' || valAG === 'TRUE' || valAG.includes('OPEN');
-                  map[course] = { 
-                      is2026, flag: fixed.flag || '🏳️',
-                      city: (vals.city || "").trim().toUpperCase() || "UNKNOWN", 
-                      stateProv: (vals.state || "").trim().toUpperCase(),
-                      country: fixed.name.toUpperCase() || "UNKNOWN", 
-                      difficulty: (vals.rating || "").trim(),
-                      length: (vals.length || "").trim(),
-                      elevation: (vals.elevation || "").trim(),
-                      type: (vals.type || "").trim(),
-                      dateSet: (vals.dateSet || "").trim(),
-                      setter: (vals.leads || "") + ((vals.assists) ? `, ${vals.assists}` : ""),
-                      leadSetters: (vals.leads || "").trim(),
-                      assistantsetters: (vals.assists || "").trim(),
-                      demoVideo: rulesVideoFromCol || (vals.demo || "").trim(),
-                      coordinates: (vals.coords || "").trim(),
-                      sponsorName,
-                      sponsorLink,
-                      searchKey: `${course} ${vals.city} ${fixed.name}`.toLowerCase()
-                  };
-              }
-          });
-          return map;
-      };
-
-      const processSettersData = (csv) => {
-          const dataRows = csvToObjects(csv, SETTER_MAPPING);
-          return dataRows.map((vals, i) => {
-              const name = vals.name;
-              if (!name || isPlaceholderPlayer(name)) return null;
-              const fixed = fixCountryEntity(vals.country, vals.flag);
-              
-              const pLocation = vals.__raw ? (vals.__raw[18] || "").trim() : (vals.location || "").trim();
-              const pHomeGym = vals.__raw ? (vals.__raw[20] || "").trim() : (vals.homeGym || "").trim();
-
-              const townFlagRaw = vals.__raw ? (vals.__raw[19] || "").trim() : "";
-              const gymFlagRaw = vals.__raw ? (vals.__raw[22] || "").trim() : "";
-              const townEntity = fixCountryEntity("", townFlagRaw);
-              const gymEntity = fixCountryEntity("", gymFlagRaw);
-
-              return {
-                  id: `setter-${normalizeName(name)}-${i}`,
-                  name: name.trim(),
-                  region: fixed.flag || '🏳️',
-                  location: pLocation,
-                  homeGym: pHomeGym,
-                  townFlag: townEntity.flag,
-                  gymFlag: gymEntity.flag,
-                  countryName: fixed.name,
-                  igHandle: (vals.ig || "").replace(/@/g, '').trim(),
-                  sets: cleanNumeric(vals.sets) || 0,
-                  leads: cleanNumeric(vals.leads) || 0,
-                  assists: cleanNumeric(vals.assists) || 0,
-                  contributionScore: cleanNumeric(vals.contribution) || 0,
-                  certLevel: (vals.cert || "").trim().toUpperCase(),
-                  searchKey: `${name} ${fixed.name} ${pLocation} ${pHomeGym}`.toLowerCase()
-              };
-          }).filter(Boolean);
-      };
-
-      const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
-        const result = { 
-          allTimePerformances: {}, openPerformances: {}, openRankings: [], 
-          allTimeLeaderboards: {M:{},F:{}}, openLeaderboards: {M:{},F:{}}, 
-          athleteMetadata, athleteDisplayNameMap: {}, courseMetadata: courseSetMap, 
-          atRawBest: {}, opRawBest: {}, filmerCredits: {}, recentFeed: []
-        };
-        if (!csv) return result;
-        const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
-        let hIdx = -1;
-        for(let i=0; i<Math.min(10, lines.length); i++) {
-          if (/athlete|name|course|track|pb|result/i.test(lines[i])) { hIdx = i; break; }
-        }
-        if (hIdx === -1) return result;
-        
-        const dataRows = csvToObjects(csv, LIVE_FEED_MAPPING, hIdx);
-        const OPEN_START = new Date('2026-03-02T00:00:00Z');
-        const OPEN_END = new Date('2026-05-31T23:59:59Z');
-        const allTimeAthleteBestTimes = {}; const allTimeCourseLeaderboards = { M: {}, F: {} };
-        const openAthleteBestTimes = {}; const openCourseLeaderboards = { M: {}, F: {} }; 
-        const openAthleteTotalSubmissions = {}; const athleteDisplayNameMap = {};
-        const filmerCreditsCount = {};
-        
-        dataRows.forEach(vals => {
-          const pName = (vals.athlete || "").trim();
-          const rawCourse = (vals.course || "").trim();
-          const numericValue = cleanNumeric(vals.result);
-          if (!pName || !rawCourse || numericValue === null) return;
-
-          const rawGenderValue = (vals.gender || "").toUpperCase().trim();
-          const baseKey = normalizeName(pName);
-          const pGender = athleteMetadata[baseKey]?.gender || 
-                          ((rawGenderValue.startsWith('W') || rawGenderValue.startsWith('F')) ? 'F' : 'M');
-
-          let pKey = baseKey;
-          if (isPlaceholderPlayer(pName)) {
-            pKey = `${baseKey}-${pGender.toLowerCase()}`;
-          }
-
-          const normC = rawCourse.toUpperCase();
-          const isCourseOpen = courseSetMap[normC]?.is2026;
-          
-          if (!athleteDisplayNameMap[pKey]) athleteDisplayNameMap[pKey] = pName;
-
-          const rawFilmer = (vals.filmer || (vals.__raw && vals.__raw[8]) || "").trim();
-          if (rawFilmer) {
-            const filmerKey = normalizeName(rawFilmer);
-            filmerCreditsCount[filmerKey] = (filmerCreditsCount[filmerKey] || 0) + 1;
-          }
-          
-          if (!athleteMetadata[pKey]) {
-              athleteMetadata[pKey] = { pKey, name: pName, gender: pGender, region: '🏳️', location: '', homeGym: '', teamLocation: '', countryName: '', searchKey: pName.toLowerCase() };
-          } else if (pName.length > (athleteMetadata[pKey].name || "").length) {
-              athleteMetadata[pKey].name = pName;
-              athleteDisplayNameMap[pKey] = pName;
-          }
-
-          if (!allTimeAthleteBestTimes[pKey]) allTimeAthleteBestTimes[pKey] = {};
-          if (!allTimeAthleteBestTimes[pKey][normC] || numericValue < allTimeAthleteBestTimes[pKey][normC].num) {
-            allTimeAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
-          }
-          if (!allTimeCourseLeaderboards[pGender][normC]) allTimeCourseLeaderboards[pGender][normC] = {};
-          if (!allTimeCourseLeaderboards[pGender][normC][pKey] || numericValue < allTimeCourseLeaderboards[pGender][normC][pKey]) {
-              allTimeCourseLeaderboards[pGender][normC][pKey] = numericValue;
-          }
-          const runDate = vals.date ? new Date(vals.date) : null;
-          const isASROpenTag = (vals.tag || "").toUpperCase().includes("OPEN");
-          const isInOpenWindow = runDate && !isNaN(runDate.getTime()) && runDate >= OPEN_START && runDate <= OPEN_END;
-          
-          if ((isASROpenTag || isInOpenWindow) && isCourseOpen) {
-            if (!openAthleteBestTimes[pKey]) openAthleteBestTimes[pKey] = {};
-            if (!openAthleteBestTimes[pKey][normC] || numericValue < openAthleteBestTimes[pKey][normC].num) {
-              openAthleteBestTimes[pKey][normC] = { label: rawCourse, value: vals.result, num: numericValue, videoUrl: vals.proof || (vals.__raw && vals.__raw[7]) || "" };
-            }
-            if (!openCourseLeaderboards[pGender][normC]) openCourseLeaderboards[pGender][normC] = {};
-            if (!openCourseLeaderboards[pGender][normC][pKey] || numericValue < openCourseLeaderboards[pGender][normC][pKey]) {
-                openCourseLeaderboards[pGender][normC][pKey] = numericValue;
-            }
-            openAthleteTotalSubmissions[pKey] = (openAthleteTotalSubmissions[pKey] || 0) + 1;
-          }
-        });
-
-        const buildPerfs = (source, isAllTimeBuild = false) => {
-          const res = {};
-          Object.keys(source).forEach(pKey => {
-            const pGender = athleteMetadata[pKey]?.gender || 'M';
-            let fireTotal = 0;
-            res[pKey] = Object.entries(source[pKey]).map(([normL, data]) => {
-              const board = (allTimeCourseLeaderboards[pGender] || {})[normL] || {};
-              const record = Math.min(...Object.values(board));
-              const sorted = Object.entries(board).sort((a, b) => a[1] - b[1]);
-              const rank = sorted.findIndex(e => e[0] === pKey) + 1;
-              const fires = getFireCountForRun(data.num, pGender);
-              fireTotal += fires;
-              return { label: data.label, value: data.value, num: data.num, rank, points: (record / data.num) * 100, videoUrl: data.videoUrl, fireCount: fires };
-            });
-            
-            if (athleteMetadata[pKey]) {
-              if (isAllTimeBuild) {
-                if (!athleteMetadata[pKey].allTimeFireCount || fireTotal > athleteMetadata[pKey].allTimeFireCount) {
-                  athleteMetadata[pKey].allTimeFireCount = fireTotal;
-                }
-              } else {
-                athleteMetadata[pKey].openFireCount = fireTotal;
-              }
-              athleteMetadata[pKey].films = filmerCreditsCount[pKey] || 0;
-            }
-          });
-          return res;
-        };
-
-        result.allTimePerformances = buildPerfs(allTimeAthleteBestTimes, true);
-        result.openPerformances = buildPerfs(openAthleteBestTimes, false);
-        result.allTimeLeaderboards = allTimeCourseLeaderboards;
-        result.openLeaderboards = openCourseLeaderboards;
-        result.athleteDisplayNameMap = athleteDisplayNameMap;
-        result.atRawBest = allTimeAthleteBestTimes;
-        result.opRawBest = openAthleteTotalSubmissions;
-        result.filmerCredits = filmerCreditsCount;
-        
-        const chronologicalRuns = [...dataRows].sort((a, b) => {
-            const dateA = a.date ? new Date(a.date).getTime() : 0;
-            const dateB = b.date ? new Date(b.date).getTime() : 0;
-            return dateB - dateA; 
-        }).slice(0, 20); 
-
-        result.recentFeed = chronologicalRuns.map((run, i) => {
-          const pName = (run.athlete || "").trim();
-          const normC = (run.course || "").trim().toUpperCase();
-          const numericValue = cleanNumeric(run.result);
-          const pKey = normalizeName(pName);
-          const athleteMeta = athleteMetadata[pKey];
-          const pGender = athleteMeta?.gender || 'M';
-          
-          const courseRecords = (allTimeCourseLeaderboards[pGender] || {})[normC] || {};
-          const sortedResults = Object.entries(courseRecords).sort((a, b) => a[1] - b[1]);
-          const runRank = sortedResults.findIndex(entry => entry[1] === numericValue) + 1;
-          const fireCount = getFireCountForRun(numericValue, pGender);
-          
-          return {
-            id: `feed-${i}`,
-            athleteName: pName,
-            athlete: athleteMeta,
-            courseName: run.course,
-            course: { name: run.course, ...(courseSetMap[normC] || {}) },
-            result: run.result,
-            isCR: runRank === 1 && !isPlaceholderPlayer(pName),
-            rank: runRank,
-            fireCount: fireCount,
-            timeString: run.date || 'LATEST'
-          };
-        });
-
-        result.openRankings = Object.keys(athleteMetadata)
-          .filter(k => !isPlaceholderPlayer(athleteMetadata[k].name))
-          .map(pKey => {
-            const meta = athleteMetadata[pKey];
-            const perfs = result.openPerformances[pKey] || [];
-            const totalPts = perfs.reduce((sum, p) => sum + p.points, 0);
-            return {
-              ...meta, id: `open-${pKey}`, rating: perfs.length > 0 ? (totalPts / perfs.length) : 0, 
-              runs: perfs.length, wins: perfs.filter(p => p.rank === 1).length, pts: totalPts, 
-              sets: openAthleteTotalSubmissions[pKey] || 0, openFireCount: perfs.reduce((sum, p) => sum + (p.fireCount || 0), 0)
-            };
-          }).sort((a, b) => b.rating - a.rating); 
-        return result;
-      };
 
       const pM = processRankingData(rM || "", 'M'); 
       const pF = processRankingData(rF || "", 'F');
@@ -2279,27 +2370,27 @@ const useASRData = () => {
       assignRanks(pF, 'F');
 
       const processed = processLiveFeedData(rLive || "", initialMetadata, processSetListData(rSet || ""));
-      
       const allSetters = [...processSettersData(rM || ""), ...processSettersData(rF || "")] ;
+      
       const nextState = {
         data: [...pM, ...pF], openData: processed.openRankings, atPerfs: processed.allTimePerformances,
         opPerfs: processed.openPerformances, lbAT: processed.allTimeLeaderboards, lbOpen: processed.openLeaderboards,
         atMet: processed.athleteMetadata, dnMap: processed.athleteDisplayNameMap, cMet: processed.courseMetadata,
         settersData: allSetters, atRawBest: processed.atRawBest, opRawBest: processed.opRawBest,
         recentFeed: processed.recentFeed,
-        isLoading: false, hasError: hasTotalError, hasPartialError
+        hasError: hasTotalError, hasPartialError
       };
       
-      setState(nextState);
+      dispatch({ type: 'FETCH_SUCCESS', payload: nextState });
+      
       try {
-        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(nextState));
+        localStorage.setItem(CONFIG.SNAPSHOT_KEY, JSON.stringify(nextState));
       } catch (storageError) {
         console.warn("Could not write cache to localStorage (Quota exceeded?).", storageError);
       }
     } catch(e) { 
-        // Track the fatal loading exception into GA4 specifically
         trackEvent('exception', { description: 'sheet_fetch_failed', error: e.message, fatal: true });
-        setState(prev => ({ ...prev, isLoading: false, hasError: true, hasPartialError: false }));
+        dispatch({ type: 'FETCH_ERROR' });
     }
   }, []);
 
@@ -2431,7 +2522,8 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
     }
 };
 
-const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+const ASRGlobalMap = ({ courses, continents: conts, cities, countries, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+    const theme = useContext(ThemeContext);
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
@@ -2571,18 +2663,18 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, theme, on
         <div id="asr-map-container" className={`relative w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-2xl border ${theme === 'dark' ? 'border-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'border-slate-200'}`}>
             <div ref={mapContainerRef} className="w-full h-full z-[10]" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[40] pointer-events-none">
-              <button onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
+              <button type="button" onClick={handleFindMe} className={`${mapPillStyle} pointer-events-auto hover:bg-blue-600/10 hover:scale-105 active:scale-95 whitespace-nowrap`}>
                 <Navigation size={12} className={`mr-2 inline ${isLocating ? 'animate-spin' : ''}`} /> FIND COURSE NEAR ME
               </button>
             </div>
             <div className="absolute top-4 left-4 z-[40] flex flex-col gap-2 items-start pointer-events-none w-full max-w-[280px] sm:max-w-xs">
-                <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
+                <button type="button" onClick={() => setIsPanelOpen(!isPanelOpen)} className={`${mapPillStyle} pointer-events-auto w-fit flex items-center gap-2 hover:bg-blue-600/10 active:scale-95 whitespace-nowrap`}>
                     <MapPin size={12} /> {isPanelOpen ? 'HIDE' : `COURSES (${courses.length})`}
                 </button>
                 <div className={`pointer-events-auto flex flex-col transition-all duration-300 origin-top-left overflow-hidden rounded-[2rem] border-[2.5px] border-white backdrop-blur-xl shadow-2xl w-[280px] sm:w-[320px] ${isPanelOpen ? 'scale-100 opacity-100 max-h-[70vh]' : 'scale-95 opacity-0 h-0 border-transparent'} ${theme === 'dark' ? 'bg-zinc-950/95 text-white border-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'bg-white/98 text-black'} ios-clip-fix`}>
                     <div className={`flex items-center p-2 border-b shrink-0 gap-1 bg-current/[0.03] ${theme === 'dark' ? 'border-zinc-800' : 'border-slate-200'}`}>
                         {['continents', 'countries', 'cities'].map(t => (
-                            <button key={t} onClick={() => { setActiveTab(t); trackEvent('filter_change', { filter_type: 'map_region_tab', filter_value: t }); }} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
+                            <button type="button" key={t} onClick={() => { setActiveTab(t); trackEvent('filter_change', { filter_type: 'map_region_tab', filter_value: t }); }} className={`flex-1 py-2 text-[8px] font-black uppercase tracking-tighter rounded-lg transition-all ${activeTab === t ? 'bg-blue-600 text-white' : 'opacity-50'}`}>{t}</button>
                         ))}
                     </div>
                     <div className="flex flex-col gap-0.5 p-3 overflow-y-auto scrollbar-hide h-[400px]">
@@ -2623,19 +2715,20 @@ const SetterDisplay = ({ text, onSetterClick }) => {
     );
 };
 
-const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
+const ASRRankList = ({ title, athletes, genderRecord, athleteMetadata, athleteDisplayNameMap, onPlayerClick }) => {
+    const theme = useContext(ThemeContext);
     const displayAthletes = [...(athletes || []).slice(0, 10)];
     while (displayAthletes.length < 3) displayAthletes.push(null);
     return (
         <div className="space-y-4 overflow-visible text-left">
-            <ASRSectionHeading theme={theme} className="!mb-0">{title}</ASRSectionHeading>
+            <ASRSectionHeading className="!mb-0">{title}</ASRSectionHeading>
             <div className="grid grid-cols-1 gap-3 overflow-visible">
                 {displayAthletes.map((athleteRow, i) => {
                     if (!athleteRow) {
                         return (
                             <div key={`empty-${i}`} className={`flex items-center justify-between p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border opacity-30 ${THEME.CARD(theme)} ios-clip-fix h-auto min-h-[72px] sm:min-h-[80px]`}>
                                 <div className="flex items-center gap-3 flex-1">
-                                    <ASRRankBadge rank={i + 1} theme={theme} />
+                                    <ASRRankBadge rank={i + 1} />
                                     <span className="text-xs sm:text-[15px] font-black uppercase tracking-widest opacity-40">---</span>
                                 </div>
                                 <div className="flex flex-col items-end min-w-[70px] sm:min-w-[90px] text-right">
@@ -2664,7 +2757,7 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
 
                     return (
                         <ASRListItem 
-                          key={pKey} variant="card" theme={theme} rank={i + 1} title={nameToDisplay} subtitle={emojiLine}
+                          key={pKey} variant="card" rank={i + 1} title={nameToDisplay} subtitle={emojiLine}
                           stats={[{ value: typeof time === 'number' ? String(time.toFixed(2)) : '0.00' }, { value: typeof points === 'number' ? String(points.toFixed(2)) : '0.00' }]}
                           videoUrl={videoUrl}
                           onClick={isPlaceholder ? null : () => onPlayerClick?.({ ...meta, pKey, name: nameToDisplay })}
@@ -2676,7 +2769,8 @@ const ASRRankList = ({ title, athletes, genderRecord, theme, athleteMetadata, at
     );
 };
 
-const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, setMapMode }) => {
+const ASRSearchInput = ({ search, setSearch, gen, setGen, view, mapMode, setMapMode }) => {
+  const theme = useContext(ThemeContext);
   return (
     <div className="w-full flex flex-col mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
@@ -2697,7 +2791,7 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                   className={`rounded-[1.5rem] sm:rounded-[2.2rem] pl-12 sm:pl-16 pr-10 sm:pr-12 py-3.5 sm:py-4 w-full font-black uppercase tracking-widest outline-none border-2 transition-all search-bubble ${THEME.INPUT(theme)} placeholder:text-zinc-500/50`}
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
+                  <button type="button" onClick={() => setSearch('')} className="absolute right-5 sm:right-6 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-inherit">
                     <X size={20} strokeWidth={2.5} />
                   </button>
                 )}
@@ -2706,10 +2800,13 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
                 <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
                         {[{id:'M',l:'M'},{id:'F',l:'W'}].map(g => (
-                            <button 
+                            <button type="button"
                               key={g.id} 
                               onClick={() => { setGen(g.id); trackEvent('filter_change', { filter_type: 'gender', filter_value: g.id }); }} 
-                              className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-90 ${gen === g.id ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
+                              className={cn(
+                                "px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all active:scale-90",
+                                gen === g.id ? "btn-blue-gradient active shadow-lg" : "opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]"
+                              )}
                             >
                               {g.l}
                             </button>
@@ -2720,14 +2817,14 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
             {view === 'map' && (
                 <div className={`flex items-center p-1.5 rounded-[1.4rem] sm:rounded-[2.4rem] border-2 shrink-0 ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white border-slate-200 shadow-xl'} ios-clip-fix`}>
                     <div className="flex gap-1">
-                        <button 
+                        <button type="button"
                           onClick={() => { setMapMode('map'); trackEvent('filter_change', { filter_type: 'map_mode', filter_value: 'map' }); }} 
                           className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'map' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="View / Map Mode"
                         >
                           <MapIcon size={16} />
                         </button>
-                        <button 
+                        <button type="button"
                           onClick={() => { setMapMode('list'); trackEvent('filter_change', { filter_type: 'map_mode', filter_value: 'list' }); }} 
                           className={`px-4 sm:px-10 py-2 sm:py-3.5 rounded-lg sm:rounded-2xl transition-all active:scale-90 ${mapMode === 'list' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'}`}
                           title="List View"
@@ -2743,7 +2840,8 @@ const ASRSearchInput = ({ search, setSearch, gen, setGen, theme, view, mapMode, 
 };
 
 // --- HOF COMPONENT ---
-const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
+const ASRHallOfFame = ({ stats, onPlayerClick, onSetterClick, onRegionClick, medalSort, setMedalSort }) => {
+  const theme = useContext(ThemeContext);
   const highlightColor = theme === 'dark' ? 'text-white' : 'text-black';
 
   const MedalHeader = ({ l, k, a = 'left', w = "", sortable = true }) => {
@@ -2789,29 +2887,20 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         ].map((sec, gridIdx) => (
             <div key={sec.k} className={`stat-card-container relative rounded-[2.2rem] border flex flex-col overflow-visible ${THEME.CARD(theme)} ios-clip-fix`}>
               <div className={`p-5 border-b border-inherit overflow-visible group h-14 sm:h-16 flex items-center`}>
-                <ASRStatCard isHeader label={sec.l} theme={theme} index={gridIdx} />
+                <ASRStatCard isHeader label={sec.l} index={gridIdx} />
               </div>
               <div className={`divide-y-2 ${theme === 'dark' ? 'divide-zinc-800/40' : 'divide-slate-200'} overflow-visible`}>
                 {(stats.topStats[sec.k] || []).map((p, i) => (
-                  <div 
+                  <button type="button"
                     key={i} 
-                    className={`group flex items-center justify-between p-4 transition-colors cursor-pointer active:scale-95 ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`} 
+                    className={`w-full group flex items-center justify-between p-4 transition-colors cursor-pointer active:scale-95 ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`} 
                     onClick={() => {
                       trackEvent('select_content', { content_type: 'hof_stat', item_id: p.name, content_id: sec.k });
                       ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time');
                     }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        trackEvent('select_content', { content_type: 'hof_stat', item_id: p.name, content_id: sec.k });
-                        ['impact', 'sets'].includes(sec.k) ? onSetterClick(p) : onPlayerClick(p, 'all-time');
-                      }
-                    }}
                   >
                     <div className="flex items-center gap-3 text-left min-w-0 pr-2">
-                      <ASRRankBadge rank={i + 1} theme={theme} />
+                      <ASRRankBadge rank={i + 1} />
                       <div className="flex flex-col text-left min-w-0">
                         <span className="text-[11px] sm:text-[15px] font-black uppercase whitespace-normal break-words group-hover:text-blue-500 transition-colors leading-tight">{p.name}</span>
                         <span className="text-xs sm:text-sm mt-0.5 opacity-80">{formatFlagsWithSpace(p.region)}</span>
@@ -2824,7 +2913,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                       (sec.k === 'contributionScore' ? String(Math.round(p.contributionScore || 0)) :
                       (sec.k === 'totalFireCount' ? String(p.allTimeFireCount || 0) : (sec.k === 'impact' || sec.k === 'sets' ? String(Math.round(p[sec.k] || 0)) : String(p[sec.k] || 0)))))}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -2855,7 +2944,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
                   className={`group active:bg-blue-600/10 transition-colors cursor-pointer text-inherit ${theme === 'dark' ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'}`}
                 >
                   <td className="w-20 sm:w-24 pl-4 sm:pl-10 py-6 text-left">
-                    <ASRRankBadge rank={c.displayRank} theme={theme} />
+                    <ASRRankBadge rank={c.displayRank} />
                   </td>
                   <td className="px-2 sm:px-4 py-6 text-left">
                     <div className="flex items-center gap-3 text-left">
@@ -2874,7 +2963,7 @@ const ASRHallOfFame = ({ stats, theme, onPlayerClick, onSetterClick, onRegionCli
         </div>
       </div>
       <div className="mt-8">
-        <ASRPromotionBanner type="masterclass" theme={theme} />
+        <ASRPromotionBanner type="masterclass" />
       </div>
     </div>
   );
@@ -2899,16 +2988,10 @@ const ASRHeaderComp = ({ l, k, a = 'left', w = "", activeSort, handler, paddingC
   );
 };
 
-const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, statKeys = [] }) => {
-    const [visibleCount, setVisibleCount] = useState(50);
-    const observerTarget = useRef(null);
-    useEffect(() => { setVisibleCount(50); }, [data, sort]);
-    useEffect(() => {
-        if (!observerTarget.current) return;
-        const observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setVisibleCount(p => Math.min(p + 50, data.length)); }, { threshold: 0.1, rootMargin: '400px' });
-        const currentTarget = observerTarget.current; observer.observe(currentTarget);
-        return () => observer.disconnect();
-    }, [data.length]);
+const ASRDataTable = ({ view, columns, data, sort, onSort, onRowClick, statKeys = [] }) => {
+    const theme = useContext(ThemeContext);
+    const { visibleCount, observerTarget } = useChunkedData(data, 50);
+
     const visibleData = useMemo(() => {
         const result = []; const baseData = (data || []).slice(0, visibleCount);
         const promoTypes = ['skool_training', 'shop_gear', 'pro_setter'];
@@ -2952,7 +3035,7 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
                         {item.label}
                       </div>
                     );
-                    if (item.isUtility) return <div key={`utility-${idx}`} className="py-2 sm:py-4 mx-2 sm:mx-8"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
+                    if (item.isUtility) return <div key={`utility-${idx}`} className="py-2 sm:py-4 mx-2 sm:mx-8"><ASRInlineValueCard type={item.type} /></div>;
                     
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
@@ -2982,7 +3065,7 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
 
                     return (
                         <ASRListItem 
-                          key={item.id || idx} variant="table" theme={theme} columns={columns}
+                          key={item.id || idx} variant="table" columns={columns}
                           rank={item.currentRank} title={item.name} subtitle={subtitleContent} 
                           isUnranked={item.isQualified === false}
                           shouldFade={item.shouldFade}
@@ -3000,7 +3083,8 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
     );
 };
 
-const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
+const ASRNavBar = ({ setTheme, view, eventType, setEventType }) => {
+    const theme = useContext(ThemeContext);
     return (
         <nav className={`fixed top-[calc(var(--safe-top)+var(--announcement-height)+var(--ticker-height))] w-full backdrop-blur-3xl border-b z-50 flex items-center justify-between px-6 sm:px-12 transition-all duration-500 ${theme === 'dark' ? 'bg-[#050505]/90 border-zinc-800/80 text-zinc-100 shadow-[0_4px_20px_rgba(0,0,0,0.4)]' : 'bg-white/80 border-slate-200 text-black shadow-sm'} h-[var(--nav-height-mobile)] sm:h-[var(--nav-height-desktop)]`}>
             <a 
@@ -3018,15 +3102,21 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
 
             {view !== 'hof' && view !== 'setters' && (
               <div className={`flex items-center p-1 rounded-[0.8rem] sm:rounded-[1.4rem] border-2 transition-all ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-white/60 border-slate-300'} ios-clip-fix`}>
-                <button 
+                <button type="button"
                   onClick={() => { setEventType('open'); trackEvent('filter_change', { filter_type: 'event_type', filter_value: 'open' }); }} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'open' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={cn(
+                    "px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 whitespace-nowrap",
+                    eventType === 'open' ? "btn-blue-gradient active shadow-lg" : "opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]"
+                  )}
                 >
                   OPEN
                 </button>
-                <button 
+                <button type="button"
                   onClick={() => { setEventType('all-time'); trackEvent('filter_change', { filter_type: 'event_type', filter_value: 'all-time' }); }} 
-                  className={`px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 ${eventType === 'all-time' ? 'btn-blue-gradient active shadow-lg' : 'opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]'} whitespace-nowrap`}
+                  className={cn(
+                    "px-3 sm:px-10 py-1.5 sm:py-2 rounded-md sm:rounded-xl text-[8px] sm:text-[11px] font-black uppercase tracking-widest transition-all active:scale-90 whitespace-nowrap",
+                    eventType === 'all-time' ? "btn-blue-gradient active shadow-lg" : "opacity-40 hover:opacity-100 text-inherit hover:bg-current/[0.05]"
+                  )}
                 >
                   ALL-TIME
                 </button>
@@ -3034,7 +3124,7 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
             )}
 
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-3 h-full">
-                <button 
+                <button type="button"
                   onClick={() => { setTheme(t => t === 'dark' ? 'light' : 'dark'); trackEvent('theme_toggle', { new_theme: theme === 'dark' ? 'light' : 'dark' }); }} 
                   className={`w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg sm:rounded-xl transition-all border-2 active:scale-90 ${theme === 'dark' ? 'bg-zinc-900/40 border-zinc-700 text-zinc-300 hover:border-blue-500 hover:text-blue-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'bg-white border-slate-300 text-slate-500 hover:border-blue-600 hover:text-blue-600'}`}
                   title="Toggle Theme"
@@ -3046,7 +3136,8 @@ const ASRNavBar = ({ theme, setTheme, view, eventType, setEventType }) => {
     );
 };
 
-const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
+const ASRBottomNav = ({ view }) => {
+  const theme = useContext(ThemeContext);
   const items = [
     { id: 'players', label: 'PLAYERS', icon: <User size={22} strokeWidth={2.5} /> },
     { id: 'teams', label: 'TEAMS', icon: <Users size={22} strokeWidth={2.5} /> },
@@ -3081,22 +3172,13 @@ const ASRBottomNav = ({ view, theme, onOpenIntro }) => {
   );
 };
 
-const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
+const ASRAnnouncementBar = ({ onOpenIntro, eventType, stats }) => {
     const isAllTime = eventType === 'all-time';
-
     const barColors = "btn-blue-gradient border-blue-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]";
 
     return (
-      <div 
+      <button type="button"
         onClick={onOpenIntro}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onOpenIntro();
-          }
-        }}
         className={`fixed top-[calc(var(--safe-top)+var(--ticker-height))] left-0 w-full z-[60] h-[var(--announcement-height)] flex items-center justify-center px-4 overflow-hidden border-b transition-all duration-300 cursor-pointer hover:brightness-110 active:scale-[0.99] ${barColors}`}
       >
         <div className="flex items-center gap-3 animate-in fade-in duration-700 pointer-events-none w-full max-w-full justify-center font-sans font-black flex-nowrap text-inherit">
@@ -3135,11 +3217,12 @@ const ASRAnnouncementBar = ({ theme, onOpenIntro, eventType, stats }) => {
             </div>
           )}
         </div>
-      </div>
+      </button>
     );
 };
 
-const ASRTopShield = ({ theme }) => {
+const ASRTopShield = () => {
+    const theme = useContext(ThemeContext);
     return (
         <div className={`fixed top-0 left-0 right-0 z-[100] pointer-events-none h-[var(--safe-top)] ${theme === 'dark' ? 'bg-[#050505]' : 'bg-white'}`} />
     );
@@ -3153,7 +3236,7 @@ const ASRControlBar = () => {
     );
 };
 
-// --- MAIN APP ---
+// --- MAIN APP COMPONENT COLUMNS ---
 const PLAYER_COLS = [
     { isRank: true },
     { label: 'PLAYER', type: 'profile', key: 'name', subKey: 'region', width: 'w-full', sortable: false },
@@ -3180,6 +3263,17 @@ const COURSE_COLS = [
 
 export default function App() {
   const [theme, setTheme] = useState('dark');
+  
+  return (
+    <ErrorBoundary>
+      <ThemeContext.Provider value={theme}>
+        <MainAppContent theme={theme} setTheme={setTheme} />
+      </ThemeContext.Provider>
+    </ErrorBoundary>
+  );
+}
+
+function MainAppContent({ theme, setTheme }) {
   const [gen, setGen] = useState('M');
   const [eventType, setEventType] = useState('open'); 
   const [view, setView] = useState('players'); 
@@ -3198,7 +3292,6 @@ export default function App() {
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
 
-  // --- Search Tracking Hook ---
   useEffect(() => {
     if (debouncedSearch) {
       trackEvent('search', { search_term: debouncedSearch, view: view });
@@ -3214,7 +3307,6 @@ export default function App() {
     idxRef.current = historyIndex;
   }, [modalHistory, historyIndex]);
 
-  // Handle global scroll to top on major transitions
   useLayoutEffect(() => {
     const resetScroll = () => {
       window.scrollTo(0, 0);
@@ -3223,11 +3315,10 @@ export default function App() {
     };
 
     resetScroll();
-    const timer = setTimeout(resetScroll, 50); // slight delay to guarantee DOM is settled
+    const timer = setTimeout(resetScroll, 50); 
     return () => clearTimeout(timer);
   }, [view, eventType]);
 
-  // Disable automatic scroll restoration so it doesn't fight our scrollTo top logic
   useEffect(() => {
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -3313,7 +3404,6 @@ export default function App() {
     const sourcePlayers = isAllTimeContext ? Object.values(atMet || {}) : openData;
 
     sourcePlayers.forEach(p => {
-      // Delist anyone with 0 runs entirely from team calculations
       const playerRuns = p.runs !== undefined ? p.runs : (atPerfs[p.pKey]?.length || 0);
       if (playerRuns === 0) return;
 
@@ -3339,11 +3429,9 @@ export default function App() {
       teams[key].pts += (p.pts || 0);
       teams[key].runs += playerRuns;
       
-      // Aggregate fires
       const fires = isAllTimeContext ? (p.allTimeFireCount || 0) : (p.openFireCount || 0);
       teams[key].fires += fires;
 
-      // Aggregate medals from performance source
       const perfSource = isAllTimeContext ? (atPerfs[p.pKey] || []) : (opPerfs[p.pKey] || []);
       perfSource.forEach(perf => {
           if (perf.rank === 1) teams[key].medals.gold++;
@@ -3401,7 +3489,6 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
         const hash = window.location.hash || '#/players';
-        // Trigger GA4 Pageview tracking
         trackPageview(hash);
 
         if (isInternalNavRef.current) {
@@ -3442,7 +3529,7 @@ export default function App() {
             setView(firstSegment);
             setModalHistory([]);
             setHistoryIndex(-1);
-            window.scrollTo(0, 0); // Reset scroll cleanly when returning to a main layout
+            window.scrollTo(0, 0); 
         }
     };
 
@@ -3514,7 +3601,6 @@ export default function App() {
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
-    // Track share intent
     trackEvent('share', { method: 'link_copy', content_type: view, content_id: window.location.hash || 'home' });
     
     if (navigator.share) {
