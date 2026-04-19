@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffe
 import { 
   ChevronsRight, Search, X, CornerUpLeft, CornerUpRight, 
   ChevronDown, Sun, Moon, MapPin, Globe, Instagram, Play, Trophy,
-  Compass, Info, ChevronRight, Navigation, ShieldCheck,
+  Compass, Info, ChevronRight, ArrowRight, Navigation, ShieldCheck,
   Video, HelpCircle, Building2, Map as MapIcon, Waypoints, 
   HeartHandshake, Rocket, ExternalLink, Sparkles, ShoppingBag,
   Users, User, MessageSquare, TrendingUp, Fingerprint, Zap,
@@ -392,10 +392,6 @@ const CustomStyles = () => (
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     }
 
-    .promo-card {
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-    }
-
     .asr-cluster {
       background: rgba(37, 99, 235, 0.9);
       border: 2.5px solid #ffffff;
@@ -572,8 +568,8 @@ const formatLocationSubtitle = (primaryLoc, secondaryLoc, flags) => {
     if (!displayLoc && !f) return <span className="opacity-40 text-[9px] uppercase tracking-widest">LOCATION UNKNOWN <span className="emoji-slot">🏳️</span></span>;
 
     return (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-inherit font-black">
-            <span className="truncate max-w-full">{displayLoc.toUpperCase()}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-inherit font-black min-w-0">
+            <span className="truncate max-w-full block">{displayLoc.toUpperCase()}</span>
             {f && <span className="flex items-center gap-0.5 shrink-0">{f}</span>}
         </div>
     );
@@ -628,7 +624,7 @@ const ASRListItem = ({
             onClick(e);
           }
         }}
-        className={`group flex items-center transition-all duration-200 ios-clip-fix py-6 sm:py-8 px-0 outline-none
+        className={`group flex items-center transition-all duration-200 ios-clip-fix py-5 sm:py-6 px-0 outline-none
           ${onClick ? `cursor-pointer active:bg-blue-600/10 focus:bg-blue-600/10 ${tableHover}` : 'cursor-default'} 
           ${shouldFade ? 'opacity-40 grayscale' : 'opacity-100'}`}
       >
@@ -636,11 +632,11 @@ const ASRListItem = ({
             <ASRRankBadge rank={rank} theme={theme} />
         </div>
         <div className="flex-1 flex min-w-0 h-full items-center">
-            <div className="flex-1 flex flex-col min-w-[120px] pr-2 pl-4 sm:pl-8 text-left">
-              <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors overflow-hidden line-clamp-2`}>
+            <div className="flex-1 flex flex-col min-w-0 pr-2 pl-4 sm:pl-8 text-left">
+              <span className={`block truncate text-[11px] sm:text-[16px] font-black uppercase leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors max-w-full`}>
                 {title}
               </span>
-              <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words mt-0.5">
+              <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase block truncate mt-0.5 max-w-full">
                 {subtitle}
               </div>
               {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
@@ -691,12 +687,12 @@ const ASRListItem = ({
         )}
         <div className="flex flex-col min-w-0 text-left">
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors`}>
+            <span className={`text-[11px] sm:text-[17px] font-black uppercase whitespace-normal leading-tight ${onClick ? 'group-hover:text-blue-500' : ''} transition-colors line-clamp-2`}>
               {title}
             </span>
           </div>
           <div className="flex flex-col mt-0.5">
-            <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words">
+            <div className="opacity-60 text-[9px] sm:text-xs font-black uppercase whitespace-normal break-words line-clamp-2">
               {subtitle}
             </div>
             {badgeContent && <div className="mt-1 h-4 flex items-center gap-0.5">{badgeContent}</div>}
@@ -730,32 +726,28 @@ const ASRListItem = ({
 const ASRPromotionBanner = ({ type, theme }) => {
   const configs = useMemo(() => ({
     setter: {
-      title: "COURSE SETTER CERTIFICATION",
-      subtitle: "Become an Apex certified course setter.",
-      icon: <Eye className="text-white" size={24} />,
-      link: SKOOL_LINK,
-      btnText: "GET STARTED"
+      title: "COURSE SETTER CERT",
+      subtitle: "Become an Apex certified setter.",
+      icon: <Eye className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
+      link: SKOOL_LINK
     },
     coach: {
-      title: "SPEED PARKOUR COACHING CERTIFICATION",
-      subtitle: "Become an Apex certified speed parkour coach.",
-      icon: <ShieldCheck className="text-white" size={24} />,
-      link: SKOOL_LINK,
-      btnText: "GET STARTED"
+      title: "SPEED PARKOUR COACHING",
+      subtitle: "Become an Apex certified coach.",
+      icon: <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
+      link: SKOOL_LINK
     },
     masterclass: {
         title: "VERIFY YOUR RUN",
-        subtitle: "Get your runs verified for free in Apex Skool app.",
-        icon: <Zap className="text-white" size={24} />,
-        link: SKOOL_LINK,
-        btnText: "GET VERIFIED"
+        subtitle: "Get your runs verified on Skool.",
+        icon: <Zap className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
+        link: SKOOL_LINK
     },
     community: {
         title: "JOIN APEX SKOOL APP",
-        subtitle: "Join the Apex worldwide community.",
-        icon: <Users className="text-white" size={24} />,
-        link: SKOOL_LINK,
-        btnText: "JOIN NOW"
+        subtitle: "Join the worldwide community.",
+        icon: <Users className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />,
+        link: SKOOL_LINK
     }
   }), []);
 
@@ -767,21 +759,19 @@ const ASRPromotionBanner = ({ type, theme }) => {
       href={config.link} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="group block w-full my-8 px-6 py-8 sm:py-10 rounded-[2.5rem] sm:rounded-[3rem] promo-card textured-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_10px_30px_rgba(37,99,235,0.4)] hover:scale-[0.99] active:scale-[0.97] transition-all duration-300 ios-clip-fix"
+      className={`group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm ${theme === 'dark' ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100'}`}
     >
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-        <div className="flex items-center gap-5">
-          <div className="p-4 bg-white/30 rounded-2xl backdrop-blur-md">
-            {config.icon}
-          </div>
-          <div className="flex flex-col text-left">
-            <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tighter leading-none mb-2 text-white">{config.title}</h3>
-            <p className="text-[10px] sm:text-xs font-black uppercase whitespace-normal break-words opacity-90 text-white">{config.subtitle}</p>
-          </div>
+      <div className="flex items-center gap-4 sm:gap-5 min-w-0 pr-2">
+        <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl shrink-0 ${theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
+          {config.icon}
         </div>
-        <div className="flex items-center gap-2 px-6 py-3 bg-white text-blue-700 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl group-hover:bg-blue-50 transition-colors whitespace-nowrap">
-          {config.btnText} <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" strokeWidth={3} />
+        <div className="flex flex-col min-w-0 text-left">
+          <span className={`text-[12px] sm:text-[15px] font-black uppercase tracking-tight truncate ${theme === 'dark' ? 'text-blue-100' : 'text-blue-900'}`}>{config.title}</span>
+          <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wide truncate ${theme === 'dark' ? 'text-blue-200/60' : 'text-blue-700/70'}`}>{config.subtitle}</span>
         </div>
+      </div>
+      <div className={`shrink-0 flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-full transition-all duration-300 group-hover:translate-x-1 group-active:scale-95 ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-white group-hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-md'}`}>
+        <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
       </div>
     </a>
   );
@@ -867,38 +857,41 @@ const ASRPatronPill = ({ course, theme, compact = false }) => {
 const ASRInlineValueCard = ({ theme, type }) => {
   const cards = {
     skool_training: {
-      desc: "Join our worldwide network on Apex Skool app.",
-      icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
+      desc: "Join our worldwide network on Apex Skool app",
+      icon: <Users className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
       link: SKOOL_LINK,
-      btn: "JOIN NOW"
+      btn: "JOIN COMMUNITY"
     },
     shop_gear: {
-      desc: "Submit your video proof on Apex Skool app.",
-      icon: <Video className="w-4 h-4 sm:w-5 sm:h-5" />,
+      desc: "Submit your video proof on Apex Skool app",
+      icon: <Video className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
       link: SKOOL_LINK,
       btn: "GET VERIFIED"
     },
     pro_setter: {
-        desc: "Take our course setter certification on Apex Skool app.",
-        icon: <Waypoints className="w-4 h-4 sm:w-5 sm:h-5" />,
-        link: SKOOL_LINK,
-        btn: "LEARN MORE"
+      desc: "Take our course setter certification on Skool",
+      icon: <Waypoints className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />,
+      link: SKOOL_LINK,
+      btn: "LEARN MORE"
     }
   };
   const c = cards[type];
   if (!c) return null;
   return (
-    <div className={`flex items-center justify-between p-6 rounded-3xl border transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] textured-surface ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' : 'bg-blue-50 border-blue-300 shadow-md'} ios-clip-fix h-[72px]`}>
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-2xl shadow-sm text-blue-600 ${theme === 'dark' ? 'bg-zinc-900' : 'bg-white'}`}>{c.icon}</div>
-        <div className="text-left">
-          <p className={`text-[10px] font-black opacity-60 uppercase whitespace-normal break-words ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{c.desc}</p>
+    <a href={c.link} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix`}>
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
+        <div className={`p-2.5 sm:p-3 rounded-xl shrink-0 ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
+          {c.icon}
+        </div>
+        <div className="flex flex-col min-w-0 text-left">
+          <span className={`text-[10px] sm:text-[13px] font-black uppercase tracking-tight truncate ${theme === 'dark' ? 'text-blue-100' : 'text-blue-900'}`}>{c.btn}</span>
+          <span className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-wide truncate ${theme === 'dark' ? 'text-blue-200/50' : 'text-blue-700/60'}`}>{c.desc}</span>
         </div>
       </div>
-      <a href={c.link} target="_blank" rel="noopener noreferrer" className="shrink-0 px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl whitespace-nowrap">
-        {c.btn}
-      </a>
-    </div>
+      <div className={`shrink-0 flex items-center justify-center w-7 h-7 sm:w-9 sm:h-9 rounded-full transition-all duration-300 group-hover:translate-x-1 group-active:scale-95 ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-white group-hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-md'}`}>
+        <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
+      </div>
+    </a>
   );
 };
 
@@ -2882,12 +2875,12 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, theme, onRowClick, st
                     if (item.isDivider) return (
                       <div 
                         key={`divider-${idx}`} 
-                        className={`py-14 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.5em] cursor-default border-y border-transparent ${theme === 'dark' ? 'hover:border-blue-500/20 hover:bg-blue-500/10' : 'hover:border-blue-600/10 hover:bg-blue-600/5'}`}
+                        className={`py-8 sm:py-12 mx-4 sm:mx-10 text-center opacity-40 hover:opacity-100 transition-all duration-300 text-[11px] font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] cursor-default border-y border-transparent ${theme === 'dark' ? 'hover:border-blue-500/20 hover:bg-blue-500/10' : 'hover:border-blue-600/10 hover:bg-blue-600/5'}`}
                       >
                         {item.label}
                       </div>
                     );
-                    if (item.isUtility) return <div key={`utility-${idx}`} className="px-6 py-10"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
+                    if (item.isUtility) return <div key={`utility-${idx}`} className="py-2 sm:py-4 mx-2 sm:mx-8"><ASRInlineValueCard type={item.type} theme={theme} /></div>;
                     
                     const rowStats = statKeys.map(k => {
                       const val = item[k];
