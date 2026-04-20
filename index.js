@@ -117,7 +117,7 @@ const trackPageview = (path) => {
   }
 };
 
-// --- DATA PARSING HELPERS & LOGIC (MOVED OFF COMPONENT) ---
+// --- DATA PARSING HELPERS & LOGIC ---
 const isPlaceholderPlayer = (name) => {
   if (!name) return false;
   const n = String(name).toUpperCase();
@@ -244,7 +244,6 @@ const useDebounce = (value, delay) => {
     return debouncedValue; 
 };
 
-// Optimized scroll chunking hook to replace raw IntersectionObserver inside UI components
 const useChunkedData = (data, chunkSize = 50) => {
     const [visibleCount, setVisibleCount] = useState(chunkSize);
     const observerTarget = useRef(null);
@@ -315,7 +314,7 @@ const getFireCountForRun = (time, gender) => {
   return 0;
 };
 
-// --- DATA PARSING GLOBALS (MOVED FROM HOOK FOR PERFORMANCE) ---
+// --- DATA PARSING GLOBALS ---
 const RANKING_MAPPING = {
   name: ['athlete', 'name', 'player'],
   country: ['country'],
@@ -733,8 +732,7 @@ const CustomStyles = React.memo(() => (
       padding: 0;
       overflow-x: hidden;
       background: #000;
-      min-height: 100%;
-      height: -webkit-fill-available;
+      min-height: 100dvh;
       overscroll-behavior-y: none;
     }
 
@@ -842,6 +840,40 @@ const CustomStyles = React.memo(() => (
     }
   `}</style>
 ));
+
+// --- SKELETON COMPONENT (NEW) ---
+const ASRSkeletonLoader = ({ view, mapMode, theme }) => {
+  const isDark = theme === 'dark';
+  if (view === 'map' && mapMode === 'map') {
+      return (
+          <div className="w-full flex flex-col gap-4 animate-pulse pt-4">
+              <div className={`h-[52px] sm:h-[60px] w-full rounded-[1.5rem] sm:rounded-[2.2rem] ${isDark ? 'bg-zinc-900/50' : 'bg-slate-200/50'}`} />
+              <div className={`w-full h-[60vh] sm:h-[75vh] min-h-[500px] rounded-[2.5rem] sm:rounded-[3.5rem] border ${isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-slate-200/50 border-slate-300'}`} />
+          </div>
+      );
+  }
+  
+  return (
+      <div className="w-full flex flex-col gap-4 animate-pulse pt-4">
+          <div className={`h-[52px] sm:h-[60px] w-full rounded-[1.5rem] sm:rounded-[2.2rem] ${isDark ? 'bg-zinc-900/50' : 'bg-slate-200/50'}`} />
+          <div className={`border rounded-[2rem] sm:rounded-[3.5rem] overflow-hidden ${isDark ? 'bg-zinc-950/40 border-zinc-900' : 'bg-white border-slate-200'}`}>
+              <div className={`h-[80px] border-b flex items-center px-4 sm:px-10 ${isDark ? 'border-zinc-800/80' : 'border-slate-200'}`}>
+                   <div className={`w-12 h-4 rounded ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`} />
+              </div>
+              {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className={`flex items-center h-[80px] sm:h-[96px] px-4 sm:px-10 border-b ${isDark ? 'border-zinc-800/40' : 'border-slate-200/40'}`}>
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`} />
+                      <div className="flex-1 px-4 sm:px-8">
+                          <div className={`h-4 sm:h-5 w-32 sm:w-48 rounded mb-2 ${isDark ? 'bg-zinc-800' : 'bg-slate-300'}`} />
+                          <div className={`h-3 w-20 sm:w-24 rounded ${isDark ? 'bg-zinc-800/50' : 'bg-slate-200/50'}`} />
+                      </div>
+                      <div className={`w-16 sm:w-20 h-6 rounded ${isDark ? 'bg-zinc-800' : 'bg-slate-300'}`} />
+                  </div>
+              ))}
+          </div>
+      </div>
+  );
+};
 
 // --- ATOMIC UI COMPONENTS (MEMOIZED FOR PERFORMANCE) ---
 const ASRStatCard = React.memo(({ label, value, colorClass, glowClass, tooltip, icon, isHeader = false }) => {
@@ -1191,7 +1223,7 @@ const ASRPromotionBanner = React.memo(({ type }) => {
       rel="noopener noreferrer"
       onClick={() => trackEvent('outbound_click', { link_url: config.link, link_type: type })}
       className={cn(
-        "group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm text-left",
+        "group flex items-center justify-between p-4 sm:p-5 w-full my-6 rounded-2xl sm:rounded-3xl border transition-all duration-300 active:scale-95 shadow-sm text-left animate-in fade-in duration-700",
         theme === 'dark' ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100'
       )}
     >
@@ -1241,7 +1273,7 @@ const ASRPatronPill = React.memo(({ course, compact = false }) => {
     if (!compact) {
       if (hasSponsor) {
         return (
-          <a href={sponsorLink} onClick={handleSponsorClick} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
+          <a href={sponsorLink} onClick={handleSponsorClick} target="_blank" rel="noopener noreferrer" className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-[1.5rem] border backdrop-blur-2xl animate-in fade-in duration-700 shadow-xl shrink-0 transition-all hover:scale-[1.01] active:scale-[0.99] group ${goldBg} ${goldBorder} ios-clip-fix h-[72px]`}>
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className={`w-9 h-9 rounded-full ${goldIconBg} flex items-center justify-center text-[10px] ${goldIconText} font-black italic shadow-[0_0_15px_rgba(245,158,11,0.4)] group-hover:rotate-12 transition-transform uppercase tracking-tighter`}>
@@ -1318,7 +1350,7 @@ const ASRInlineValueCard = React.memo(({ type }) => {
   const c = cards[type];
   if (!c) return null;
   return (
-    <a href={c.link} onClick={() => trackEvent('outbound_click', { link_url: c.link, link_type: type })} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix text-left`}>
+    <a href={c.link} onClick={() => trackEvent('outbound_click', { link_url: c.link, link_type: type })} target="_blank" rel="noopener noreferrer" className={`group flex items-center justify-between p-3 sm:p-4 rounded-[1.25rem] sm:rounded-2xl border transition-all duration-300 active:scale-95 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-900/40 hover:bg-blue-900/30' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100'} shadow-sm ios-clip-fix text-left animate-in fade-in duration-500`}>
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-2">
         <div className={`p-2.5 sm:p-3 rounded-xl shrink-0 ${theme === 'dark' ? 'bg-blue-500/10 text-blue-400' : 'bg-white text-blue-600 shadow-sm'}`}>
           {c.icon}
@@ -1337,68 +1369,68 @@ const ASRInlineValueCard = React.memo(({ type }) => {
 
 // --- LIVE TICKER COMPONENT ---
 const ASRLiveTicker = ({ feed = [], onPlayerClick, onCourseClick }) => {
-  if (!feed || feed.length === 0) return null;
-
-  const tickerItems = [...feed, ...feed];
-
   return (
     <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[70] h-[var(--ticker-height)] flex items-center overflow-hidden border-b transition-all duration-300 bg-zinc-950 border-zinc-800/80 text-zinc-100 opacity-100 active:opacity-100 cursor-default`}>
-      <div className="animate-marquee whitespace-nowrap flex items-center gap-16 px-12">
-        {tickerItems.map((item, idx) => {
-          const fires = item.fireCount || 0;
-          const rank = item.rank || 0;
-          
-          return (
-            <div key={`${item.id}-${idx}`} className="flex items-center gap-0 group h-full">
-              <span className={`text-[10px] sm:text-[11px] font-black italic uppercase tracking-[0.2em] flex items-center`}>
-                <span className="text-zinc-100 mr-3 shrink-0">{item.timeString}</span>
-                
-                <span className="flex items-center mr-1.5 shrink-0">
-                  {rank === 1 && <span className="animate-bounce emoji-slot">🥇</span>}
-                  {rank === 2 && <span className="animate-bounce emoji-slot">🥈</span>}
-                  {rank === 3 && <span className="animate-bounce emoji-slot">🥉</span>}
-                </span>
+      {(!feed || feed.length === 0) ? (
+          <div className="w-full flex justify-center items-center h-full opacity-30 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">CONNECTING TO LIVE FEED...</div>
+      ) : (
+          <div className="animate-marquee whitespace-nowrap flex items-center gap-16 px-12">
+            {[...feed, ...feed, ...feed, ...feed].map((item, idx) => {
+              const fires = item.fireCount || 0;
+              const rank = item.rank || 0;
+              
+              return (
+                <div key={`${item.id}-${idx}`} className="flex items-center gap-0 group h-full">
+                  <span className={`text-[10px] sm:text-[11px] font-black italic uppercase tracking-[0.2em] flex items-center`}>
+                    <span className="text-zinc-100 mr-3 shrink-0">{item.timeString}</span>
+                    
+                    <span className="flex items-center mr-1.5 shrink-0">
+                      {rank === 1 && <span className="animate-bounce emoji-slot">🥇</span>}
+                      {rank === 2 && <span className="animate-bounce emoji-slot">🥈</span>}
+                      {rank === 3 && <span className="animate-bounce emoji-slot">🥉</span>}
+                    </span>
 
-                <span 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    trackEvent('select_content', { content_type: 'ticker_player', item_id: item.athleteName });
-                    onPlayerClick(item.athlete); 
-                  }}
-                  className={`transition-colors cursor-pointer font-black hover:text-blue-500 mr-2 shrink-0`}
-                >
-                  {item.athleteName} {item.athlete?.region || ''}
-                </span>
-                
-                <span 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    trackEvent('select_content', { content_type: 'ticker_course', item_id: item.courseName });
-                    onCourseClick(item.course); 
-                  }}
-                  className={`font-black transition-colors cursor-pointer hover:text-blue-400 shrink-0`}
-                >
-                  {item.courseName}
-                  {item.course?.city && item.course?.city !== 'UNKNOWN' ? `, ${item.course.city}` : ''}
-                  {item.course?.flag ? <span className="emoji-slot ml-1">{item.course.flag}</span> : ''}
-                </span>
-                
-                <span className={`${THEME.VALUE} ml-3 text-zinc-100 opacity-100 text-[11px] sm:text-[12px] font-black shrink-0`}>
-                  {item.result}
-                </span>
+                    <span 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        trackEvent('select_content', { content_type: 'ticker_player', item_id: item.athleteName });
+                        onPlayerClick(item.athlete); 
+                      }}
+                      className={`transition-colors cursor-pointer font-black hover:text-blue-500 mr-2 shrink-0`}
+                    >
+                      {item.athleteName} {item.athlete?.region || ''}
+                    </span>
+                    
+                    <span 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        trackEvent('select_content', { content_type: 'ticker_course', item_id: item.courseName });
+                        onCourseClick(item.course); 
+                      }}
+                      className={`font-black transition-colors cursor-pointer hover:text-blue-400 shrink-0`}
+                    >
+                      {item.courseName}
+                      {item.course?.city && item.course?.city !== 'UNKNOWN' ? `, ${item.course.city}` : ''}
+                      {item.course?.flag ? <span className="emoji-slot ml-1">{item.course.flag}</span> : ''}
+                    </span>
+                    
+                    <span className={`${THEME.VALUE} ml-3 text-zinc-100 opacity-100 text-[11px] sm:text-[12px] font-black shrink-0`}>
+                      {item.result}
+                    </span>
 
-                {fires > 0 && (
-                  <span className="flex items-center ml-2 gap-0 shrink-0">
-                    {Array.from({ length: fires }).map((_, i) => (
-                      <span key={i} className="animate-pulse emoji-slot">🔥</span>
-                    ))}
+                    {fires > 0 && (
+                      <span className="flex items-center ml-2 gap-0 shrink-0">
+                        {Array.from({ length: fires }).map((_, i) => (
+                          <span key={i} className="animate-pulse emoji-slot">🔥</span>
+                        ))}
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                </div>
+              );
+            })}
+          </div>
+      )}
     </div>
   );
 };
@@ -1806,7 +1838,7 @@ const PlayerDetails = ({ identity, initialRole, allCourses, openRankings, atPerf
         ];
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+            <div className="animate-in fade-in duration-300 text-left space-y-12 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     {setterStats.map((s, i) => (
                       <ASRStatCard key={i} index={i} label={s.l} value={s.v} tooltip={s.t} colorClass={s.c} />
@@ -1906,7 +1938,7 @@ const PlayerDetails = ({ identity, initialRole, allCourses, openRankings, atPerf
     ];
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+        <div className="animate-in fade-in duration-300 text-left space-y-12 overflow-visible">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                 {playerStats.map((s, i) => (
                   <ASRStatCard key={i} index={i} label={s.l} value={s.v} glowClass={s.g} tooltip={s.t} colorClass={s.c} />
@@ -2128,7 +2160,7 @@ const TeamDetails = ({ team, initialRole, openModal, atMet, openData, atPerfs, o
             const totalSets = teamSetters.reduce((sum, s) => sum + (s.sets || 0), 0);
 
             return (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+                <div className="animate-in fade-in duration-300 text-left space-y-12 overflow-visible">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                         <ASRStatCard label="SETTERS" value={String(teamSetters.length)} />
                         <ASRStatCard label="IMPACT" value={String(Math.round(totalImpact))} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
@@ -2162,7 +2194,7 @@ const TeamDetails = ({ team, initialRole, openModal, atMet, openData, atPerfs, o
         const avgPts = stats.runs > 0 ? (stats.pts / stats.runs).toFixed(2) : "0.00";
 
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-left space-y-12 overflow-visible">
+            <div className="animate-in fade-in duration-300 text-left space-y-12 overflow-visible">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-visible">
                     <ASRStatCard label="PLAYERS" value={String(stats.players.length)} />
                     <ASRStatCard label="POINTS" value={stats.pts.toFixed(2)} colorClass={theme === 'dark' ? 'text-white' : 'text-black'} />
@@ -2652,7 +2684,7 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, onCourseC
 
     if (!isScriptsLoaded) {
         return (
-            <div className={`w-full h-[60vh] sm:h-[75vh] flex flex-col items-center justify-center rounded-3xl border shadow-premium ${theme === 'dark' ? 'bg-zinc-900/40 border-zinc-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-slate-100 border-slate-200 text-black'}`}>
+            <div className={`w-full h-[60vh] sm:h-[75vh] min-h-[500px] flex flex-col items-center justify-center rounded-[2.5rem] sm:rounded-[3.5rem] border shadow-2xl ${theme === 'dark' ? 'bg-zinc-900/40 border-zinc-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'bg-slate-100 border-slate-200 text-black'}`}>
                 <div className="animate-spin opacity-70 mb-4"><ChevronsRight className="w-6 h-6 text-blue-600" strokeWidth={2.5} style={{ transform: 'skewX(-18deg)' }} /></div>
                 <div className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] animate-pulse opacity-70">ACCESSING ASR MAP SOURCE...</div>
             </div>
@@ -2772,7 +2804,7 @@ const ASRRankList = ({ title, athletes, genderRecord, athleteMetadata, athleteDi
 const ASRSearchInput = ({ search, setSearch, gen, setGen, view, mapMode, setMapMode }) => {
   const theme = useContext(ThemeContext);
   return (
-    <div className="w-full flex flex-col mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+    <div className="w-full flex flex-col mb-6 animate-in fade-in duration-500">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
             <div className="flex-1 relative group w-full">
                 <div className={`absolute left-5 sm:left-6 top-1/2 -translate-y-1/2 transition-opacity ${theme === 'dark' ? 'text-zinc-500' : 'text-slate-600'} group-focus-within:text-blue-600 shrink-0`}>
@@ -2865,7 +2897,7 @@ const ASRHallOfFame = ({ stats, onPlayerClick, onSetterClick, onRegionClick, med
 
   if (!stats || !stats.topStats) {
       return (
-          <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse">
+          <div className="flex flex-col items-center justify-center py-40 opacity-30 text-center animate-pulse min-h-[60vh]">
               <Trophy size={56} className="mb-6" />
               <h3 className="text-xl font-black uppercase tracking-[0.3em]">SCANNING FOR RECORDS...</h3>
           </div>
@@ -3011,7 +3043,7 @@ const ASRDataTable = ({ view, columns, data, sort, onSort, onRowClick, statKeys 
     const dataColor = theme === 'dark' ? 'text-white' : 'text-black';
 
     return (
-        <div className="min-w-full flex flex-col overflow-visible">
+        <div className="min-w-full flex flex-col overflow-visible animate-in fade-in duration-500">
             <div className={`sticky ${topOffset} z-20 backdrop-blur-xl border-b flex items-center ${theme === 'dark' ? 'bg-zinc-950/95 text-white border-zinc-800/80' : 'bg-white/95 text-black border-slate-200'}`}>
                 <div className="w-20 sm:w-24 pl-4 sm:pl-10 py-8 text-left font-black text-[10px] sm:text-[12px] uppercase tracking-widest shrink-0">RANK</div>
                 <div className="flex-1 flex min-w-0 h-full">
@@ -3091,7 +3123,7 @@ const ASRNavBar = ({ setTheme, view, eventType, setEventType }) => {
                 href="#/players"
                 className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer group active:scale-95 transition-transform" 
                 onClick={() => {
-                    window.scrollTo(0, 0);
+                    window.scrollTo({ top: 0, behavior: 'instant' });
                     setEventType('open');
                 }}
             >
@@ -3156,7 +3188,7 @@ const ASRBottomNav = ({ view }) => {
               key={item.id}
               href={`#/${item.id}`}
               onClick={() => {
-                  window.scrollTo(0, 0);
+                  window.scrollTo({ top: 0, behavior: 'instant' });
               }}
               className={`flex flex-col items-center justify-center transition-all duration-300 active:scale-[0.8] w-full relative h-full ${isActive ? 'text-blue-600' : 'opacity-40 hover:opacity-100 text-inherit'}`}
             >
@@ -3307,16 +3339,9 @@ function MainAppContent({ theme, setTheme }) {
     idxRef.current = historyIndex;
   }, [modalHistory, historyIndex]);
 
-  useLayoutEffect(() => {
-    const resetScroll = () => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-
-    resetScroll();
-    const timer = setTimeout(resetScroll, 50); 
-    return () => clearTimeout(timer);
+  // Clean, single trigger scroll restore for stable rendering
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [view, eventType]);
 
   useEffect(() => {
@@ -3408,7 +3433,6 @@ function MainAppContent({ theme, setTheme }) {
       if (playerRuns === 0) return;
 
       const gym = p.homeGym || "";
-      // Skip placeholder players, empty gyms, AND the Unaffiliated team
       if (!gym || gym === CONFIG.FALLBACKS.UNAFFILIATED || isPlaceholderPlayer(p.name)) return;
       
       const key = gym.toUpperCase();
@@ -3530,7 +3554,7 @@ function MainAppContent({ theme, setTheme }) {
             setView(firstSegment);
             setModalHistory([]);
             setHistoryIndex(-1);
-            window.scrollTo(0, 0); 
+            window.scrollTo({ top: 0, behavior: 'instant' }); 
         }
     };
 
@@ -3586,7 +3610,7 @@ function MainAppContent({ theme, setTheme }) {
     }
     const fQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true, shouldFade: false }));
     const fUnranked = unranked.map(p => ({ ...p, currentRank: "UR", isQualified: false, shouldFade: isAllTimeContext ? true : ((p.runs || 0) === 0) }));
-    let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 3+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
+let dividerLabel = isAllTimeContext ? (gen === 'M' ? "RUN 4+ COURSES TO GET RANKED" : "RUN 3+ COURSES TO GET RANKED") : "RUN 3+ COURSES TO GET RANKED";
     if (!isAllTimeContext && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
   }, [filteredAthletes, settersList, courseList, teamsList, isAllTimeContext, data, gen, view]);
