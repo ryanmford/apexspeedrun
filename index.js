@@ -734,6 +734,10 @@ const CustomStyles = React.memo(() => (
       background: #000;
       min-height: 100dvh;
       overscroll-behavior-y: none;
+      /* STABLE FONT STACK TO PREVENT FOUT JITTER */
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     #root {
@@ -841,7 +845,7 @@ const CustomStyles = React.memo(() => (
   `}</style>
 ));
 
-// --- SKELETON COMPONENT (NEW) ---
+// --- SKELETON COMPONENT ---
 const ASRSkeletonLoader = ({ view, mapMode, theme }) => {
   const isDark = theme === 'dark';
   if (view === 'map' && mapMode === 'map') {
@@ -3313,6 +3317,7 @@ function MainAppContent({ theme, setTheme }) {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showIntro, setShowIntro] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const [modalHistory, setModalHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -3323,6 +3328,12 @@ function MainAppContent({ theme, setTheme }) {
 
   const { data, openData, atPerfs, opPerfs, lbAT, atMet, dnMap, cMet, settersData, atRawBest, recentFeed, isLoading } = useASRData();
   const isAllTimeContext = eventType === 'all-time';
+
+  useEffect(() => {
+    // Delay setting mounted to ensure first paints are strictly controlled
+    const t = setTimeout(() => setIsMounted(true), 50);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (debouncedSearch) {
