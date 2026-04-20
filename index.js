@@ -614,7 +614,7 @@ const processLiveFeedData = (csv, athleteMetadata = {}, courseSetMap = {}) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0;
       const dateB = b.date ? new Date(b.date).getTime() : 0;
       return dateB - dateA; 
-  }).slice(0, 20); 
+  }).slice(0, 100); 
 
   result.recentFeed = chronologicalRuns.map((run, i) => {
     const pName = (run.athlete || "").trim();
@@ -1376,10 +1376,10 @@ const ASRLiveTicker = ({ feed = [], onPlayerClick, onCourseClick }) => {
   return (
     <div className={`fixed top-[var(--safe-top)] left-0 w-full z-[70] h-[var(--ticker-height)] flex items-center overflow-hidden border-b transition-all duration-300 bg-zinc-950 border-zinc-800/80 text-zinc-100 opacity-100 active:opacity-100 cursor-default`}>
       {(!feed || feed.length === 0) ? (
-          <div className="w-full flex justify-center items-center h-full opacity-30 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">CONNECTING TO LIVE FEED...</div>
+          <div className="w-full flex justify-center items-center h-full opacity-30 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">SCANNING LIVE STATS...</div>
       ) : (
           <div className="animate-marquee whitespace-nowrap flex items-center gap-16 px-12">
-            {[...feed, ...feed, ...feed, ...feed].map((item, idx) => {
+            {[...feed, ...feed].map((item, idx) => {
               const fires = item.fireCount || 0;
               const rank = item.rank || 0;
               
