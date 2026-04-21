@@ -2558,13 +2558,14 @@ const calculateHofStats = (data, atPerfs, lbAT, atMet, medalSort, settersWithImp
     }
 };
 
-const ASRGlobalMap = ({ courses, continents: conts, cities, countries, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
+const ASRGlobalMap = ({ courses, totalCourses, continents: conts, cities, countries, onCourseClick, onCountryClick, onCityClick, onContinentClick }) => {
     const theme = useContext(ThemeContext);
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
     const clusterGroupRef = useRef(null);
     const tileLayerRef = useRef(null);
+    const isInitialRender = useRef(true);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('continents');
     const [isLocating, setIsLocating] = useState(false);
@@ -2661,6 +2662,44 @@ const ASRGlobalMap = ({ courses, continents: conts, cities, countries, onCourseC
             clusterGroupRef.current.addLayer(marker);
         });
     }, [courses, isScriptsLoaded, onCourseClick, theme]);
+
+    // CAMERA DIRECTOR: Automatic Map Framing
+    useEffect(() => {
+        if (!mapRef.current || !window.L || !courses) return;
+
+        if (isInitialRender.current) {
+            isInitialRender.current = false;
+            return; 
+        }
+
+        if (courses.length === totalCourses || courses.length === 0) {
+            // Search cleared or zero results, fall back to global view
+            mapRef.current.flyTo([20, 0], 2, { duration: 1.5 });
+            return;
+        }
+
+        const bounds = window.L.latLngBounds();
+        let validCoordsCount = 0;
+        let lastValidCoord = null;
+
+        courses.forEach(c => {
+            if (c.parsedCoords) {
+                bounds.extend(c.parsedCoords);
+                validCoordsCount++;
+                lastValidCoord = c.parsedCoords;
+            }
+        });
+
+        if (validCoordsCount === 1) {
+            // Zoom tight to a single result
+            mapRef.current.flyTo(lastValidCoord, 14, { duration: 1.5 });
+        } else if (validCoordsCount > 1) {
+            // Frame all results if multiple
+            if (bounds.isValid()) {
+                mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, duration: 1.5 });
+            }
+        }
+    }, [courses, totalCourses]);
 
     const handleFindMe = () => {
       if (!mapRef.current || !navigator.geolocation) return;
