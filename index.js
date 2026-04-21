@@ -2565,7 +2565,6 @@ const ASRGlobalMap = ({ courses, totalCourses, continents: conts, cities, countr
     const mapRef = useRef(null);
     const clusterGroupRef = useRef(null);
     const tileLayerRef = useRef(null);
-    const isInitialRender = useRef(true);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('continents');
     const [isLocating, setIsLocating] = useState(false);
@@ -2666,11 +2665,6 @@ const ASRGlobalMap = ({ courses, totalCourses, continents: conts, cities, countr
     // CAMERA DIRECTOR: Automatic Map Framing
     useEffect(() => {
         if (!mapRef.current || !window.L || !courses) return;
-
-        if (isInitialRender.current) {
-            isInitialRender.current = false;
-            return; 
-        }
 
         if (courses.length === totalCourses || courses.length === 0) {
             // Search cleared or zero results, fall back to global view
