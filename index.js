@@ -701,7 +701,7 @@ const CustomStyles = React.memo(() => (
     .animate-marquee {
       display: flex;
       width: max-content;
-      animation: marquee 100s linear infinite;
+      animation: marquee 300s linear infinite;
     }
     .animate-marquee:hover { animation-play-state: paused; }
     
