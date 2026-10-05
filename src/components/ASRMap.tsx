@@ -42,6 +42,11 @@ export const ASRMap = forwardRef(({
   const isDark = theme === "dark";
 
   const activeCourseId = useAppStore(s => s.activeCourseId);
+  const activeCourseIdRef = useRef(activeCourseId);
+  useEffect(() => {
+    activeCourseIdRef.current = activeCourseId;
+  }, [activeCourseId]);
+
   const isLocating = useAppStore(s => s.isMapLocating);
   const setIsLocating = useAppStore(s => s.setIsMapLocating);
   const mapReady = useAppStore(s => s.isMapReady);
@@ -333,8 +338,32 @@ export const ASRMap = forwardRef(({
     }
   }, [isDark]);
 
+  // Helpers for hover feature
+  const getCourseDisplayName = (fullName: string): string => {
+    if (!fullName) return "";
+    const trimmed = fullName.trim();
+    const match = trimmed.match(/^(.*?)(?:\s+SPEED[\s_-]*RUN|\s+SPEEDRUN)/i);
+    if (match && match[1].trim()) {
+      return match[1].trim();
+    }
+    const fallbackMatch = trimmed.match(/^(.*?)(?:SPEED[\s_-]*RUN|SPEEDRUN)/i);
+    if (fallbackMatch && fallbackMatch[1].trim()) {
+      return fallbackMatch[1].trim();
+    }
+    return trimmed;
+  };
+
+  const escapeHtml = (str: string): string => {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
   // Helper to create marker icon
-  const createPinIcon = (isActive: boolean) => {
+  const createPinIcon = (courseName: string, isActive: boolean) => {
     const currentIsDark = isDarkRef.current;
     const outerShadow = currentIsDark ? 'shadow-[0_4px_12px_rgba(0,0,0,0.6)]' : 'shadow-[0_4px_12px_rgba(0,0,0,0.2)]';
     const innerSurface = currentIsDark 
@@ -349,11 +378,29 @@ export const ASRMap = forwardRef(({
       ? 'from-white/80'
       : 'from-zinc-900/60';
 
+    const tooltipClasses = currentIsDark
+      ? 'bg-zinc-950/95 text-white border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.85)]'
+      : 'bg-white/95 text-zinc-950 border-black/15 shadow-[0_4px_16px_rgba(0,0,0,0.15)]';
+
     const activeOuterClasses = isActive ? 'scale-[1.5] z-[1000] brightness-125' : 'hover:scale-[1.15] active:scale-95 drop-shadow-lg';
     
+    const shortName = getCourseDisplayName(courseName);
+    const escapedShortName = escapeHtml(shortName);
+
+    const hoverPillHtml = escapedShortName
+      ? `<div class="absolute bottom-[38px] left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-200 ease-out translate-y-1 group-hover:translate-y-0 scale-95 group-hover:scale-100 z-50 whitespace-nowrap">
+           <div class="relative flex items-center px-2.5 py-1 rounded-full border backdrop-blur-md ${tooltipClasses}">
+             <span class="text-[10px] sm:text-[11px] font-mono font-black tracking-widest uppercase select-none leading-none">
+               ${escapedShortName}
+             </span>
+           </div>
+         </div>`
+      : "";
+
     return L.divIcon({
       html: `
         <div class="asr-pin relative flex flex-col items-center justify-center group transition-all duration-300 cursor-pointer ${activeOuterClasses}" style="width: 44px; height: 44px;">
+          ${hoverPillHtml}
           <div class="absolute inset-0 bg-transparent"></div>
           <div class="relative flex flex-col items-center mt-2">
             <div class="relative w-6 h-6 rounded-full flex items-center justify-center ${outerShadow}">
@@ -402,7 +449,16 @@ export const ASRMap = forwardRef(({
 
       if (!markersRef.current.has(id)) {
          const marker = L.marker(c.parsedCoords, {
-            icon: createPinIcon(isActive)
+            icon: createPinIcon(c.name, isActive)
+         });
+
+         marker.on("mouseover", () => {
+            marker.setZIndexOffset(10000);
+         });
+
+         marker.on("mouseout", () => {
+            const isCurrentActive = activeCourseIdRef.current === id;
+            marker.setZIndexOffset(isCurrentActive ? 1000 : 0);
          });
 
          marker.on("click", (e) => {
@@ -443,7 +499,7 @@ export const ASRMap = forwardRef(({
     if (!mapReady) return;
     for (const [id, marker] of markersRef.current.entries()) {
       const isActive = activeCourseId === id;
-      marker.setIcon(createPinIcon(isActive));
+      marker.setIcon(createPinIcon(id, isActive));
       
       // Feature: push to top visually
       if (isActive) {
