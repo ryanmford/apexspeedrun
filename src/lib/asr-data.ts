@@ -799,14 +799,33 @@ export const processLiveFeedData = (
 
 export const calculateWofStats = (
   data: PlayerProfile[],
-  atPerfs: Record<string, { fireCount?: number }[]>,
+  atPerfs: Record<string, { fireCount?: number; city?: string; country?: string; label?: string; [key: string]: unknown }[]>,
   lbAT: { M: Record<string, unknown>; F: Record<string, unknown> },
   atMet: Record<string, PlayerProfile>,
   medalSort: { key: string; direction: "ascending" | "descending" } | null,
   settersWithImpact: SetterProfile[],
+  cMet?: Record<string, CourseData>,
+  courseRunsHistory?: Record<string, unknown[]>,
 ) => {
   try {
     if (!data || !data.length) return null;
+    const courseHistoryRerunsMap: Record<string, number> = {};
+    if (courseRunsHistory) {
+      Object.values(courseRunsHistory).forEach((runs) => {
+        const courseAthleteRuns: Record<string, number> = {};
+        (runs as { pKey?: string }[]).forEach((r) => {
+          if (r.pKey) {
+            courseAthleteRuns[r.pKey] = (courseAthleteRuns[r.pKey] || 0) + 1;
+          }
+        });
+        Object.entries(courseAthleteRuns).forEach(([pKey, count]) => {
+          if (count > 1) {
+            courseHistoryRerunsMap[pKey] = (courseHistoryRerunsMap[pKey] || 0) + (count - 1);
+          }
+        });
+      });
+    }
+
     const qualifiedAthletes = data
       .filter((p) => !isPlaceholderPlayer(p.name) && (p.courses || 0) >= 10)
       .map((p) => {
@@ -815,9 +834,31 @@ export const calculateWofStats = (
           (sum: number, run: { fireCount?: number }) => sum + (run.fireCount || 0),
           0,
         );
+        const uniqueCities = new Set<string>();
+        const uniqueCountries = new Set<string>();
+        performances.forEach((run: Record<string, unknown>) => {
+          const courseKey = String(run.label || run.name || run.course || "").toUpperCase();
+          const courseMeta = (cMet && courseKey && cMet[courseKey]) || {};
+          const city = String(run.city || courseMeta.city || "").trim().toUpperCase();
+          const country = String(run.country || courseMeta.country || "").trim().toUpperCase();
+          if (city && city !== "UNKNOWN" && city !== "N/A" && city !== "NONE") {
+            uniqueCities.add(city);
+          }
+          if (country && country !== "UNKNOWN" && country !== "N/A" && country !== "NONE") {
+            uniqueCountries.add(country);
+          }
+        });
+
+        const reruns = courseRunsHistory
+          ? (courseHistoryRerunsMap[p.pKey] ?? Math.max(0, (p.runs || 0) - (p.courses || 0)))
+          : Math.max(0, (p.runs || 0) - (p.courses || 0));
+
         return {
           ...p,
           allTimeFireCount: calculatedFires,
+          cities: uniqueCities.size,
+          countries: uniqueCountries.size,
+          reruns,
           winPercentage: (p.courses || p.runs) > 0 ? (p.wins / (p.courses || p.runs)) * 100 : 0,
         };
       });
@@ -897,6 +938,18 @@ export const calculateWofStats = (
         runs: [...qualifiedAthletes]
           .filter(a => (a.runs || 0) > 0)
           .sort((a, b) => b.runs - a.runs)
+          .slice(0, 20),
+        reruns: [...qualifiedAthletes]
+          .filter(a => (a.reruns || 0) > 0)
+          .sort((a, b) => (b.reruns || 0) - (a.reruns || 0) || (b.runs || 0) - (a.runs || 0) || (b.courses || 0) - (a.courses || 0))
+          .slice(0, 20),
+        cities: [...qualifiedAthletes]
+          .filter(a => (a.cities || 0) > 0)
+          .sort((a, b) => (b.cities || 0) - (a.cities || 0) || (b.courses || 0) - (a.courses || 0) || b.runs - a.runs)
+          .slice(0, 20),
+        countries: [...qualifiedAthletes]
+          .filter(a => (a.countries || 0) > 0)
+          .sort((a, b) => (b.countries || 0) - (a.countries || 0) || (b.courses || 0) - (a.courses || 0) || b.runs - a.runs)
           .slice(0, 20),
         winPercentage: [...qualifiedAthletes]
           .filter(a => (a.winPercentage || 0) > 0)

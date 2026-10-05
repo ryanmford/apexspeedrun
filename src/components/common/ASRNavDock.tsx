@@ -149,9 +149,16 @@ export const ASRNavDock = React.memo(
                       setIsSubmitModalOpen(true);
                       return;
                     }
-                    if (isActive) {
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                      triggerRefresh();
+                    if (isActive || (item.id === "hof" && currentView === "hof")) {
+                      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+                      if (document.scrollingElement) {
+                        document.scrollingElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+                      }
+                      document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+                      document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+                      if (window.scrollY < 40) {
+                        triggerRefresh();
+                      }
                     } else {
                       setView(item.id);
                     }

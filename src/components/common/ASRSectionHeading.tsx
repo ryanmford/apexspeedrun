@@ -10,6 +10,7 @@ interface ASRSectionHeadingProps {
   icon?: React.ReactNode;
   rightElement?: React.ReactNode;
   theme?: "light" | "dark";
+  className?: string;
 }
 
 export const ASRSectionHeading = React.memo(
@@ -20,11 +21,12 @@ export const ASRSectionHeading = React.memo(
     icon,
     rightElement,
     theme,
+    className,
   }: ASRSectionHeadingProps) => {
     const [showInfo, setShowInfo] = useState(false);
 
     return (
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0 pt-4 sm:pt-6 pb-2">
+      <div className={cn("flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0 pt-4 sm:pt-6 pb-2", className)}>
         <div className="flex items-center gap-3">
           {icon && (
             <div

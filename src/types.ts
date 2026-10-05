@@ -15,6 +15,9 @@ export interface PlayerProfile {
   teamLocation?: string;
   searchKey?: string;
   isDivider?: boolean;
+  cities?: number;
+  countries?: number;
+  reruns?: number;
 }
 
 export interface CourseData {

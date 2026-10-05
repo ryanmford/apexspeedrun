@@ -87,6 +87,8 @@ export const ASRHOF = React.memo(
  const atPerfs = useDataStore((s) => s.atPerfs);
  const lbAT = useDataStore((s) => s.lbAT);
  const atMet = useDataStore((s) => s.atMet);
+ const cMet = useDataStore((s) => s.cMet);
+ const courseRunsHistory = useDataStore((s) => s.courseRunsHistory);
  const { settersWithImpact } = useSettersDerived();
 
  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
@@ -95,13 +97,15 @@ export const ASRHOF = React.memo(
  if (!data || data.length === 0) return null;
  return calculateWofStats(
  data,
- atPerfs,
+ atPerfs as any,
  lbAT,
- atMet,
+ atMet as any,
  medalSort,
  settersWithImpact,
+ cMet as any,
+ courseRunsHistory,
  );
- }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact]);
+ }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact, cMet, courseRunsHistory]);
 
  const hasError = useDataStore((s) => s.hasError);
 
@@ -124,9 +128,12 @@ export const ASRHOF = React.memo(
 
  const sections = [
  { l: "TOP LQ", subtitle: "LOCOMOTIVE QUOTIENT = POINTS / RUNS", k: "rating" },
- { l: "MOST WR", subtitle: "TOTAL WORLD RECORDS", k: "wins" },
  { l: "MOST COURSES", subtitle: "TOTAL COURSES COMPLETED", k: "courses" },
  { l: "MOST RUNS", subtitle: "TOTAL VERIFIED RUNS", k: "runs" },
+ { l: "MOST RERUNS", subtitle: "TOTAL VERIFIED RERUNS", k: "reruns" },
+ { l: "MOST CITIES", subtitle: "TOTAL CITIES RUN IN", k: "cities" },
+ { l: "MOST COUNTRIES", subtitle: "TOTAL COUNTRIES RUN IN", k: "countries" },
+ { l: "MOST WR", subtitle: "TOTAL WORLD RECORDS", k: "wins" },
  { l: "HIGHEST WR %", subtitle: "TOTAL WORLD RECORDS / TOTAL COURSES COMPLETED", k: "winPercentage" },
  { l: "MOST 🪙", subtitle: "COINS EARNED FROM RUNS, WORLD RECORDS, & SETS", k: "contributionScore" },
  { l: "MOST 🔥", subtitle: <><span className="block whitespace-nowrap">M: &lt;9 🔥, &lt;8 🔥🔥, &lt;7 🔥🔥🔥</span><span className="block mt-0.5 whitespace-nowrap">W: &lt;11 🔥, &lt;10 🔥🔥, &lt;9 🔥🔥🔥</span></>, k: "totalFireCount" },
@@ -134,21 +141,102 @@ export const ASRHOF = React.memo(
  { l: "MOST SETS", subtitle: "TOTAL SETS", k: "sets" },
  ];
 
+ const tocItems = [
+   ...sections.map((sec) => ({ l: sec.l, id: `hof-${sec.k}` })),
+   { l: "WORLDWIDE MEDAL COUNT", id: "hof-medals" },
+ ];
+
+ const scrollToSection = (id: string) => {
+   const el = document.getElementById(id);
+   if (el) {
+     el.scrollIntoView({ behavior: "smooth", block: "start" });
+   }
+ };
+
  return (
- <div className="flex flex-col gap-12 pb-32 animate-in fade-in duration-700 w-full max-w-6xl mx-auto">
- <div className="px-4 sm:px-6 mt-0 mb-[-1.5rem] w-full">
-  <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
-   * RUN 10+ COURSES TO JOIN THE HOF
-  </p>
+ <div id="hof-top" className="flex flex-col gap-10 sm:gap-12 pb-32 animate-in fade-in duration-700 w-full max-w-6xl mx-auto">
+ <div className="px-4 sm:px-6 w-full flex flex-col justify-between sm:justify-start min-h-[calc(100svh-3.25rem)] min-h-[calc(100dvh-3.25rem)] sm:min-h-0 pb-28 sm:pb-0 gap-3 sm:gap-3.5">
+  <div className="flex items-center pt-1">
+   <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase select-none">
+    * RUN 10+ COURSES TO JOIN THE HOF
+   </p>
+  </div>
+
+  {/* Mobile Full-Screen TOC Bubbles */}
+  <div className="grid sm:hidden grid-cols-2 auto-rows-fr gap-2 xs:gap-2.5 flex-1 my-1">
+   {tocItems.map((item, index) => {
+    const isLast = index === tocItems.length - 1;
+    return (
+     <button
+      key={item.id}
+      type="button"
+      onClick={() => scrollToSection(item.id)}
+      className={cn(
+       "rounded-2xl px-3 py-2 flex items-center justify-center text-center transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.97] border",
+       isLast ? "col-span-2 py-3" : "",
+       theme === "dark"
+         ? "bg-zinc-900/60 hover:bg-zinc-800/80 active:bg-blue-500/20 text-zinc-100 hover:text-white border-white/10 hover:border-blue-500/40 shadow-sm"
+         : "bg-white hover:bg-zinc-50 active:bg-blue-500/10 text-zinc-800 hover:text-black border-zinc-200/90 hover:border-blue-500/40 shadow-xs"
+      )}
+     >
+      <span className={cn(
+       "font-black uppercase tracking-wider",
+       isLast ? "text-[12px] xs:text-[13px] flex items-center gap-1.5" : "text-[11px] xs:text-[12px] leading-tight"
+      )}>
+       {item.l}
+       {isLast && <span className="text-[13px] ml-1">🥇🥈🥉</span>}
+      </span>
+     </button>
+    );
+   })}
+  </div>
+
+  {/* Mobile scroll hint prompt */}
+  <div className="sm:hidden flex items-center justify-center pt-0.5 pb-1 select-none">
+   <button
+    type="button"
+    onClick={() => scrollToSection(tocItems[0]?.id || "hof-rating")}
+    aria-label="Jump to first top 20 rankings"
+    className="flex items-center justify-center w-11 h-11 text-zinc-400 hover:text-zinc-200 dark:text-zinc-500 dark:hover:text-zinc-200 active:scale-90 transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
+   >
+    <ChevronDown size={24} strokeWidth={2.25} className="animate-bounce" />
+   </button>
+  </div>
+
+  {/* Desktop Table of Contents */}
+  <nav aria-label="Hall of Fame Table of Contents" className={cn(
+    "hidden sm:block p-2.5 sm:p-3.5 rounded-[1.6rem] border transition-all duration-300",
+    theme === "dark"
+      ? "bg-zinc-900/40 border-white/5"
+      : "bg-zinc-50/90 border-zinc-200/80 shadow-sm"
+  )}>
+   <div className="flex flex-wrap gap-1.5 sm:gap-2">
+    {tocItems.map((item) => (
+     <button
+      key={item.id}
+      type="button"
+      onClick={() => scrollToSection(item.id)}
+      className={cn(
+       "px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+       theme === "dark"
+         ? "bg-white/[0.04] hover:bg-white/[0.08] active:bg-blue-500/20 text-zinc-300 hover:text-white border border-white/5 hover:border-blue-500/40 active:scale-95"
+         : "bg-white hover:bg-zinc-100 active:bg-blue-500/10 text-zinc-700 hover:text-black border border-zinc-200/90 hover:border-blue-500/40 shadow-xs active:scale-95"
+      )}
+     >
+      {item.l}
+     </button>
+    ))}
+   </div>
+  </nav>
  </div>
  {/* Leaderboard Grids */}
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-4 sm:px-6">
  {sections.map((sec) => (
- <div key={sec.k} className="flex flex-col gap-5">
- <ASRSectionHeading title={sec.l} subtitle={sec.subtitle} theme={theme} />
+ <div key={sec.k} id={`hof-${sec.k}`} className="scroll-mt-[4.25rem] sm:scroll-mt-28 flex flex-col gap-1.5 sm:gap-5">
+ <ASRSectionHeading title={sec.l} subtitle={sec.subtitle} theme={theme} className="pt-2 sm:pt-6 pb-0.5 sm:pb-2" />
  <div
  className={cn(
- "rounded-[2.5rem] overflow-hidden transition-all duration-300 shadow-xl",
+ "rounded-2xl sm:rounded-[2.5rem] overflow-hidden transition-all duration-300 shadow-xl",
  THEME.BENTO_CARD(theme),
  )}
  >
@@ -171,6 +259,9 @@ export const ASRHOF = React.memo(
  displayVal = a.allTimeFireCount || 0;
  else if (sec.k === "impact") displayVal = a.impact || 0;
  else if (sec.k === "sets") displayVal = a.sets || 0;
+ else if (sec.k === "reruns") displayVal = a.reruns || 0;
+ else if (sec.k === "cities") displayVal = a.cities || 0;
+ else if (sec.k === "countries") displayVal = a.countries || 0;
  else displayVal = a[sec.k] || 0;
 
  const isTop3 = i < 3;
@@ -191,17 +282,17 @@ export const ASRHOF = React.memo(
  )
  }
  className={cn(
- "flex items-center justify-between py-4 sm:py-5 px-4 sm:px-6 transition-colors duration-150 group relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset",
+ "flex items-center justify-between py-1.5 xs:py-2 sm:py-5 px-3.5 sm:px-6 transition-colors duration-150 group relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset select-none",
  hoverClass,
  i === 0 && (theme === "dark" ? "bg-white/[0.02]" : "bg-black/[0.02]")
  )}
  >
- <div className="flex items-center gap-4 min-w-0 z-10 relative flex-1 pr-4">
+ <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 z-10 relative flex-1 pr-2 sm:pr-4">
  <ASRRankBadge rank={i + 1} />
  <div className="flex flex-col text-left min-w-0">
  <span
  className={cn(
- "text-[14px] sm:text-[18px] lg:text-[22px] font-black uppercase truncate pr-2 leading-tight transition-colors",
+ "text-[12.5px] xs:text-[13.5px] sm:text-[18px] lg:text-[22px] font-black uppercase truncate pr-1 sm:pr-2 leading-none transition-colors",
  theme === "dark"
  ? "text-zinc-100"
  : "text-zinc-900",
@@ -212,12 +303,12 @@ export const ASRHOF = React.memo(
  </span>
  </div>
  </div>
- <div className="flex items-center justify-end gap-2 shrink-0 text-right z-10 relative">
+ <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 text-right z-10 relative">
  <span
  className={cn(
- "text-[16px] sm:text-[24px] lg:text-[28px] font-mono font-black tracking-tighter whitespace-nowrap transition-all tabular-nums text-right group-hover:text-blue-500",
+ "text-[13px] xs:text-[14px] sm:text-[24px] lg:text-[28px] font-mono font-black tracking-tight whitespace-nowrap transition-all tabular-nums text-right group-hover:text-blue-500",
  theme === "dark" ? "text-white" : "text-zinc-900",
- isTop3 ? "scale-110" : "opacity-100",
+ isTop3 ? "scale-105 sm:scale-110" : "opacity-100",
  i === 0 && ""
  )}
  >
@@ -234,9 +325,9 @@ export const ASRHOF = React.memo(
  );
  })}
  {items.length > limit && (
-  <div className="flex justify-center p-4">
+  <div className="flex justify-center p-2.5 sm:p-4">
     <button
-      className="group flex flex-col items-center gap-1 px-8 py-3 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 active:scale-[0.98] text-[10px] font-black tracking-widest uppercase text-zinc-400 hover:text-blue-500 active:text-blue-500 transition-all duration-300 rounded-2xl"
+      className="group flex flex-col items-center gap-0.5 px-6 py-1.5 sm:py-3 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 active:scale-[0.98] text-[9.5px] sm:text-[10px] font-black tracking-widest uppercase text-zinc-400 hover:text-blue-500 active:text-blue-500 transition-all duration-300 rounded-2xl cursor-pointer"
       onClick={() =>
         setVisibleCounts((prev) => ({
           ...prev,
@@ -245,7 +336,7 @@ export const ASRHOF = React.memo(
       }
       onTouchStart={() => {}}
     >
-      <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
+      <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-y-0.5 transition-transform" />
       Load More
     </button>
   </div>
@@ -260,7 +351,7 @@ export const ASRHOF = React.memo(
  </div>
 
  {/* Medal Table */}
- <div className="px-4 sm:px-6">
+ <div id="hof-medals" className="scroll-mt-24 sm:scroll-mt-28 px-4 sm:px-6">
  <ASRSectionHeading title="WORLDWIDE MEDAL COUNT" theme={theme} />
  <div
  className={cn(

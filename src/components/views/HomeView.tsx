@@ -169,6 +169,15 @@ export const HomeView = React.memo(() => {
     });
   }, [currentVideoSrc]);
 
+  const handleJumpToContent = React.useCallback(() => {
+    const el = document.getElementById("home-content");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
+    }
+  }, []);
+
   const recentSets = useMemo(() => {
     if (!masterCourseList || !masterCourseList.length) return [];
 
@@ -581,7 +590,27 @@ export const HomeView = React.memo(() => {
             </button>
           </div>
         </div>
+
+        {/* Scroll down jump prompt */}
+        <div
+          className="absolute left-0 right-0 w-full mx-auto px-4 z-20 flex justify-center bottom-[110px] sm:bottom-[125px] md:bottom-[135px] pointer-events-auto select-none"
+          style={{
+            marginBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleJumpToContent}
+            aria-label="Jump to next section"
+            className="flex items-center justify-center w-11 h-11 text-zinc-400 hover:text-white dark:text-zinc-400 dark:hover:text-white active:scale-90 transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
+          >
+            <ChevronDown size={24} strokeWidth={2.25} className="animate-bounce" />
+          </button>
+        </div>
       </motion.div>
+
+      {/* Anchor for jumping to next content section */}
+      <div id="home-content" className="scroll-mt-20 sm:scroll-mt-24" />
 
       {/* Of The Day Section */}
       {(topPlayer || topCourse || dailyRecord) && (
