@@ -757,13 +757,18 @@ export const robustSort = (a: Record<string, unknown>, b: Record<string, unknown
   return (aStr === bStr ? 0 : aStr < bStr ? -1 : 1) * dir; // Much faster than localeCompare
 };
 
-export const isQualifiedAthlete = (p: { runs?: number, courses?: number, allTimeFireCount?: number, gender?: string, name?: string }, mode?: string | boolean) => {
+export const isQualifiedAthlete = (
+  p: { runs?: number; courses?: number; allTimeFireCount?: number; gender?: string; name?: string },
+  mode?: string | boolean,
+  genderOverride?: string,
+) => {
   if (!p || isPlaceholderPlayer(p.name || "")) return false;
   const courses = p.courses || 0;
   if (mode === "open" || mode === false) {
     return courses >= 3;
   }
-  return courses >= 6;
+  const gender = (genderOverride || p.gender || "").toUpperCase();
+  return courses >= (gender === "F" ? 4 : 8);
 };
 
 export const getNormalizedNameList = (listStr: string) => {

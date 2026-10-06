@@ -42,7 +42,7 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     isAllTime: boolean | string = true,
   ) => {
     const qualified = arr
-      .filter((p) => isQualifiedAthlete(p, isAllTime))
+      .filter((p) => isQualifiedAthlete(p, isAllTime, gender))
       .sort(sortAthletesWithTiebreakers);
     
     // Build tiebreaker-aware rank mapping
@@ -570,10 +570,10 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
   // LEADERBOARDS
   const calculateLeaderboard = (sourceData: PlayerProfile[], mode: boolean | string) => {
     const qualifiedM = (sourceData || [])
-      .filter((p: PlayerProfile) => p.gender === "M" && isQualifiedAthlete(p, mode))
+      .filter((p: PlayerProfile) => p.gender === "M" && isQualifiedAthlete(p, mode, "M"))
       .sort(sortAthletesWithTiebreakers);
     const qualifiedF = (sourceData || [])
-      .filter((p: PlayerProfile) => p.gender === "F" && isQualifiedAthlete(p, mode))
+      .filter((p: PlayerProfile) => p.gender === "F" && isQualifiedAthlete(p, mode, "F"))
       .sort(sortAthletesWithTiebreakers);
       
     const buildRankMap = (qualifiedArr: PlayerProfile[]) => {
@@ -641,7 +641,7 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     const qual: PlayerProfile[] = [];
     const unranked: PlayerProfile[] = [];
     filtered.forEach((p: PlayerProfile) => {
-      if (isQualifiedAthlete(p, mode)) {
+      if (isQualifiedAthlete(p, mode, gen)) {
         qual.push(p);
       } else {
         if (mode === "2026" || mode === true || mode === "all-time" || allTimeRankedKeys.has(p.pKey)) {
@@ -653,7 +653,9 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     const fQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true, shouldFade: false }));
     const fUnranked = unranked.map((p, i) => ({ ...p, currentRank: "UR", isQualified: false, shouldFade: true }));
     
-    const dividerLabel = (mode === "open" || mode === false) ? "RUN 3+ COURSES TO GET RANKED" : "RUN 6+ COURSES TO GET RANKED";
+    const dividerLabel = (mode === "open" || mode === false)
+      ? "RUN 3+ COURSES TO GET RANKED"
+      : (gen === "F" ? "RUN 4+ COURSES TO GET RANKED" : "RUN 8+ COURSES TO GET RANKED");
     
     if ((mode === false || mode === "open" || mode === "2026") && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
     return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];

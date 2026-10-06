@@ -121,7 +121,7 @@ export const RankingsView = React.memo(({ theme }: { theme: "light" | "dark" }) 
         </>
       ) : (eventType === "2026" || eventType === "all-time") ? (
         <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
-          * RUN 6+ COURSES TO GET RANKED
+          * RUN {gen === "F" ? "4+" : "8+"} COURSES TO GET RANKED
         </p>
       ) : null}
     </div>
