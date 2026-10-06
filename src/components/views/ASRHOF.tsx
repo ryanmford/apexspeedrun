@@ -148,22 +148,42 @@ export const ASRHOF = React.memo(
 
  const scrollToSection = (id: string) => {
    const el = document.getElementById(id);
-   if (el) {
-     el.scrollIntoView({ behavior: "smooth", block: "start" });
+   if (!el) return;
+
+   // Dynamically query header height to account for mobile safe areas and PWA notch
+   const header = document.querySelector("header");
+   const headerHeight = header ? header.getBoundingClientRect().height : 105;
+   const extraPadding = 16;
+
+   const elementTop =
+     el.getBoundingClientRect().top +
+     (window.pageYOffset ||
+       window.scrollY ||
+       document.documentElement.scrollTop ||
+       0);
+   const targetScrollY = Math.max(0, elementTop - headerHeight - extraPadding);
+
+   try {
+     window.scrollTo({
+       top: targetScrollY,
+       behavior: "smooth",
+     });
+   } catch {
+     window.scrollTo(0, targetScrollY);
    }
  };
 
  return (
  <div id="hof-top" className="flex flex-col gap-10 sm:gap-12 pb-32 animate-in fade-in duration-700 w-full max-w-6xl mx-auto">
- <div className="px-4 sm:px-6 w-full flex flex-col justify-between sm:justify-start min-h-[calc(100svh-3.25rem)] min-h-[calc(100dvh-3.25rem)] sm:min-h-0 pb-28 sm:pb-0 gap-3 sm:gap-3.5">
+ <div className="px-4 sm:px-6 w-full flex flex-col justify-between sm:justify-start min-h-[calc(100svh-3.25rem)] min-h-[calc(100dvh-3.25rem)] sm:min-h-0 pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:pb-0 gap-2 xs:gap-2.5 sm:gap-3.5">
   <div className="flex items-center pt-1">
    <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase select-none">
     * RUN 10+ COURSES TO JOIN THE HOF
    </p>
   </div>
 
-  {/* Mobile Full-Screen TOC Bubbles */}
-  <div className="grid sm:hidden grid-cols-2 auto-rows-fr gap-2 xs:gap-2.5 flex-1 my-1">
+  {/* Mobile Compact TOC Bubbles */}
+  <div className="grid sm:hidden grid-cols-2 gap-1.5 xs:gap-2 my-auto w-full max-w-md mx-auto py-1">
    {tocItems.map((item, index) => {
     const isLast = index === tocItems.length - 1;
     return (
@@ -172,8 +192,8 @@ export const ASRHOF = React.memo(
       type="button"
       onClick={() => scrollToSection(item.id)}
       className={cn(
-       "rounded-2xl px-3 py-2 flex items-center justify-center text-center transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.97] border",
-       isLast ? "col-span-2 py-3" : "",
+       "rounded-2xl px-2.5 py-1.5 xs:px-3 xs:py-2 flex items-center justify-center text-center transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.97] border min-h-[38px] xs:min-h-[42px] max-h-[46px]",
+       isLast ? "col-span-2 min-h-[40px] xs:min-h-[44px] max-h-[48px] py-2" : "",
        theme === "dark"
          ? "bg-zinc-900/60 hover:bg-zinc-800/80 active:bg-blue-500/20 text-zinc-100 hover:text-white border-white/10 hover:border-blue-500/40 shadow-sm"
          : "bg-white hover:bg-zinc-50 active:bg-blue-500/10 text-zinc-800 hover:text-black border-zinc-200/90 hover:border-blue-500/40 shadow-xs"
@@ -181,7 +201,7 @@ export const ASRHOF = React.memo(
      >
       <span className={cn(
        "font-black uppercase tracking-wider",
-       isLast ? "text-[12px] xs:text-[13px] flex items-center gap-1.5" : "text-[11px] xs:text-[12px] leading-tight"
+       isLast ? "text-[11.5px] xs:text-[12.5px] flex items-center justify-center gap-1.5" : "text-[10.5px] xs:text-[11.5px] leading-tight"
       )}>
        {item.l}
        {isLast && <span className="text-[13px] ml-1">🥇🥈🥉</span>}
@@ -191,15 +211,15 @@ export const ASRHOF = React.memo(
    })}
   </div>
 
-  {/* Mobile scroll hint prompt */}
-  <div className="sm:hidden flex items-center justify-center pt-0.5 pb-1 select-none">
+  {/* Mobile scroll hint prompt - scooted up safely above the nav dock */}
+  <div className="sm:hidden flex items-center justify-center pt-1 pb-2 select-none">
    <button
     type="button"
     onClick={() => scrollToSection(tocItems[0]?.id || "hof-rating")}
     aria-label="Jump to first top 20 rankings"
-    className="flex items-center justify-center w-11 h-11 text-zinc-400 hover:text-zinc-200 dark:text-zinc-500 dark:hover:text-zinc-200 active:scale-90 transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
+    className="flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-zinc-200 dark:text-zinc-500 dark:hover:text-zinc-200 active:scale-90 transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
    >
-    <ChevronDown size={24} strokeWidth={2.25} className="animate-bounce" />
+    <ChevronDown size={22} strokeWidth={2.25} className="animate-bounce" />
    </button>
   </div>
 
@@ -232,7 +252,7 @@ export const ASRHOF = React.memo(
  {/* Leaderboard Grids */}
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-4 sm:px-6">
  {sections.map((sec) => (
- <div key={sec.k} id={`hof-${sec.k}`} className="scroll-mt-[4.25rem] sm:scroll-mt-28 flex flex-col gap-1.5 sm:gap-5">
+ <div key={sec.k} id={`hof-${sec.k}`} className="scroll-mt-[calc(env(safe-area-inset-top,0px)+5.5rem)] sm:scroll-mt-28 flex flex-col gap-1.5 sm:gap-5">
  <ASRSectionHeading title={sec.l} subtitle={sec.subtitle} theme={theme} className="pt-2 sm:pt-6 pb-0.5 sm:pb-2" />
  <div
  className={cn(
@@ -351,7 +371,7 @@ export const ASRHOF = React.memo(
  </div>
 
  {/* Medal Table */}
- <div id="hof-medals" className="scroll-mt-24 sm:scroll-mt-28 px-4 sm:px-6">
+ <div id="hof-medals" className="scroll-mt-[calc(env(safe-area-inset-top,0px)+5.5rem)] sm:scroll-mt-28 px-4 sm:px-6">
  <ASRSectionHeading title="WORLDWIDE MEDAL COUNT" theme={theme} />
  <div
  className={cn(
