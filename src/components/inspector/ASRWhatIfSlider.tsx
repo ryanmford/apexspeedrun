@@ -9,6 +9,7 @@ import React, {
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import { Trophy, ArrowRight, X } from "lucide-react";
 import { cn } from "../../lib/asr-utils";
+import { normalizeForSearch } from "../../lib/utils";
 import { PlayerProfile, ASRDataContext } from "../../types";
 import { dataWorker } from "../../hooks/useASRData";
 import { ASRSearchInput } from "../common/ASRSearchInput";
@@ -77,9 +78,13 @@ export const ASRWhatIfSlider = ({
       (a, b) => (b.runs || 0) - (a.runs || 0),
     );
     if (!searchQuery) return poolToSort.slice(0, 5);
-    const lower = searchQuery.toLowerCase();
+    const q = normalizeForSearch(searchQuery);
     return poolToSort
-      .filter((p) => p.name && p.name.toLowerCase().includes(lower))
+      .filter((p) => {
+        if (!p.name) return false;
+        const target = p.searchKey || normalizeForSearch(p.name);
+        return target.includes(q);
+      })
       .slice(0, 10);
   }, [athletePool, searchQuery]);
 

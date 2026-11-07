@@ -3,14 +3,26 @@ export interface PlayerProfile {
   name: string;
   gender: "M" | "F";
   rating: number;
+  pts?: number;
+  currentRank?: number | string;
   courses?: number;
   runs: number;
   latestRunDate?: Date;
   wins?: number;
   allTimeFireCount?: number;
+  season26FireCount?: number;
+  openFireCount?: number;
+  fires?: number;
+  films?: number;
+  contributionScore?: number;
   homeGym?: string;
   gymFlag?: string;
   townFlag?: string;
+  flag?: string;
+  countryName?: string;
+  region?: string;
+  location?: string;
+  igHandle?: string;
   teams?: { name: string; flag?: string; location?: string }[];
   teamLocation?: string;
   searchKey?: string;
@@ -52,6 +64,7 @@ export interface CourseData {
 }
 
 export interface SetterProfile {
+  pKey?: string;
   name: string;
   leads: number;
   assists: number;
@@ -59,6 +72,8 @@ export interface SetterProfile {
   impact: number;
   films: number;
   isAthlete: boolean;
+  homeGym?: string;
+  teams?: ({ name?: string } | string)[];
   searchKey?: string;
 }
 
@@ -66,11 +81,15 @@ export interface TeamProfile {
   name: string;
   flag: string;
   location?: string;
+  category?: string;
   pts: number;
   players: PlayerProfile[];
   playersCount: number;
   bestPlayers: PlayerProfile[];
   runsCount: number;
+  website?: string;
+  instagram?: string;
+  youtube?: string;
   searchKey?: string;
 }
 

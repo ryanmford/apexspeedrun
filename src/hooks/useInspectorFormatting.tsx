@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { normalizeName } from "../lib/asr-utils";
 import { Zap, Medal, Waypoints } from "lucide-react";
-import { PlayerProfile, TeamProfile, ASRDataContext } from "../types";
+import { PlayerProfile, SetterProfile, TeamProfile, ASRDataContext } from "../types";
 
 const EMPTY_OBJ = {};
 const EMPTY_ARR: unknown[] = [];

@@ -73,7 +73,27 @@ export const ASRTimeSimulator = ({
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<"slider" | "goal">("slider");
   const [targetPts, setTargetPts] = useState<number>(90);
-  const [simGender, setSimGender] = useState<"M" | "F">("M");
+  const [simGender, setSimGender] = useState<"M" | "F">(() =>
+    courseRecordM > 0 && recordsM.length > 0 ? "M" : "F",
+  );
+
+  useEffect(() => {
+    if (
+      simGender === "M" &&
+      (!courseRecordM || recordsM.length === 0) &&
+      courseRecordF > 0 &&
+      recordsF.length > 0
+    ) {
+      setSimGender("F");
+    } else if (
+      simGender === "F" &&
+      (!courseRecordF || recordsF.length === 0) &&
+      courseRecordM > 0 &&
+      recordsM.length > 0
+    ) {
+      setSimGender("M");
+    }
+  }, [simGender, courseRecordM, courseRecordF, recordsM.length, recordsF.length]);
 
   const gender = simGender;
   const courseRecord = gender === "M" ? courseRecordM : courseRecordF;
@@ -215,6 +235,7 @@ export const ASRTimeSimulator = ({
               theme={theme}
               courseRecord={courseRecord}
               records={records}
+              gender={gender}
               targetPts={targetPts}
               setTargetPts={setTargetPts}
             />

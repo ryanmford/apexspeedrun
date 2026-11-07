@@ -35,6 +35,12 @@ export interface AppState {
   setHomeCarouselIndex: (val: number) => void;
   homeAutoPlayTimer: number;
   setHomeAutoPlayTimer: (val: number) => void;
+
+  // Rivalry Drawer State
+  isRivalryOpen: boolean;
+  setIsRivalryOpen: (val: boolean) => void;
+  rivalryOpponentKey: string | null;
+  setRivalryOpponentKey: (key: string | null) => void;
 }
 
 const getInitialGen = () => {
@@ -105,4 +111,9 @@ export const useAppStore = create<AppState>((set) => ({
   setHomeCarouselIndex: (homeCarouselIndex) => set({ homeCarouselIndex }),
   homeAutoPlayTimer: 0,
   setHomeAutoPlayTimer: (homeAutoPlayTimer) => set({ homeAutoPlayTimer }),
+
+  isRivalryOpen: false,
+  setIsRivalryOpen: (isRivalryOpen) => set({ isRivalryOpen }),
+  rivalryOpponentKey: null,
+  setRivalryOpponentKey: (rivalryOpponentKey) => set({ rivalryOpponentKey }),
 }));

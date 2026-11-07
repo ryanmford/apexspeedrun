@@ -894,6 +894,7 @@ export function computeSimulatedGlobalImpact(
   }
 
   const simulatedRatings: Record<string, number> = {};
+  const simulatedCoursesCount: Record<string, number> = {};
   let totalPointsDestroyed = 0;
   
   for (const pt of athletePool) {
@@ -922,6 +923,7 @@ export function computeSimulatedGlobalImpact(
       }
       
       simulatedRatings[pt.pKey] = totalRuns > 0 ? totalPts / totalRuns : 0;
+      simulatedCoursesCount[pt.pKey] = totalRuns;
 
       // Track points destroyed for others
       if (pt.pKey !== selectedAthlete.pKey) {
@@ -951,10 +953,21 @@ export function computeSimulatedGlobalImpact(
   }
 
   const currentRating = Math.round((selectedAthlete.rating || 0) * 1000000) / 1000000;
+  const myQualifies =
+      (selectedAthlete.currentRank && selectedAthlete.currentRank !== "UR") ||
+      isQualifiedAthlete(
+          simulatedCoursesCount[selectedAthlete.pKey] || 0,
+          selectedAthlete.gender || "M",
+          "all-time",
+      );
   
   const newRanks: Record<string, number> = {};
   const sortedNew = [...athletePool]
-      .filter(a => a.currentRank !== "UR" && a.rating !== undefined)
+      .filter(
+          a =>
+              (a.currentRank !== "UR" && a.rating !== undefined) ||
+              (a.pKey === selectedAthlete.pKey && myQualifies),
+      )
       .sort((a, b) => simulatedRatings[b.pKey] - simulatedRatings[a.pKey]);
   sortedNew.forEach((a, idx) => newRanks[a.pKey] = idx + 1);
 

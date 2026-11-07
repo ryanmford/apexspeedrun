@@ -29,6 +29,7 @@ import {
   SectionTitle,
   InspectorTabContainer,
 } from "./InspectorComponents";
+import { ASRRivalryDrawer } from "./ASRRivalryDrawer";
 import { TokenChip, TrophyStand, FlatCard } from "./VaultComponents";
 import { ASRPromotionBanner, PromoType } from "../common/ASRPromotionBanner";
 import {
@@ -42,6 +43,7 @@ import { ASRRankList } from "../list/ASRRankList";
 import { ASREmptyState } from "../common/ASREmptyState";
 import { ModalScrollContext } from "../common/ASRBaseModal";
 import { ASRBottomSheet } from "../common/ASRBottomSheet";
+import { useAppStore } from "../../store/useAppStore";
 
 import { PlayerProfile, ASRDataContext } from "../../types";
 import { usePlayerDetailsData } from "../../hooks/useInspectorFormatting";
@@ -104,6 +106,14 @@ export const PlayerDetails = React.memo(
     };
 
     const [isSortOpen, setIsSortOpen] = useState(false);
+    const setIsRivalryOpen = useAppStore((s) => s.setIsRivalryOpen);
+
+    React.useEffect(() => {
+      setIsRivalryOpen(false);
+      return () => {
+        setIsRivalryOpen(false);
+      };
+    }, [player.pKey, player.name, setIsRivalryOpen]);
 
     const randomRunsPromo = useMemo(() => {
       const types: PromoType[] = ["skool"];
@@ -186,23 +196,24 @@ export const PlayerDetails = React.memo(
     }, [assignedShoe.model]);
 
     const memberSince = useMemo(() => {
+      const parseLocalDate = (raw: unknown): Date | null => {
+        if (!raw) return null;
+        if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+        const s = String(raw).trim();
+        const d = /^\d{4}-\d{1,2}-\d{1,2}$/.test(s)
+          ? new Date(s.replace(/-/g, "/"))
+          : new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
       const dates: Date[] = [];
       allRuns.forEach((r: Record<string, unknown>) => {
-        if (r.date) {
-          const d = new Date(r.date as string);
-          if (!isNaN(d.getTime())) {
-            dates.push(d);
-          }
-        }
+        const d = parseLocalDate(r.date);
+        if (d) dates.push(d);
       });
       rankListSets.forEach((s: Record<string, unknown>) => {
-        const dateVal = (s.dateSet || s.date) as string | undefined;
-        if (dateVal) {
-          const d = new Date(dateVal);
-          if (!isNaN(d.getTime())) {
-            dates.push(d);
-          }
-        }
+        const d = parseLocalDate(s.dateSet || s.date);
+        if (d) dates.push(d);
       });
 
       if (dates.length === 0) {
@@ -313,7 +324,7 @@ export const PlayerDetails = React.memo(
                     : "border-black/[0.05]",
                 )}
               >
-                <div className="grid grid-cols-2 gap-2.5 px-4 py-6 overflow-visible">
+                <div className="grid grid-cols-2 gap-2.5 px-4 pt-6 pb-4 overflow-visible">
                   {[
                     {
                       label: "RANK",
@@ -351,6 +362,15 @@ export const PlayerDetails = React.memo(
                       />
                     </motion.div>
                   ))}
+                </div>
+
+                <div className="px-4 pb-6">
+                  <ASRRivalryDrawer
+                    playerA={meta || player}
+                    dataContext={dataContext}
+                    onEntityClick={onEntityClick}
+                    theme={theme}
+                  />
                 </div>
               </div>
 

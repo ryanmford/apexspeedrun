@@ -71,7 +71,10 @@ export const ASRWeeklyActivityChart = ({
 
     runs.forEach((r) => {
       if (!r.date) return;
-      const d = new Date(r.date);
+      const s = String(r.date).trim();
+      const d = /^\d{4}-\d{1,2}-\d{1,2}$/.test(s)
+        ? new Date(s.replace(/-/g, "/"))
+        : new Date(s);
       if (isNaN(d.getTime())) return;
       d.setHours(0, 0, 0, 0);
 

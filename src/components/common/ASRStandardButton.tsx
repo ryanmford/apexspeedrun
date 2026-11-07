@@ -4,7 +4,7 @@ import { cn } from "../../lib/asr-utils";
 export interface ASRStandardButtonProps {
   children: React.ReactNode;
   variant?: "solid" | "premium";
-  color?: "blue" | "red" | "zinc" | "gold";
+  color?: "blue" | "red" | "zinc" | "gold" | "violet";
   href?: string;
   target?: string;
   rel?: string;
@@ -43,6 +43,7 @@ export const ASRStandardButton = ({
         switch (color) {
           case "red": return "bg-red-600 hover:bg-red-500 text-white border-red-500";
           case "blue": return "bg-blue-600 hover:bg-blue-500 text-white border-blue-500";
+          case "violet": return "bg-violet-600 hover:bg-violet-500 text-white border-violet-500";
           case "gold": return "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]";
           default: return "bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700";
         }
@@ -50,6 +51,7 @@ export const ASRStandardButton = ({
         switch (color) {
           case "red": return "bg-red-500 hover:bg-red-400 text-white border-red-400";
           case "blue": return "bg-blue-500 hover:bg-blue-400 text-white border-blue-400";
+          case "violet": return "bg-violet-600 hover:bg-violet-500 text-white border-violet-500";
           case "gold": return "bg-amber-500 hover:bg-amber-400 text-amber-950 border-amber-400";
           default: return "bg-zinc-900 hover:bg-zinc-800 text-white border-zinc-800";
         }
@@ -60,6 +62,7 @@ export const ASRStandardButton = ({
         switch (color) {
           case "red": return "bg-red-950/40 hover:bg-red-900/60 text-red-500 border border-red-500/30";
           case "blue": return "bg-blue-950/40 hover:bg-blue-900/60 text-blue-500 border border-blue-500/30";
+          case "violet": return "bg-violet-950/40 hover:bg-violet-900/60 text-violet-400 border border-violet-500/30";
           case "gold": return "bg-[#332005]/80 hover:bg-[#402808] text-amber-500 border border-amber-500/30";
           default: return "bg-zinc-900/60 hover:bg-zinc-800/80 text-white border border-white/10";
         }
@@ -67,6 +70,7 @@ export const ASRStandardButton = ({
         switch (color) {
           case "red": return "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200";
           case "blue": return "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200";
+          case "violet": return "bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200";
           case "gold": return "bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200";
           default: return "bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 shadow-sm";
         }

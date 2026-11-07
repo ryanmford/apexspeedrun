@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Target } from "lucide-react";
 import { cn } from "../../lib/asr-utils";
+import { computeSimulatedPlacement } from "../../lib/asr-data-compute";
 
 interface ASRGoalCalculatorProps {
   theme: "light" | "dark";
@@ -88,9 +89,10 @@ export const ASRGoalCalculator = ({
         <div className="text-xs font-bold mt-2 opacity-80 z-10 text-center">
           {targetPts >= 100
             ? "⚠️ This requires tying or breaking the CR!"
-            : `This places you approx #${
-                records.filter((r) => r.time <= requiredTimeForPts).length + 1
-              } in ${gender === "M" ? "Men's" : "Women's"}`}
+            : `This places you approx #${computeSimulatedPlacement(
+                requiredTimeForPts,
+                records,
+              )} in ${gender === "M" ? "Men's" : "Women's"}`}
         </div>
       </div>
     </div>
