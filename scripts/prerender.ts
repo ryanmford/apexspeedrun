@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,15 +15,28 @@ const ROOT = path.join(__dirname, '..');
 const SPREADSHEET_ID = CONFIG.SPREADSHEET_ID;
 const GIDS = CONFIG.SHEET_GIDS;
 
+async function fetchWithRetry(url: string, retries = 2): Promise<string> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
+      return await res.text();
+    } catch (err) {
+      if (attempt === retries) throw err;
+    }
+  }
+  return '';
+}
+
 async function fetchSheets() {
   const getUrl = (gid: string) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
   
   console.log('Fetching Google Sheets data...');
   const [mensCsv, womensCsv, liveCsv, setsCsv] = await Promise.all([
-    fetch(getUrl(GIDS.MENS)).then(r => r.text()),
-    fetch(getUrl(GIDS.WOMENS)).then(r => r.text()),
-    fetch(getUrl(GIDS.LIVE)).then(r => r.text()),
-    fetch(getUrl(GIDS.SETS)).then(r => r.text()),
+    fetchWithRetry(getUrl(GIDS.MENS)),
+    fetchWithRetry(getUrl(GIDS.WOMENS)),
+    fetchWithRetry(getUrl(GIDS.LIVE)),
+    fetchWithRetry(getUrl(GIDS.SETS)),
   ]);
 
   return computeAllState({
@@ -105,7 +119,6 @@ function getOgImageSvg(title: string, desc: string, type?: 'player' | 'course', 
               flexDirection: 'column',
               justifyContent: 'space-between',
               height: '100%',
-              zIndex: 10,
             },
             children: [
               {
@@ -278,6 +291,40 @@ function toCodePoint(unicodeSurrogates: string) {
   return r.filter(cp => cp !== 'fe0f').join('-');
 }
 
+const emojiCache = new Map<string, string>();
+const emojiInflight = new Map<string, Promise<string>>();
+
+async function fetchEmojiDataUri(segment: string): Promise<string> {
+  const cp = toCodePoint(segment);
+  if (!cp) return '';
+  if (emojiCache.has(cp)) return emojiCache.get(cp)!;
+  if (emojiInflight.has(cp)) return emojiInflight.get(cp)!;
+
+  const promise = (async () => {
+    const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${cp}.svg`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const text = await res.text();
+        const uri = `data:image/svg+xml;base64,${Buffer.from(text).toString('base64')}`;
+        emojiCache.set(cp, uri);
+        return uri;
+      }
+    } catch {
+      // Ignore failed or timed-out emoji fetch
+    }
+    emojiCache.set(cp, '');
+    return '';
+  })();
+
+  emojiInflight.set(cp, promise);
+  try {
+    return await promise;
+  } finally {
+    emojiInflight.delete(cp);
+  }
+}
+
 async function generateOgImage(title: string, desc: string, outputPath: string, fontData: Buffer, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: any[]) {
   const svg = await satori(getOgImageSvg(title, desc, type, stats, mapTiles), {
     width: 1200,
@@ -292,17 +339,7 @@ async function generateOgImage(title: string, desc: string, outputPath: string, 
     ],
     loadAdditionalAsset: async (code, segment) => {
       if (code === 'emoji') {
-        const cp = toCodePoint(segment);
-        const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${cp}.svg`;
-        try {
-          const res = await fetch(url);
-          if (res.ok) {
-            const text = await res.text();
-            return `data:image/svg+xml;base64,${Buffer.from(text).toString('base64')}`;
-          }
-        } catch (e) {
-          // ignore
-        }
+        return fetchEmojiDataUri(segment);
       }
       return '';
     }
@@ -314,7 +351,8 @@ async function generateOgImage(title: string, desc: string, outputPath: string, 
   });
   
   const pngBuffer = resvg.render().asPng();
-  await fs.mkdir(path.dirname(outputPath), { recursive: true }); await fs.writeFile(outputPath, pngBuffer);
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, pngBuffer);
 }
 
 function injectMeta(html: string, title: string, desc: string, ogImageUrl: string) {
@@ -328,25 +366,46 @@ function injectMeta(html: string, title: string, desc: string, ogImageUrl: strin
     .replace(/<meta name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${ogImageUrl}">`);
 }
 
-const tileCache = new Map<string, string>();
+const tileCache = new Map<string, string | null>();
+const tileInflight = new Map<string, Promise<string | null>>();
 
-async function fetchTile(url: string) {
-  if (tileCache.has(url)) return tileCache.get(url);
+async function fetchTile(url: string): Promise<string | null> {
+  if (tileCache.has(url)) return tileCache.get(url)!;
+  if (tileInflight.has(url)) return tileInflight.get(url)!;
+
+  const promise = (async () => {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!res.ok) {
+        tileCache.set(url, null);
+        return null;
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const dataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+      tileCache.set(url, dataUri);
+      return dataUri;
+    } catch {
+      tileCache.set(url, null);
+      return null;
+    }
+  })();
+
+  tileInflight.set(url, promise);
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const dataUri = `data:image/png;base64,${buffer.toString('base64')}`;
-    tileCache.set(url, dataUri);
-    return dataUri;
-  } catch (e) {
-    return null;
+    return await promise;
+  } finally {
+    tileInflight.delete(url);
   }
 }
 
+const courseTilesCache = new Map<string, any[]>();
+
 async function getMapTiles(coords: [number, number] | null) {
   if (!coords) return [];
+  const key = `${coords[0].toFixed(4)},${coords[1].toFixed(4)}`;
+  if (courseTilesCache.has(key)) return courseTilesCache.get(key)!;
+
   const [lat, lon] = coords;
   const Z = 13;
   const centerTx = (lon + 180) / 360 * Math.pow(2, Z);
@@ -373,14 +432,31 @@ async function getMapTiles(coords: [number, number] | null) {
     }
   }
   
-  for (const t of tiles) {
-    (t as any).dataUri = await fetchTile(t.url);
-  }
+  const resolved = await Promise.all(
+    tiles.map(async (t) => ({
+      ...t,
+      dataUri: await fetchTile(t.url),
+    }))
+  );
   
-  return tiles.filter((t: any) => !!t.dataUri);
+  const validTiles = resolved.filter((t) => !!t.dataUri);
+  courseTilesCache.set(key, validTiles);
+  return validTiles;
+}
+
+async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<void>) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (index < items.length) {
+      const current = items[index++];
+      await worker(current);
+    }
+  });
+  await Promise.all(runners);
 }
 
 async function run() {
+  const startTime = Date.now();
   console.log('Starting prerender...');
   
   const fontData = await fs.readFile(
@@ -396,16 +472,24 @@ async function run() {
   await fs.mkdir(ogDir, { recursive: true });
 
   const BASE_URL = 'https://apexspeedrun.com';
+  const allCourses = Object.keys(data.cMet || {});
+
+  console.log(`Pre-warming map tiles for ${allCourses.length} courses...`);
+  await runWithConcurrency(allCourses, 12, async (courseStr) => {
+    const coords = data.cMet[courseStr]?.parsedCoords || null;
+    await getMapTiles(coords);
+  });
   
   const players = [...(data.openData || []), ...(data.data || [])];
-  const uniquePlayers = new Map();
+  const uniquePlayers = new Map<string, any>();
   players.forEach(p => {
     if (p.name) uniquePlayers.set(createSlug(p.name), p);
   });
   
-  console.log(`Pre-rendering ${uniquePlayers.size} players...`);
+  const playerEntries = Array.from(uniquePlayers.entries());
+  console.log(`Pre-rendering ${playerEntries.length} players...`);
   
-  for (const [slug, player] of uniquePlayers.entries()) {
+  await runWithConcurrency(playerEntries, 12, async ([slug, player]) => {
     const flags = getCombinedFlags(player).trim();
     const titlePrefix = flags ? `${flags} ` : '';
     const title = `${titlePrefix}${player.name.toUpperCase()}`;
@@ -425,34 +509,33 @@ async function run() {
     const ogFileName = `player-${slug}.png`;
     const ogFilePath = path.join(ogDir, ogFileName);
     
-    const stats = [];
-    stats.push({ value: rating, label: 'LQ' });
-    stats.push({ value: rank === 'UR' ? 'UR' : `#${rank}`, label: 'RANK' });
+    const stats = [
+      { value: rating, label: 'LQ' },
+      { value: rank === 'UR' ? 'UR' : `#${rank}`, label: 'RANK' }
+    ];
     
     const completedCourses = [];
-    const allCourses = Object.keys(data.cMet || {});
     for (const c of allCourses) {
       if (data.lbAT?.M?.[c]?.[player.name] || data.lbAT?.F?.[c]?.[player.name] || data.lbSeason26?.M?.[c]?.[player.name] || data.lbSeason26?.F?.[c]?.[player.name]) {
         completedCourses.push(c);
       }
     }
-    const randCourse = completedCourses.length > 0 ? completedCourses[Math.floor(Math.random() * completedCourses.length)] : null;
-    const mapTiles = await getMapTiles(randCourse && data.cMet[randCourse] ? data.cMet[randCourse].parsedCoords : null);
+    const representativeCourse = completedCourses.length > 0 ? completedCourses[0] : null;
+    const mapTiles = await getMapTiles(representativeCourse && data.cMet[representativeCourse] ? data.cMet[representativeCourse].parsedCoords : null);
     
     await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'player', stats, mapTiles);
     
     const ogImageUrl = `${BASE_URL}/og/${ogFileName}`;
-    
     const pageHtml = injectMeta(baseHtml, title, desc, ogImageUrl);
     
     const playerDir = path.join(ROOT, 'dist', 'players', slug);
     await fs.mkdir(playerDir, { recursive: true });
     await fs.writeFile(path.join(playerDir, 'index.html'), pageHtml);
-  }
+  });
   
-  console.log(`Pre-rendering ${Object.keys(data.cMet || {}).length} courses...`);
+  console.log(`Pre-rendering ${allCourses.length} courses...`);
   
-  for (const courseStr of Object.keys(data.cMet || {})) {
+  await runWithConcurrency(allCourses, 12, async (courseStr) => {
     const slug = createSlug(courseStr);
     const courseInfo = data.cMet[courseStr] || {};
     const flags = getCombinedFlags(courseInfo).trim();
@@ -481,24 +564,24 @@ async function run() {
     const ogFileName = `course-${slug}.png`;
     const ogFilePath = path.join(ogDir, ogFileName);
     
-    const stats = [];
-    stats.push({ value: mBest !== Infinity ? mBest.toFixed(2) : '--', label: "MEN'S WR" });
-    stats.push({ value: fBest !== Infinity ? fBest.toFixed(2) : '--', label: "WOMEN'S WR" });
+    const stats = [
+      { value: mBest !== Infinity ? mBest.toFixed(2) : '--', label: "MEN'S WR" },
+      { value: fBest !== Infinity ? fBest.toFixed(2) : '--', label: "WOMEN'S WR" }
+    ];
     
     const mapTiles = await getMapTiles(courseInfo.parsedCoords || null);
     
     await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'course', stats, mapTiles);
     
     const ogImageUrl = `${BASE_URL}/og/${ogFileName}`;
-    
     const pageHtml = injectMeta(baseHtml, title, desc, ogImageUrl);
     
     const courseDir = path.join(ROOT, 'dist', 'courses', slug);
     await fs.mkdir(courseDir, { recursive: true });
     await fs.writeFile(path.join(courseDir, 'index.html'), pageHtml);
-  }
+  });
 
-  console.log('Prerendering completed!');
+  console.log(`Prerendering completed in ${((Date.now() - startTime) / 1000).toFixed(2)}s!`);
 }
 
 run().catch(e => {

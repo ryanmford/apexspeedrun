@@ -16,6 +16,7 @@ export default defineConfig(({mode}) => {
         injectRegister: 'auto',
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+          globIgnores: ['**/assets/aistudio/**', '**/og/**'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
