@@ -10,8 +10,8 @@ import { useDataStore } from "../../store/useDataStore";
 interface ASRHeaderProps {
   theme: "light" | "dark";
   setTheme: (theme: "light" | "dark") => void;
-  eventType: "open" | "all-time" | "2026";
-  setEventType: (type: "open" | "all-time" | "2026") => void;
+  eventType: "all-time" | "2026";
+  setEventType: (type: "all-time" | "2026") => void;
   hideTabs?: boolean;
   centerSlot?: React.ReactNode;
   leftSlot?: React.ReactNode;
@@ -66,13 +66,12 @@ export const ASRHeader = React.memo(
                 options={[
                   { label: "ALL-TIME", value: "all-time" },
                   { label: "2026", value: "2026" },
-                  { label: "OPEN", value: "open" },
                 ]}
                 activeOption={eventType}
-                onChange={(t) => setEventType(t as any)}
+                onChange={(t) => setEventType(t as "all-time" | "2026")}
                 layoutId="header-pill"
                 theme={theme}
-                className="w-full max-w-[260px] sm:max-w-[352px] sm:w-[352px]"
+                className="w-full max-w-[200px] sm:max-w-[240px] sm:w-[240px]"
               />
             </div>
           ) : centerSlot ? (

@@ -77,16 +77,16 @@ export const PlayerDetails = React.memo(
 
     const urlMode = searchParams.get("mode");
     const eventTypeMode = searchParams.get("eventType");
-    const validModes = ["open", "all-time", "2026"];
+    const validModes = ["all-time", "2026"];
     
-    let initialModeSafe: "open" | "all-time" | "2026" = "all-time";
+    let initialModeSafe: "all-time" | "2026" = "all-time";
     if (validModes.includes(urlMode as string)) {
-      initialModeSafe = urlMode as "open" | "all-time" | "2026";
+      initialModeSafe = urlMode as "all-time" | "2026";
     } else if (validModes.includes(eventTypeMode as string)) {
-      initialModeSafe = eventTypeMode as "open" | "all-time" | "2026";
+      initialModeSafe = eventTypeMode as "all-time" | "2026";
     }
-    const [uiMode, setUiMode] = useState<"open" | "all-time" | "2026">(initialModeSafe);
-    const [contentMode, setContentMode] = useState<"open" | "all-time" | "2026">(initialModeSafe);
+    const [uiMode, setUiMode] = useState<"all-time" | "2026">(initialModeSafe);
+    const [contentMode, setContentMode] = useState<"all-time" | "2026">(initialModeSafe);
 
     const [selectedItem, setSelectedItem] = useState<{ type: string; item: unknown } | null>(null);
 
@@ -299,11 +299,10 @@ export const PlayerDetails = React.memo(
                   options={[
                     { label: "ALL-TIME", value: "all-time" },
                     { label: "2026", value: "2026" },
-                    { label: "OPEN", value: "open" },
                   ]}
                   activeOption={uiMode}
                   onChange={(m) => {
-                    const nextMode = m as "open" | "all-time" | "2026";
+                    const nextMode = m as "all-time" | "2026";
                     setUiMode(nextMode);
                     React.startTransition(() => {
                       setContentMode(nextMode);
@@ -312,7 +311,7 @@ export const PlayerDetails = React.memo(
                   }}
                   layoutId="player-mode-pill"
                   theme={theme}
-                  className="w-full max-w-[280px]"
+                  className="w-full max-w-[200px]"
                 />
               </div>
 

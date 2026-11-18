@@ -213,7 +213,7 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
         <ASRHeader
           theme={theme as "light" | "dark"}
           setTheme={setTheme}
-          eventType={eventType as "open" | "all-time" | "2026"}
+          eventType={eventType}
           setEventType={setEventType}
           hideTabs={view === "hof" || view === "setters" || view === "home"}
           isTransparent={view === "home"}
@@ -394,7 +394,7 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
             options={(inspectorData as { options?: Record<string, unknown> })?.options}
             onEntityClick={navigateToEntity}
             theme={theme}
-            initialMode={(inspectorData as { options?: { initialMode?: "open" | "all-time" } })?.options?.initialMode}
+            initialMode={(inspectorData as { options?: { initialMode?: "all-time" | "2026" } })?.options?.initialMode}
           />
         </React.Suspense>
         </RouteErrorBoundary>

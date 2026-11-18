@@ -655,6 +655,8 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     
     const dividerLabel = (mode === "open" || mode === false)
       ? "RUN 3+ COURSES TO GET RANKED"
+      : mode === "2026"
+      ? (gen === "F" ? "RUN 3+ COURSES TO GET RANKED" : "RUN 5+ COURSES TO GET RANKED")
       : (gen === "F" ? "RUN 4+ COURSES TO GET RANKED" : "RUN 8+ COURSES TO GET RANKED");
     
     if ((mode === false || mode === "open" || mode === "2026") && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];

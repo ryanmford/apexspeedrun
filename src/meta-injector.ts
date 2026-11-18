@@ -72,7 +72,7 @@ export async function getPageMeta(urlPath: string, searchParams: URLSearchParams
 
   try {
     const parts = urlPath.replace(/^\//, "").split("/");
-    const eventType = searchParams.get("eventType") || "all-time";
+    const eventType = searchParams.get("eventType") === "2026" ? "2026" : "all-time";
 
     if (parts[0] === "players" && parts[1]) {
       const slug = normalizeName(decodeURIComponent(parts[1]));

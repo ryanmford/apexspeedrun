@@ -20,11 +20,12 @@ import { CourseData, SetterProfile, TeamProfile } from "../types";
 export const useURLState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const eventType = searchParams.get("eventType") || "all-time";
+  const rawEventType = searchParams.get("eventType");
+  const eventType: "all-time" | "2026" = rawEventType === "2026" ? "2026" : "all-time";
   const isAllTimeContext = eventType === "all-time";
 
   const setEventType = useCallback(
-    (nextType: "open" | "all-time" | "2026") => {
+    (nextType: "all-time" | "2026") => {
       startTransition(() => {
         setSearchParams(
           (prev) => {

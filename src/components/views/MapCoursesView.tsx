@@ -38,7 +38,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   const containerRef = useRef<HTMLDivElement>(null);
   const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
   
-  const runKey = isAllTimeContext ? "totalAllTimeRuns" : (eventType === "2026" ? "season26Runs" : eventType === "open" ? "openRuns" : "totalAllTimeRuns");
+  const runKey = isAllTimeContext ? "totalAllTimeRuns" : (eventType === "2026" ? "season26Runs" : "totalAllTimeRuns");
   const columns = React.useMemo(() => [{ label: "RUNS", key: runKey }], [runKey]);
   
   const setSearch = (val: string) => {

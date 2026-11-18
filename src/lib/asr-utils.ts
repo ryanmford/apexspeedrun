@@ -1,5 +1,5 @@
 export const CONFIG = {
-  SNAPSHOT_KEY: "asr_data_vault_v1_integrated_v63_fix_open",
+  SNAPSHOT_KEY: "asr_data_vault_v1_integrated_v65_2026_qual",
   PREFS_KEY: "asr_user_prefs_v1",
   REFRESH_INTERVAL: 300000, // 5 mins
   SKOOL_LINK:
@@ -768,6 +768,9 @@ export const isQualifiedAthlete = (
     return courses >= 3;
   }
   const gender = (genderOverride || p.gender || "").toUpperCase();
+  if (mode === "2026") {
+    return courses >= (gender === "F" ? 3 : 5);
+  }
   return courses >= (gender === "F" ? 4 : 8);
 };
 

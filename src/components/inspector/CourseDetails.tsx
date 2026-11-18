@@ -250,16 +250,16 @@ export const CourseDetails = React.memo(
 
     const urlMode = searchParams.get("mode");
     const eventTypeMode = searchParams.get("eventType");
-    const validModes = ["open", "all-time", "2026"];
+    const validModes = ["all-time", "2026"];
     
-    let initialModeSafe: "open" | "all-time" | "2026" = "all-time";
+    let initialModeSafe: "all-time" | "2026" = "all-time";
     if (validModes.includes(urlMode as string)) {
-      initialModeSafe = urlMode as "open" | "all-time" | "2026";
+      initialModeSafe = urlMode as "all-time" | "2026";
     } else if (validModes.includes(eventTypeMode as string)) {
-      initialModeSafe = eventTypeMode as "open" | "all-time" | "2026";
+      initialModeSafe = eventTypeMode as "all-time" | "2026";
     }
-    const [uiMode, setUiMode] = useState<"open" | "all-time" | "2026">(initialModeSafe);
-    const [contentMode, setContentMode] = useState<"open" | "all-time" | "2026">(initialModeSafe);
+    const [uiMode, setUiMode] = useState<"all-time" | "2026">(initialModeSafe);
+    const [contentMode, setContentMode] = useState<"all-time" | "2026">(initialModeSafe);
 
     const urlSort = searchParams.get("sort");
     const urlDir = searchParams.get("dir");
@@ -280,15 +280,11 @@ export const CourseDetails = React.memo(
 
     const recordsM = contentMode === "all-time" 
       ? (dataContext.courseRecords_M_AT?.[cName] || [])
-      : contentMode === "2026"
-      ? (dataContext.courseRecords_M_2026?.[cName] || [])
-      : (dataContext.courseRecords_M_OP?.[cName] || []);
+      : (dataContext.courseRecords_M_2026?.[cName] || []);
 
     const recordsF = contentMode === "all-time" 
       ? (dataContext.courseRecords_F_AT?.[cName] || [])
-      : contentMode === "2026"
-      ? (dataContext.courseRecords_F_2026?.[cName] || [])
-      : (dataContext.courseRecords_F_OP?.[cName] || []);
+      : (dataContext.courseRecords_F_2026?.[cName] || []);
 
     const sortRecords = (records: any[]) => {
       const sorted = [...records];
@@ -509,11 +505,10 @@ export const CourseDetails = React.memo(
                   options={[
                     { label: "ALL-TIME", value: "all-time" },
                     { label: "2026", value: "2026" },
-                    { label: "OPEN", value: "open" },
                   ]}
                   activeOption={uiMode}
                   onChange={(m) => {
-                    const nextMode = m as "open" | "all-time" | "2026";
+                    const nextMode = m as "all-time" | "2026";
                     setUiMode(nextMode);
                     React.startTransition(() => {
                       setContentMode(nextMode);
@@ -522,51 +517,45 @@ export const CourseDetails = React.memo(
                   }}
                   layoutId="course-mode-pill-m"
                   theme={theme}
-                  className="w-full max-w-[280px]"
+                  className="w-full max-w-[200px]"
                 />
               </div>
               <div className="px-4 py-6 overflow-visible min-h-[500px]">
-                {contentMode === "open" && !meta.isOpenCourse ? (
-                  <div className="text-center text-zinc-500 py-10 px-4 text-sm max-w-sm mx-auto">
-                    * Course not included in the 2026 ASR Open.
-                  </div>
-                ) : (
+                <div className="flex flex-col gap-6">
                   <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-6">
-                      <div className="flex items-center justify-between">
-                        <SectionTitle noPadding>VERIFIED RUNS</SectionTitle>
-                        <div 
-                          className={cn(
-                            "flex items-center rounded-full border text-[10px] font-black uppercase tracking-widest",
-                            theme === "dark" ? "border-white/10 bg-zinc-900/50" : "border-black/10 bg-zinc-100/50"
-                          )}
+                    <div className="flex items-center justify-between">
+                      <SectionTitle noPadding>VERIFIED RUNS</SectionTitle>
+                      <div 
+                        className={cn(
+                          "flex items-center rounded-full border text-[10px] font-black uppercase tracking-widest",
+                          theme === "dark" ? "border-white/10 bg-zinc-900/50" : "border-black/10 bg-zinc-100/50"
+                        )}
+                      >
+                        <button
+                          onClick={() => setIsSortOpen(true)}
+                          className="px-3 py-1.5 hover:opacity-70 transition-opacity uppercase"
                         >
-                          <button
-                            onClick={() => setIsSortOpen(true)}
-                            className="px-3 py-1.5 hover:opacity-70 transition-opacity uppercase"
-                          >
-                            {sortCategory}
-                          </button>
-                          <div className={cn("w-px h-3", theme === "dark" ? "bg-white/20" : "bg-black/20")} />
-                          <button
-                            onClick={() => setSortState(sortCategory, sortDirection === "desc" ? "asc" : "desc")}
-                            className="px-2 py-1.5 hover:opacity-70 transition-opacity flex items-center justify-center"
-                          >
-                            <ArrowDown size={14} className={cn("transition-transform duration-200", sortDirection === "asc" ? "rotate-180" : "")} />
-                          </button>
-                        </div>
+                          {sortCategory}
+                        </button>
+                        <div className={cn("w-px h-3", theme === "dark" ? "bg-white/20" : "bg-black/20")} />
+                        <button
+                          onClick={() => setSortState(sortCategory, sortDirection === "desc" ? "asc" : "desc")}
+                          className="px-2 py-1.5 hover:opacity-70 transition-opacity flex items-center justify-center"
+                        >
+                          <ArrowDown size={14} className={cn("transition-transform duration-200", sortDirection === "asc" ? "rotate-180" : "")} />
+                        </button>
                       </div>
-                      <ASRRankList
-                        athletes={sortedRecordsM}
-                        dataContext={dataContext}
-                        onEntityClick={onEntityClick}
-                        entityType="player"
-                        showDateSubtitle={true}
-                        padTo={3}
-                      />
                     </div>
+                    <ASRRankList
+                      athletes={sortedRecordsM}
+                      dataContext={dataContext}
+                      onEntityClick={onEntityClick}
+                      entityType="player"
+                      showDateSubtitle={true}
+                      padTo={3}
+                    />
                   </div>
-                )}
+                </div>
               </div>
               <div className="pt-4 px-4 pb-8">
                 <ASRPromotionBanner
@@ -592,11 +581,10 @@ export const CourseDetails = React.memo(
                   options={[
                     { label: "ALL-TIME", value: "all-time" },
                     { label: "2026", value: "2026" },
-                    { label: "OPEN", value: "open" },
                   ]}
                   activeOption={uiMode}
                   onChange={(m) => {
-                    const nextMode = m as "open" | "all-time" | "2026";
+                    const nextMode = m as "all-time" | "2026";
                     setUiMode(nextMode);
                     React.startTransition(() => {
                       setContentMode(nextMode);
@@ -605,51 +593,45 @@ export const CourseDetails = React.memo(
                   }}
                   layoutId="course-mode-pill-f"
                   theme={theme}
-                  className="w-full max-w-[280px]"
+                  className="w-full max-w-[200px]"
                 />
               </div>
               <div className="px-4 py-6 overflow-visible min-h-[500px]">
-                {contentMode === "open" && !meta.isOpenCourse ? (
-                  <div className="text-center text-zinc-500 py-10 px-4 text-sm max-w-sm mx-auto">
-                    * Course not included in the 2026 ASR Open.
-                  </div>
-                ) : (
+                <div className="flex flex-col gap-6">
                   <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-6">
-                      <div className="flex items-center justify-between">
-                        <SectionTitle noPadding>VERIFIED RUNS</SectionTitle>
-                        <div 
-                          className={cn(
-                            "flex items-center rounded-full border text-[10px] font-black uppercase tracking-widest",
-                            theme === "dark" ? "border-white/10 bg-zinc-900/50" : "border-black/10 bg-zinc-100/50"
-                          )}
+                    <div className="flex items-center justify-between">
+                      <SectionTitle noPadding>VERIFIED RUNS</SectionTitle>
+                      <div 
+                        className={cn(
+                          "flex items-center rounded-full border text-[10px] font-black uppercase tracking-widest",
+                          theme === "dark" ? "border-white/10 bg-zinc-900/50" : "border-black/10 bg-zinc-100/50"
+                        )}
+                      >
+                        <button
+                          onClick={() => setIsSortOpen(true)}
+                          className="px-3 py-1.5 hover:opacity-70 transition-opacity uppercase"
                         >
-                          <button
-                            onClick={() => setIsSortOpen(true)}
-                            className="px-3 py-1.5 hover:opacity-70 transition-opacity uppercase"
-                          >
-                            {sortCategory}
-                          </button>
-                          <div className={cn("w-px h-3", theme === "dark" ? "bg-white/20" : "bg-black/20")} />
-                          <button
-                            onClick={() => setSortState(sortCategory, sortDirection === "desc" ? "asc" : "desc")}
-                            className="px-2 py-1.5 hover:opacity-70 transition-opacity flex items-center justify-center"
-                          >
-                            <ArrowDown size={14} className={cn("transition-transform duration-200", sortDirection === "asc" ? "rotate-180" : "")} />
-                          </button>
-                        </div>
+                          {sortCategory}
+                        </button>
+                        <div className={cn("w-px h-3", theme === "dark" ? "bg-white/20" : "bg-black/20")} />
+                        <button
+                          onClick={() => setSortState(sortCategory, sortDirection === "desc" ? "asc" : "desc")}
+                          className="px-2 py-1.5 hover:opacity-70 transition-opacity flex items-center justify-center"
+                        >
+                          <ArrowDown size={14} className={cn("transition-transform duration-200", sortDirection === "asc" ? "rotate-180" : "")} />
+                        </button>
                       </div>
-                      <ASRRankList
-                        athletes={sortedRecordsF}
-                        dataContext={dataContext}
-                        onEntityClick={onEntityClick}
-                        entityType="player"
-                        showDateSubtitle={true}
-                        padTo={3}
-                      />
                     </div>
+                    <ASRRankList
+                      athletes={sortedRecordsF}
+                      dataContext={dataContext}
+                      onEntityClick={onEntityClick}
+                      entityType="player"
+                      showDateSubtitle={true}
+                      padTo={3}
+                    />
                   </div>
-                )}
+                </div>
               </div>
               <div className="pt-4 px-4 pb-8">
                 <ASRPromotionBanner

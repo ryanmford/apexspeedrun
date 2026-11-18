@@ -26,7 +26,7 @@ interface InspectorBodyProps {
   options?: Record<string, unknown>;
   onEntityClick: (type: string, data: Record<string, unknown>) => void;
   theme: "light" | "dark";
-  initialMode?: "open" | "all-time";
+  initialMode?: "all-time" | "2026";
   isNotFound?: boolean;
   requestedId?: string;
 }
@@ -105,7 +105,7 @@ export const InspectorBody = React.memo(
     ]);
 
     const finalData = data || item;
-    const finalMode = initialMode || options?.initialMode;
+    const finalMode = (initialMode || options?.initialMode) as "all-time" | "2026" | undefined;
 
     if (isNotFound) {
       return (

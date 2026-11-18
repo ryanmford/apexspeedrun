@@ -85,23 +85,8 @@ export const RankingsView = React.memo(({ theme }: { theme: "light" | "dark" }) 
 
   const listData = React.useMemo(() => {
     if (mode === "teams" || mode === "gyms") return teamList;
-    if (eventType === "open") {
-      return playerList.map((p) => {
-        // We know 'currentRank' might be typed slightly generically in PlayerProfile,
-        // but it comes through via usePlayerList
-        const rank = (p as any).currentRank;
-        if (typeof rank === "number" && rank >= 1 && rank <= 6) {
-          if (rank <= 3) {
-            return { ...p, displayName: `${p.name} * *` };
-          } else {
-            return { ...p, displayName: `${p.name} *` };
-          }
-        }
-        return p;
-      });
-    }
     return playerList;
-  }, [mode, eventType, playerList, teamList]);
+  }, [mode, playerList, teamList]);
 
   const listColumns = mode === "players" ? playerColumns : teamColumns;
   const itemClick = mode === "players" ? handlePlayerClick : handleTeamClick;
@@ -110,16 +95,11 @@ export const RankingsView = React.memo(({ theme }: { theme: "light" | "dark" }) 
 
   const searchSubtext = (mode === "players") ? (
     <div className="flex flex-col gap-1 mt-2 mb-1 w-full">
-      {eventType === "open" ? (
-        <>
-          <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
-            * * QUALIFIED FOR USPK NATIONALS & PKE WORLDS
-          </p>
-          <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
-            * QUALIFIED FOR PKE WORLDS
-          </p>
-        </>
-      ) : (eventType === "2026" || eventType === "all-time") ? (
+      {eventType === "2026" ? (
+        <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
+          * RUN {gen === "F" ? "3+" : "5+"} COURSES TO GET RANKED
+        </p>
+      ) : eventType === "all-time" ? (
         <p className="text-[10px] sm:text-[11px] font-bold text-zinc-500/80 dark:text-zinc-500/80 tracking-widest uppercase">
           * RUN {gen === "F" ? "4+" : "8+"} COURSES TO GET RANKED
         </p>
