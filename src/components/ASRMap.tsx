@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useContext, forwardRef, useImperativeHandle } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, Satellite, Map as MapIcon } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
@@ -51,13 +51,24 @@ export const ASRMap = forwardRef(({
   const setIsLocating = useAppStore(s => s.setIsMapLocating);
   const mapReady = useAppStore(s => s.isMapReady);
   const setMapReady = useAppStore(s => s.setIsMapReady);
+  const userLocation = useAppStore(s => s.userLocation);
+  const setUserLocation = useAppStore(s => s.setUserLocation);
+  const setMapViewport = useAppStore(s => s.setMapViewport);
+  const mapLayerMode = useAppStore(s => s.mapLayerMode);
+  const setMapLayerMode = useAppStore(s => s.setMapLayerMode);
+  const setCourseSortMode = useAppStore(s => s.setCourseSortMode);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
-  const tileLayersRef = useRef<{ light?: L.TileLayer; dark?: L.TileLayer }>({});
+  const tileLayersRef = useRef<{ light?: L.TileLayer; dark?: L.TileLayer; satellite?: L.TileLayer }>({});
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const courseCoordsRef = useRef<Map<string, [number, number]>>(new Map());
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const locateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const headingDegRef = useRef<number | null>(null);
+  const orientationListenerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null);
 
   const fitMapToCourses = React.useCallback(() => {
     if (!mapReady || !mapRef.current || !courses) return;
@@ -103,16 +114,43 @@ export const ASRMap = forwardRef(({
 
   const resetViewToDefault = React.useCallback(() => {
     if (!mapReady || !mapRef.current) return;
+    setMapViewport(null);
     const isMobile = window.innerWidth < 768;
     const defaultCenter: L.LatLngTuple = isMobile ? [28, -100] : [15, -90];
     const defaultZoom = isMobile ? 2 : 3;
+    mapRef.current.stop();
     mapRef.current.flyTo(defaultCenter, defaultZoom, { duration: 1.0 });
+  }, [mapReady, setMapViewport]);
+
+  const frameCourseAndUser = React.useCallback((courseCoords: [number, number]) => {
+    if (!mapReady || !mapRef.current) return;
+    const map = mapRef.current;
+    map.stop();
+    const currentLoc = useAppStore.getState().userLocation;
+    const isDesktop = window.innerWidth >= 768;
+    const panelWidth = window.innerWidth >= 1024 ? 450 : 400;
+
+    if (currentLoc) {
+      const bounds = L.latLngBounds([currentLoc, courseCoords]);
+      map.fitBounds(bounds, {
+        paddingTopLeft: isDesktop ? [panelWidth + 48, 64] : [36, 64],
+        paddingBottomRight: isDesktop ? [64, 64] : [36, window.innerHeight * 0.35 + 48],
+        maxZoom: 15,
+        duration: 1.25,
+      });
+    } else {
+      const pt = map.project(courseCoords, 15);
+      if (isDesktop) pt.x -= panelWidth / 2;
+      else pt.y += window.innerHeight * 0.18;
+      map.flyTo(map.unproject(pt, 15), 15, { duration: 1.25 });
+    }
   }, [mapReady]);
 
   // Expose methods to parent
   useImperativeHandle(ref, () => ({
     locateUser: handleFindMe,
     resetView: resetViewToDefault,
+    frameCourseAndUser,
   }));
 
   const onCourseClickRef = useRef(onCourseClick);
@@ -144,6 +182,9 @@ export const ASRMap = forwardRef(({
     // Set map to focus on Americas and Hawaii on mobile, keep original for desktop
     const defaultCenter: L.LatLngTuple = isMobile ? [28, -100] : [15, -90];
     const defaultZoom = isMobile ? 2 : 3;
+    const savedViewport = useAppStore.getState().mapViewport;
+    const initialCenter: L.LatLngTuple = savedViewport ? savedViewport.center : defaultCenter;
+    const initialZoom = savedViewport ? savedViewport.zoom : defaultZoom;
 
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
@@ -162,7 +203,12 @@ export const ASRMap = forwardRef(({
       doubleClickZoom: true,
       boxZoom: true,
       keyboard: true,
-    }).setView(defaultCenter, defaultZoom);
+    }).setView(initialCenter, initialZoom);
+
+    // Dedicated pane above marker/cluster panes (z-index 600) so clusters never bury the user dot
+    const userPane = map.createPane("userLocationPane");
+    userPane.style.zIndex = "650";
+    userPane.style.pointerEvents = "none";
 
     const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     
@@ -193,9 +239,28 @@ export const ASRMap = forwardRef(({
       className: darkLayerClass,
     }).addTo(map);
 
-    lightLayer.setOpacity(isDarkRef.current ? 0 : 1);
-    darkLayer.setOpacity(isDarkRef.current ? 1 : 0);
-    tileLayersRef.current = { light: lightLayer, dark: darkLayer };
+    const satelliteUrl = mapboxToken
+      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`
+      : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+    const satelliteLayer = L.tileLayer(satelliteUrl, {
+      maxZoom: 20,
+      maxNativeZoom: 19,
+      noWrap: true,
+      className: "transition-opacity duration-[600ms] ease-in-out",
+    }).addTo(map);
+
+    const initialLayerMode = useAppStore.getState().mapLayerMode;
+    if (initialLayerMode === "satellite") {
+      satelliteLayer.setOpacity(1);
+      lightLayer.setOpacity(0);
+      darkLayer.setOpacity(0);
+    } else {
+      satelliteLayer.setOpacity(0);
+      lightLayer.setOpacity(isDarkRef.current ? 0 : 1);
+      darkLayer.setOpacity(isDarkRef.current ? 1 : 0);
+    }
+    tileLayersRef.current = { light: lightLayer, dark: darkLayer, satellite: satelliteLayer };
 
     const getClusterIcon = (cluster: any) => {
       const count = cluster.getChildCount();
@@ -247,6 +312,23 @@ export const ASRMap = forwardRef(({
 
     return () => {
       // Map cleanup
+      if (locateTimeoutRef.current !== null) {
+        clearTimeout(locateTimeoutRef.current);
+        locateTimeoutRef.current = null;
+      }
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (orientationListenerRef.current) {
+        window.removeEventListener("deviceorientation", orientationListenerRef.current, true);
+        window.removeEventListener("deviceorientationabsolute" as any, orientationListenerRef.current as any, true);
+        orientationListenerRef.current = null;
+      }
+      setIsLocating(false);
+      userMarkerRef.current = null;
+      markersRef.current.clear();
+      courseCoordsRef.current.clear();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -268,6 +350,11 @@ export const ASRMap = forwardRef(({
     };
     
     const triggerBounds = () => {
+      const center = map.getCenter();
+      setMapViewport({
+        center: [center.lat, center.lng],
+        zoom: map.getZoom(),
+      });
       if (onBoundsChangeRef.current) {
          const bounds = map.getBounds();
          onBoundsChangeRef.current({
@@ -287,7 +374,7 @@ export const ASRMap = forwardRef(({
       map.off('click', handleMapClick);
       map.off('moveend', triggerBounds);
     };
-  }, [mapReady]);
+  }, [mapReady, setMapViewport]);
 
   // ResizeObserver for Container
   useEffect(() => {
@@ -323,20 +410,27 @@ export const ASRMap = forwardRef(({
     return () => clearTimeout(timer);
   }, [mapReady]);
 
-  // Theme synchronization for Tiles
+  // Theme & Satellite synchronization for Tiles
   useEffect(() => {
     if (!tileLayersRef.current) return;
-    const { light, dark } = tileLayersRef.current;
-    if (light && dark) {
-      if (isDark) {
-        dark.setOpacity(1);
+    const { light, dark, satellite } = tileLayersRef.current;
+    if (light && dark && satellite) {
+      if (mapLayerMode === "satellite") {
+        satellite.setOpacity(1);
+        dark.setOpacity(0);
         light.setOpacity(0);
       } else {
-        light.setOpacity(1);
-        dark.setOpacity(0);
+        satellite.setOpacity(0);
+        if (isDark) {
+          dark.setOpacity(1);
+          light.setOpacity(0);
+        } else {
+          light.setOpacity(1);
+          dark.setOpacity(0);
+        }
       }
     }
-  }, [isDark]);
+  }, [isDark, mapLayerMode]);
 
   // Helpers for hover feature
   const getCourseDisplayName = (fullName: string): string => {
@@ -363,7 +457,7 @@ export const ASRMap = forwardRef(({
   };
 
   // Helper to create marker icon
-  const createPinIcon = (courseName: string, isActive: boolean) => {
+  const createPinIcon = (courseName: string, isActive: boolean, coords?: [number, number] | null) => {
     const currentIsDark = isDarkRef.current;
     const outerShadow = currentIsDark ? 'shadow-[0_4px_12px_rgba(0,0,0,0.6)]' : 'shadow-[0_4px_12px_rgba(0,0,0,0.2)]';
     const innerSurface = currentIsDark 
@@ -387,11 +481,19 @@ export const ASRMap = forwardRef(({
     const shortName = getCourseDisplayName(courseName);
     const escapedShortName = escapeHtml(shortName);
 
+    const currentLoc = useAppStore.getState().userLocation;
+    const resolvedCoords = coords || courseCoordsRef.current.get(courseName);
+    let distBadgeHtml = "";
+    if (currentLoc && resolvedCoords) {
+      const km = L.latLng(currentLoc).distanceTo(resolvedCoords) / 1000;
+      distBadgeHtml = `<span class="ml-1.5 pl-1.5 border-l ${currentIsDark ? 'border-white/20 text-blue-400' : 'border-black/15 text-blue-600'} tabular-nums">${km.toFixed(2)} KM</span>`;
+    }
+
     const hoverPillHtml = escapedShortName
       ? `<div class="absolute bottom-[38px] left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-200 ease-out translate-y-1 group-hover:translate-y-0 scale-95 group-hover:scale-100 z-50 whitespace-nowrap">
            <div class="relative flex items-center px-2.5 py-1 rounded-full border backdrop-blur-md ${tooltipClasses}">
-             <span class="text-[10px] sm:text-[11px] font-mono font-black tracking-widest uppercase select-none leading-none">
-               ${escapedShortName}
+             <span class="text-[10px] sm:text-[11px] font-mono font-black tracking-widest uppercase select-none leading-none flex items-center">
+               ${escapedShortName}${distBadgeHtml}
              </span>
            </div>
          </div>`
@@ -431,6 +533,7 @@ export const ASRMap = forwardRef(({
        if (!currentCourseIds.has(id)) {
           markersToRemove.push(marker);
           markersRef.current.delete(id);
+          courseCoordsRef.current.delete(id);
        }
     }
 
@@ -444,12 +547,13 @@ export const ASRMap = forwardRef(({
     courses.forEach((c: CourseData & { parsedCoords?: [number, number] }) => {
       const id = c.name;
       if (!c.parsedCoords) return;
+      courseCoordsRef.current.set(id, c.parsedCoords);
 
       const isActive = activeCourseId === id;
 
       if (!markersRef.current.has(id)) {
          const marker = L.marker(c.parsedCoords, {
-            icon: createPinIcon(c.name, isActive)
+            icon: createPinIcon(c.name, isActive, c.parsedCoords)
          });
 
          marker.on("mouseover", () => {
@@ -494,12 +598,12 @@ export const ASRMap = forwardRef(({
 
   }, [courses, mapReady]); 
 
-  // Active Pin State AND Theme updates (re-render icons)
+  // Active Pin State, Theme, AND User Location updates (re-render icons with live distance badge)
   useEffect(() => {
     if (!mapReady) return;
     for (const [id, marker] of markersRef.current.entries()) {
       const isActive = activeCourseId === id;
-      marker.setIcon(createPinIcon(id, isActive));
+      marker.setIcon(createPinIcon(id, isActive, courseCoordsRef.current.get(id)));
       
       // Feature: push to top visually
       if (isActive) {
@@ -508,27 +612,157 @@ export const ASRMap = forwardRef(({
         marker.setZIndexOffset(0);
       }
     }
-  }, [activeCourseId, isDark, mapReady]); // Depends on isDark so markers redraw with theme
+  }, [activeCourseId, isDark, mapReady, userLocation]);
+
+  const applyHeadingToDom = React.useCallback((deg: number | null) => {
+    const el = userMarkerRef.current?.getElement();
+    if (!el) return;
+    const wrap = el.querySelector(".asr-location-heading-wrap") as HTMLElement | null;
+    if (!wrap) return;
+    if (deg === null || Number.isNaN(deg)) {
+      wrap.style.opacity = "0";
+    } else {
+      wrap.style.opacity = "1";
+      wrap.style.transform = `rotate3d(0, 0, 1, ${deg.toFixed(1)}deg)`;
+    }
+  }, []);
+
+  const createUserLocationIcon = React.useCallback((currentIsDark: boolean) => {
+    const h = headingDegRef.current;
+    const headingStyle = h !== null && !Number.isNaN(h)
+      ? `opacity: 1; transform: rotate3d(0, 0, 1, ${h.toFixed(1)}deg);`
+      : `opacity: 0;`;
+
+    return L.divIcon({
+      html: `
+        <div class="asr-location-puck">
+          <div class="asr-location-heading-wrap" style="${headingStyle}">
+            <svg class="asr-location-heading-cone" viewBox="0 0 80 80" fill="none">
+              <defs>
+                <radialGradient id="asrHeadingBeamGrad" cx="40" cy="40" r="36" gradientUnits="userSpaceOnUse">
+                  <stop offset="18%" stop-color="#4285F4" stop-opacity="0.55" />
+                  <stop offset="100%" stop-color="#4285F4" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <path d="M40 40 L21 6 A39 39 0 0 1 59 6 Z" fill="url(#asrHeadingBeamGrad)" />
+            </svg>
+          </div>
+          <div class="asr-location-halo"></div>
+          <div class="asr-location-pulse-ring"></div>
+          <div class="asr-location-base ${currentIsDark ? "asr-location-base--dark" : ""}">
+            <div class="asr-location-core"></div>
+          </div>
+        </div>
+      `,
+      className: "asr-user-location-marker",
+      iconSize: [80, 80],
+      iconAnchor: [40, 40],
+    });
+  }, []);
+
+  const startCompassTracking = React.useCallback(() => {
+    if (orientationListenerRef.current || typeof window === "undefined") return;
+
+    const attachListener = () => {
+      if (orientationListenerRef.current) return;
+      const handler = (event: DeviceOrientationEvent & { webkitCompassHeading?: number }) => {
+        let heading: number | null = null;
+        if (typeof event.webkitCompassHeading === "number" && event.webkitCompassHeading >= 0) {
+          heading = event.webkitCompassHeading;
+        } else if (event.absolute && typeof event.alpha === "number") {
+          heading = (360 - event.alpha) % 360;
+        } else if (typeof event.alpha === "number") {
+          heading = (360 - event.alpha) % 360;
+        }
+        if (heading !== null && !Number.isNaN(heading)) {
+          headingDegRef.current = heading;
+          applyHeadingToDom(heading);
+        }
+      };
+      orientationListenerRef.current = handler;
+      window.addEventListener("deviceorientationabsolute" as any, handler as any, true);
+      window.addEventListener("deviceorientation", handler, true);
+    };
+
+    const DevOrient = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
+    if (DevOrient && typeof DevOrient.requestPermission === "function") {
+      DevOrient.requestPermission()
+        .then((state) => {
+          if (state === "granted") attachListener();
+        })
+        .catch(() => {
+          // Compass permission optional; location dot still works without beam
+        });
+    } else {
+      attachListener();
+    }
+  }, [applyHeadingToDom]);
+
+  const upsertUserMarker = React.useCallback((latitude: number, longitude: number) => {
+    if (!mapRef.current) return;
+    if (userMarkerRef.current && mapRef.current.hasLayer(userMarkerRef.current)) {
+      userMarkerRef.current.setLatLng([latitude, longitude]);
+      applyHeadingToDom(headingDegRef.current);
+    } else {
+      userMarkerRef.current = L.marker([latitude, longitude], {
+        icon: createUserLocationIcon(isDarkRef.current),
+        pane: "userLocationPane",
+        interactive: false,
+      }).addTo(mapRef.current);
+    }
+  }, [createUserLocationIcon, applyHeadingToDom]);
+
+  const startLocationWatch = React.useCallback(() => {
+    if (watchIdRef.current !== null || !navigator.geolocation) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (watchPos) => {
+        const nextLoc: [number, number] = [watchPos.coords.latitude, watchPos.coords.longitude];
+        setUserLocation(nextLoc);
+        upsertUserMarker(nextLoc[0], nextLoc[1]);
+        if (typeof watchPos.coords.heading === "number" && !Number.isNaN(watchPos.coords.heading) && watchPos.coords.heading >= 0) {
+          headingDegRef.current = watchPos.coords.heading;
+          applyHeadingToDom(watchPos.coords.heading);
+        }
+      },
+      () => {
+        // Keep last known position marker on transient GPS dropouts
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+  }, [setUserLocation, upsertUserMarker, applyHeadingToDom]);
+
+  // Restore & sync user location marker whenever map mounts (e.g. returning from another app tab) or location updates
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !userLocation) return;
+    upsertUserMarker(userLocation[0], userLocation[1]);
+    startLocationWatch();
+  }, [mapReady, userLocation, upsertUserMarker, startLocationWatch]);
+
+  // Recover cleanly when returning from a backgrounded browser tab
+  useEffect(() => {
+    if (!mapReady) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && mapRef.current) {
+        mapRef.current.invalidateSize();
+        const savedLoc = useAppStore.getState().userLocation;
+        if (savedLoc) {
+          upsertUserMarker(savedLoc[0], savedLoc[1]);
+          if (userMarkerRef.current) {
+            userMarkerRef.current.setIcon(createUserLocationIcon(isDarkRef.current));
+          }
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [mapReady, upsertUserMarker, createUserLocationIcon]);
 
   // User Marker theming
   useEffect(() => {
-    if (userMarkerRef.current) {
-        const currentIsDark = isDarkRef.current;
-        userMarkerRef.current.setIcon(L.divIcon({
-          html: `
-            <div class="relative flex items-center justify-center" style="width: 24px; height: 24px;">
-              <div class="absolute inset-[-60%] bg-blue-500/20 rounded-full" style="will-change: transform; transform: translateZ(0); pointer-events: none;"></div>
-              <div class="relative w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 shadow-[0_4px_12px_rgba(59,130,246,0.6)] border-[2.5px] ${currentIsDark ? 'border-zinc-900' : 'border-white'}">
-                <div class="relative w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-            </div>
-          `,
-          className: "bg-transparent",
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        }));
+    if (userMarkerRef.current && mapRef.current?.hasLayer(userMarkerRef.current)) {
+      userMarkerRef.current.setIcon(createUserLocationIcon(isDark));
     }
-  }, [isDark]);
+  }, [isDark, createUserLocationIcon]);
 
   const prevSearchQueryRef = useRef(searchQuery);
 
@@ -556,44 +790,94 @@ export const ASRMap = forwardRef(({
     fitMapToCourses();
   }, [courses, totalCourses, mapReady, searchQuery, fitMapToCourses]);
 
+  const flyToLocation = React.useCallback((latitude: number, longitude: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.stop();
+    const currentZoom = map.getZoom();
+    const distMeters = map.getCenter().distanceTo([latitude, longitude]);
+    const targetZoom =
+      currentZoom < 14
+        ? 14
+        : distMeters < 300 && currentZoom < 16
+          ? Math.min(currentZoom + 1, 16)
+          : currentZoom;
+    const duration = distMeters < 50 && targetZoom === currentZoom ? 0.35 : 1.2;
+    map.flyTo([latitude, longitude], targetZoom, { duration });
+  }, []);
+
   const handleFindMe = () => {
     if (!mapRef.current || !navigator.geolocation) return;
-    setIsLocating(true);
     trackEvent("map_find_me_click", { status: "requested" });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (!mapRef.current) return;
-        const { latitude, longitude } = pos.coords;
-        mapRef.current.flyTo([latitude, longitude], 13, { duration: 1.5 });
-        
-        if (userMarkerRef.current) {
-           userMarkerRef.current.setLatLng([latitude, longitude]);
-        } else {
-            const currentIsDark = isDarkRef.current;
-            userMarkerRef.current = L.marker([latitude, longitude], {
-              icon: L.divIcon({
-                html: `
-                  <div class="relative flex items-center justify-center" style="width: 24px; height: 24px;">
-                    <div class="absolute inset-[-60%] bg-blue-500/20 rounded-full" style="will-change: transform; transform: translateZ(0); pointer-events: none;"></div>
-                    <div class="relative w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 shadow-[0_4px_12px_rgba(59,130,246,0.6)] border-[2.5px] ${currentIsDark ? 'border-zinc-900' : 'border-white'}">
-                      <div class="relative w-1.5 h-1.5 bg-white rounded-full"></div>
-                    </div>
-                  </div>
-                `,
-                className: "bg-transparent",
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-              }),
-              interactive: false
-           }).addTo(mapRef.current);
-        }
+    startCompassTracking();
 
-        setIsLocating(false);
-        trackEvent("map_find_me_success");
+    // If we already have a session location fix, respond instantaneously on click
+    const knownLoc = useAppStore.getState().userLocation;
+    const alreadyFlew = Boolean(knownLoc);
+    if (knownLoc) {
+      setCourseSortMode("nearest");
+      upsertUserMarker(knownLoc[0], knownLoc[1]);
+      flyToLocation(knownLoc[0], knownLoc[1]);
+    }
+
+    setIsLocating(true);
+    if (locateTimeoutRef.current !== null) {
+      clearTimeout(locateTimeoutRef.current);
+    }
+    locateTimeoutRef.current = setTimeout(() => {
+      setIsLocating(false);
+      locateTimeoutRef.current = null;
+    }, 12000);
+
+    const finishLocating = () => {
+      if (locateTimeoutRef.current !== null) {
+        clearTimeout(locateTimeoutRef.current);
+        locateTimeoutRef.current = null;
+      }
+      setIsLocating(false);
+    };
+
+    const onPositionSuccess = (pos: GeolocationPosition) => {
+      finishLocating();
+      if (!mapRef.current) return;
+      const { latitude, longitude } = pos.coords;
+      const prevLoc = useAppStore.getState().userLocation;
+      setUserLocation([latitude, longitude]);
+      setCourseSortMode("nearest");
+      upsertUserMarker(latitude, longitude);
+      startLocationWatch();
+
+      if (!alreadyFlew) {
+        flyToLocation(latitude, longitude);
+      } else if (prevLoc && L.latLng(prevLoc).distanceTo([latitude, longitude]) > 25) {
+        mapRef.current.stop();
+        mapRef.current.panTo([latitude, longitude], { animate: true, duration: 0.8 });
+      }
+      trackEvent("map_find_me_success");
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onPositionSuccess,
+      (err) => {
+        // Code 1 = PERMISSION_DENIED; otherwise fall back to fast Wi-Fi/cached network location
+        if (err.code === 1) {
+          finishLocating();
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          onPositionSuccess,
+          () => finishLocating(),
+          { enableHighAccuracy: false, timeout: 7000, maximumAge: 120000 }
+        );
       },
-      () => setIsLocating(false),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
     );
+  };
+
+  const handleToggleLayerMode = () => {
+    const nextMode = mapLayerMode === "satellite" ? "street" : "satellite";
+    setMapLayerMode(nextMode);
+    trackEvent("map_layer_toggle", { mode: nextMode });
   };
 
   const handleZoomIn = () => mapRef.current?.zoomIn();
@@ -614,7 +898,8 @@ export const ASRMap = forwardRef(({
       <div className="absolute top-4 right-2 sm:right-4 z-[40] flex flex-col gap-3 pointer-events-none">
         {/* Locate Me Button */}
         {!hideControls && (
-           <button
+          <>
+            <button
               onClick={handleFindMe}
               title="Find my location"
               aria-label="Find my location"
@@ -624,7 +909,7 @@ export const ASRMap = forwardRef(({
                   ? "bg-black border-zinc-800 text-white hover:bg-zinc-900 focus-visible:ring-offset-[#030303] shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
                   : "bg-white border-slate-200 text-black shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:bg-slate-50 theme-focus"
               )}
-           >
+            >
               <svg
                 width="22"
                 height="22"
@@ -660,7 +945,30 @@ export const ASRMap = forwardRef(({
                   )}
                 />
               </svg>
-           </button>
+            </button>
+
+            {/* Satellite / Street Geometry Toggle */}
+            <button
+              onClick={handleToggleLayerMode}
+              title={mapLayerMode === "satellite" ? "Switch to Street Map" : "Switch to Satellite Imagery"}
+              aria-label={mapLayerMode === "satellite" ? "Switch to Street Map" : "Switch to Satellite Imagery"}
+              aria-pressed={mapLayerMode === "satellite"}
+              className={cn(
+                "pointer-events-auto p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+                mapLayerMode === "satellite"
+                  ? "bg-blue-600 border-blue-400 text-white shadow-[0_0_16px_rgba(59,130,246,0.5)]"
+                  : isDark
+                    ? "bg-black border-zinc-800 text-white hover:bg-zinc-900 focus-visible:ring-offset-[#030303] shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
+                    : "bg-white border-slate-200 text-black shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:bg-slate-50 theme-focus"
+              )}
+            >
+              {mapLayerMode === "satellite" ? (
+                <MapIcon size={18} strokeWidth={2.5} />
+              ) : (
+                <Satellite size={18} strokeWidth={2.25} />
+              )}
+            </button>
+          </>
         )}
 
         {/* Zoom Controls (Desktop Only) */}

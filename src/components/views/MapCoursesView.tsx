@@ -12,10 +12,25 @@ import { useDebounce } from "../../hooks/useDataHooks";
 import { useAppStore } from "../../store/useAppStore";
 import { cn } from "../../lib/asr-utils";
 import { normalizeForSearch } from "../../lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Navigation, Compass } from "lucide-react";
 import { ASRSearchInput } from "../common/ASRSearchInput";
 
 const ASRMap = React.lazy(() => import("../ASRMap").then((m) => ({ default: m.ASRMap })));
+
+const computeDistanceKm = (a: [number, number], b: [number, number]): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371; // Earth radius in km
+  const dLat = toRad(b[0] - a[0]);
+  const dLon = toRad(b[1] - a[1]);
+  const lat1 = toRad(a[0]);
+  const lat2 = toRad(b[0]);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+  const h =
+    sinDLat * sinDLat +
+    Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
 
 export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }) => {
   const isLoading = useDataStore(s => s.isLoading);
@@ -37,6 +52,9 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   const [snap, setSnap] = React.useState<number>(0.2);
   const containerRef = useRef<HTMLDivElement>(null);
   const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
+  const userLocation = useAppStore(s => s.userLocation);
+  const courseSortMode = useAppStore(s => s.courseSortMode);
+  const setCourseSortMode = useAppStore(s => s.setCourseSortMode);
   
   const runKey = isAllTimeContext ? "totalAllTimeRuns" : (eventType === "2026" ? "season26Runs" : "totalAllTimeRuns");
   const columns = React.useMemo(() => [{ label: "RUNS", key: runKey }], [runKey]);
@@ -80,16 +98,45 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
 
   const debouncedSearch = useDebounce(search, 300);
 
+  const coursesWithDistance = useMemo(() => {
+    if (!userLocation) return courseList;
+    return courseList.map((item: any) => {
+      if (item?.isDivider || !item?.parsedCoords) return item;
+      const distKm = computeDistanceKm(userLocation, item.parsedCoords);
+      return {
+        ...item,
+        distanceKm: distKm,
+        subtitle: `${distKm.toFixed(2)} KM AWAY`,
+      };
+    });
+  }, [courseList, userLocation]);
+
   const searchedData = useMemo(() => {
     const term = normalizeForSearch(String(debouncedSearch || ""));
-    if (!term) return courseList;
+    if (!term) return coursesWithDistance;
     const searchTerms = term.split(/[\s,]+/).filter(Boolean);
-    return courseList.filter((item: any) => {
+    return coursesWithDistance.filter((item: any) => {
       if (item?.isDivider) return true;
       const key = item?.searchKey || "";
       return searchTerms.every((t: string) => key.includes(t));
     });
-  }, [debouncedSearch, courseList]);
+  }, [debouncedSearch, coursesWithDistance]);
+
+  const nearestOverallCourse = useMemo(() => {
+    if (!userLocation) return null;
+    const source = searchedData.filter((c: any) => c && !c.isDivider && c.parsedCoords && typeof c.distanceKm === "number");
+    const pool = source.length > 0
+      ? source
+      : coursesWithDistance.filter((c: any) => c && !c.isDivider && c.parsedCoords && typeof c.distanceKm === "number");
+    if (pool.length === 0) return null;
+    let best = pool[0];
+    for (let i = 1; i < pool.length; i++) {
+      if (pool[i].distanceKm < best.distanceKm) {
+        best = pool[i];
+      }
+    }
+    return best;
+  }, [userLocation, searchedData, coursesWithDistance]);
 
   const lastAutoOpenedQueryRef = useRef("");
 
@@ -107,22 +154,45 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   }, [debouncedSearch, searchedData, setActiveCourseId, setSnap]);
 
   const visibleData = useMemo(() => {
-    if (!visibleBounds) return searchedData;
-    return searchedData.filter((item: any) => {
-      if (item?.isDivider) return true;
-      if (!item?.parsedCoords) return true;
-      const [lat, lng] = item.parsedCoords;
-      const latOk = lat >= visibleBounds.south && lat <= visibleBounds.north;
-      let lngOk: boolean;
-      if (visibleBounds.west <= visibleBounds.east) {
-        lngOk = lng >= visibleBounds.west && lng <= visibleBounds.east;
-      } else {
-        lngOk = lng >= visibleBounds.west || lng <= visibleBounds.east;
-      }
-      // Add a small buffer to the bounds to ensure items near the edge are shown
-      return latOk && lngOk;
-    });
-  }, [searchedData, visibleBounds]);
+    const filtered = !visibleBounds
+      ? searchedData
+      : searchedData.filter((item: any) => {
+          if (item?.isDivider) return true;
+          if (!item?.parsedCoords) return true;
+          const [lat, lng] = item.parsedCoords;
+          const latOk = lat >= visibleBounds.south && lat <= visibleBounds.north;
+          let lngOk: boolean;
+          if (visibleBounds.west <= visibleBounds.east) {
+            lngOk = lng >= visibleBounds.west && lng <= visibleBounds.east;
+          } else {
+            lngOk = lng >= visibleBounds.west || lng <= visibleBounds.east;
+          }
+          return latOk && lngOk;
+        });
+
+    if (userLocation && courseSortMode === "nearest") {
+      const realItems = filtered.filter((item: any) => !item?.isDivider);
+      return [...realItems].sort((a: any, b: any) => {
+        const da = typeof a.distanceKm === "number" ? a.distanceKm : Infinity;
+        const db = typeof b.distanceKm === "number" ? b.distanceKm : Infinity;
+        return da - db;
+      });
+    }
+
+    return filtered;
+  }, [searchedData, visibleBounds, userLocation, courseSortMode]);
+
+  const handleJumpToNearest = React.useCallback(() => {
+    if (!nearestOverallCourse) return;
+    if (debouncedSearch) {
+      setSearch("");
+    }
+    setActiveCourseId(nearestOverallCourse.name || null);
+    setSnap(0.5);
+    if (nearestOverallCourse.parsedCoords && mapRef.current?.frameCourseAndUser) {
+      mapRef.current.frameCourseAndUser(nearestOverallCourse.parsedCoords);
+    }
+  }, [nearestOverallCourse, debouncedSearch, setActiveCourseId]);
 
   const handleItemClick = React.useCallback((c: CourseData) => {
     navigateToEntity("course", c);
@@ -140,10 +210,11 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
 
   const renderListContent = (currentSnap: number, scrollRef: React.RefObject<HTMLDivElement>, dRef: React.RefObject<any>) => {
     const courseCount = courseList ? courseList.filter((i: any) => !i.isDivider).length : 0;
+    const visibleRealCoursesCount = visibleData.filter((i: any) => i && !i.isDivider).length;
     
     return (
     <div className="flex flex-col h-full bg-transparent">
-      <div className="px-4 pb-2 pt-2 shrink-0 pointer-events-auto">
+      <div className="px-4 pb-2 pt-2 shrink-0 pointer-events-auto flex flex-col gap-2">
         <ASRSearchInput
           value={search}
           onChange={(e: any) => setSearch(e.target.value)}
@@ -151,6 +222,48 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
           placeholder={`search ${courseCount} courses...`}
           enableFocusShortcut="slash"
         />
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-50 tabular-nums">
+            {visibleRealCoursesCount} IN VIEW
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (!userLocation) {
+                  mapRef.current?.locateUser?.();
+                } else {
+                  setCourseSortMode(courseSortMode === "nearest" ? "runs" : "nearest");
+                }
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 outline-none",
+                userLocation && courseSortMode === "nearest"
+                  ? "bg-blue-600 border-blue-400 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+                  : theme === "dark"
+                    ? "bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white"
+                    : "bg-white/90 border-black/10 text-zinc-600 hover:text-black"
+              )}
+            >
+              <Navigation size={10} strokeWidth={2.5} className={cn(userLocation && courseSortMode === "nearest" ? "fill-current" : "")} />
+              <span>{userLocation && courseSortMode === "nearest" ? "SORT: NEAREST" : "NEAREST"}</span>
+            </button>
+            {userLocation && courseSortMode === "nearest" && (
+              <button
+                type="button"
+                onClick={() => setCourseSortMode("runs")}
+                className={cn(
+                  "px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 outline-none",
+                  theme === "dark"
+                    ? "bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white"
+                    : "bg-white/90 border-black/10 text-zinc-600 hover:text-black"
+                )}
+              >
+                RUNS
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       <div 
         ref={scrollRef}
@@ -164,18 +277,81 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
         style={{ touchAction: currentSnap >= 0.8 ? 'pan-y' : 'none' }}
       >
         <ErrorBoundary fallbackMessage="Failed to render the data list.">
-          <ASRDataTable
-            ref={dRef}
-            scrollElementRef={scrollRef}
-            data={visibleData}
-            isLoading={isLoading}
-            viewType="card"
-            isCompact={true}
-            onItemClick={handleItemClick}
-            middleLabel="COURSE"
-            columns={columns}
-            showVideoColumn={true}
-          />
+          {!isLoading && visibleRealCoursesCount === 0 && nearestOverallCourse ? (
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center p-6 mt-2 text-center rounded-[2rem] border animate-in fade-in duration-300",
+                theme === "dark"
+                  ? "bg-zinc-900/50 border-zinc-800"
+                  : "bg-white/80 border-slate-200 shadow-sm"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center mb-3",
+                  theme === "dark"
+                    ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                    : "bg-blue-50 text-blue-600 border border-blue-200"
+                )}
+              >
+                <Compass size={22} strokeWidth={2} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 mb-1">
+                NO COURSES IN IMMEDIATE VIEWPORT
+              </span>
+              <h4
+                className={cn(
+                  "text-sm sm:text-base font-black uppercase tracking-tight mb-1",
+                  theme === "dark" ? "text-white" : "text-zinc-900"
+                )}
+              >
+                {nearestOverallCourse.flag ? `${nearestOverallCourse.flag} ` : ""}
+                {nearestOverallCourse.name}
+              </h4>
+              <p
+                className={cn(
+                  "text-xs font-mono font-bold uppercase tracking-widest tabular-nums mb-4",
+                  theme === "dark" ? "text-zinc-400" : "text-zinc-500"
+                )}
+              >
+                {nearestOverallCourse.distanceKm.toFixed(2)} KM FROM YOUR LOCATION
+              </p>
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-xs">
+                <button
+                  type="button"
+                  onClick={handleJumpToNearest}
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_4px_14px_rgba(37,99,235,0.4)] cursor-pointer"
+                >
+                  FRAME NEAREST COURSE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleItemClick(nearestOverallCourse)}
+                  className={cn(
+                    "w-full sm:w-auto py-2.5 px-4 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer shrink-0",
+                    theme === "dark"
+                      ? "bg-zinc-900 border-white/10 text-zinc-200 hover:bg-zinc-800"
+                      : "bg-white border-black/10 text-zinc-800 hover:bg-zinc-50"
+                  )}
+                >
+                  INSPECT
+                </button>
+              </div>
+            </div>
+          ) : (
+            <ASRDataTable
+              ref={dRef}
+              scrollElementRef={scrollRef}
+              data={visibleData}
+              isLoading={isLoading}
+              viewType="card"
+              isCompact={true}
+              onItemClick={handleItemClick}
+              middleLabel={userLocation && courseSortMode === "nearest" ? "COURSE • DISTANCE" : "COURSE"}
+              columns={columns}
+              showVideoColumn={true}
+            />
+          )}
         </ErrorBoundary>
       </div>
     </div>

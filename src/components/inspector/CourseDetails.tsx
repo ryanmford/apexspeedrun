@@ -158,6 +158,7 @@ export const CourseDetails = React.memo(
       courseRunsHistory = {},
     } = dataContext || {};
     const setPlayingVideoUrl = useAppStore(s => s.setPlayingVideoUrl);
+    const userLocation = useAppStore(s => s.userLocation);
     const cName = (course?.name || "").toUpperCase();
     const meta = cMet[cName] || course || {};
 
@@ -384,8 +385,39 @@ export const CourseDetails = React.memo(
       },
     ];
 
-    const mapsUrl = meta.coordinates
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meta.coordinates)}`
+    const resolvedCoords: [number, number] | null = useMemo(() => {
+      if (Array.isArray(meta.parsedCoords) && meta.parsedCoords.length === 2) {
+        return [Number(meta.parsedCoords[0]), Number(meta.parsedCoords[1])];
+      }
+      if (Array.isArray(course?.parsedCoords) && course.parsedCoords.length === 2) {
+        return [Number(course.parsedCoords[0]), Number(course.parsedCoords[1])];
+      }
+      const match = String(meta.coordinates || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+      return match ? [parseFloat(match[1]), parseFloat(match[2])] : null;
+    }, [meta.parsedCoords, meta.coordinates, course?.parsedCoords]);
+
+    const distanceFromUserKm = useMemo(() => {
+      if (!userLocation || !resolvedCoords) return null;
+      const toRad = (deg: number) => (deg * Math.PI) / 180;
+      const R = 6371;
+      const dLat = toRad(resolvedCoords[0] - userLocation[0]);
+      const dLon = toRad(resolvedCoords[1] - userLocation[1]);
+      const lat1 = toRad(userLocation[0]);
+      const lat2 = toRad(resolvedCoords[0]);
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }, [userLocation, resolvedCoords]);
+
+    const destinationParam = resolvedCoords
+      ? `${resolvedCoords[0]},${resolvedCoords[1]}`
+      : meta.coordinates
+        ? String(meta.coordinates).trim()
+        : null;
+
+    const directionsUrl = destinationParam
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationParam)}`
       : null;
     const rulesUrl = meta.demoVideo;
 
@@ -409,22 +441,27 @@ export const CourseDetails = React.memo(
             <div className="flex items-center gap-1.5 opacity-60 font-black text-[11px] uppercase tracking-widest mt-1 w-full min-w-0">
               <MapPin size={12} className="shrink-0" />
               <span className="truncate">{formatLocation(meta)}</span>
+              {distanceFromUserKm !== null && (
+                <span className="shrink-0 ml-1 px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 font-mono text-[10px] tabular-nums">
+                  {distanceFromUserKm.toFixed(2)} KM
+                </span>
+              )}
             </div>
           }
         />
 
         <div className="flex w-full gap-2 px-4 py-3 pt-4 border-b border-white/[0.05]">
           <ASRStandardButton
-            href={mapsUrl || undefined}
+            href={directionsUrl || undefined}
             target="_blank"
             rel="noopener noreferrer"
             variant="premium"
             color="blue"
             theme={theme}
-            disabled={!mapsUrl}
+            disabled={!directionsUrl}
             className="flex-1 py-2.5 px-0 justify-center rounded-xl text-[12px]"
             onClick={(e: React.MouseEvent) =>
-              !mapsUrl && e.preventDefault()
+              !directionsUrl && e.preventDefault()
             }
           >
             <MapPin size={16} strokeWidth={2.5} />
