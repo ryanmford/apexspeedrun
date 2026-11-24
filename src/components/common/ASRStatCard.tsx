@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState, useEffect, useContext } from "react";
 import { cn, THEME, trackEvent } from "../../lib/asr-utils";
 import { ThemeContext } from "../../theme-context";
@@ -34,7 +32,7 @@ export const ASRStatCard = React.memo(
       }
     }, [isFlipped]);
 
-    const statInfoMap: any = {
+    const statInfoMap: Record<string, React.ReactNode> = {
       LQ: "LOCOMOTIVE QUOTIENT = POINTS / RUNS",
       "AVG POINTS": "AVERAGE POINTS PER RUN",
       "🔥": (
@@ -96,7 +94,7 @@ export const ASRStatCard = React.memo(
             setIsFlipped(!isFlipped);
           }
         }}
-        onClick={(e: any) => {
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => {
           if (description) {
             e.stopPropagation();
             trackEvent("flip_stat_card", { stat_label: labelStr });

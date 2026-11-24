@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useContext, forwardRef, useImperativeHandle } from "react";
 import { Plus, Minus, Satellite, Map as MapIcon } from "lucide-react";
 import L from "leaflet";
@@ -8,9 +7,16 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
 import { trackEvent, cn } from "../lib/asr-utils";
+import { isSignificantGpsMove } from "../lib/geo-utils";
 import { ThemeContext } from "../theme-context";
 import { useAppStore } from "../store/useAppStore";
 import { CourseData } from "../types";
+
+export interface ASRMapHandle {
+  locateUser: () => void;
+  resetView: () => void;
+  frameCourseAndUser: (courseCoords: [number, number]) => void;
+}
 
 export interface ASRMapProps {
   courses?: CourseData[];
@@ -25,7 +31,7 @@ export interface ASRMapProps {
   hideControls?: boolean;
 }
 
-export const ASRMap = forwardRef(({
+export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
   courses = [],
   totalCourses = 0,
   searchQuery = "",
@@ -36,7 +42,7 @@ export const ASRMap = forwardRef(({
   theme: propTheme,
   className,
   hideControls = false,
-}: ASRMapProps, ref: any) => {
+}, ref) => {
   const contextTheme = useContext(ThemeContext);
   const theme = propTheme || contextTheme;
   const isDark = theme === "dark";
@@ -64,6 +70,8 @@ export const ASRMap = forwardRef(({
   const tileLayersRef = useRef<{ light?: L.TileLayer; dark?: L.TileLayer; satellite?: L.TileLayer }>({});
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const courseCoordsRef = useRef<Map<string, [number, number]>>(new Map());
+  const prevActiveCourseIdRef = useRef<string | null>(null);
+  const lastIconUserLocRef = useRef<[number, number] | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const locateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -262,7 +270,7 @@ export const ASRMap = forwardRef(({
     }
     tileLayersRef.current = { light: lightLayer, dark: darkLayer, satellite: satelliteLayer };
 
-    const getClusterIcon = (cluster: any) => {
+    const getClusterIcon = (cluster: L.MarkerCluster) => {
       const count = cluster.getChildCount();
       let gradientStyle = "linear-gradient(90deg, #52525b, #a1a1aa, #f4f4f5, #a1a1aa, #52525b)";
       if (count > 50) {
@@ -322,7 +330,7 @@ export const ASRMap = forwardRef(({
       }
       if (orientationListenerRef.current) {
         window.removeEventListener("deviceorientation", orientationListenerRef.current, true);
-        window.removeEventListener("deviceorientationabsolute" as any, orientationListenerRef.current as any, true);
+        window.removeEventListener("deviceorientationabsolute", orientationListenerRef.current as EventListener, true);
         orientationListenerRef.current = null;
       }
       setIsLocating(false);
@@ -342,8 +350,8 @@ export const ASRMap = forwardRef(({
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
     
-    const handleMapClick = (e: any) => {
-      if ((e.originalEvent as any)._markerClicked) return;
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      if ((e.originalEvent as MouseEvent & { _markerClicked?: boolean })._markerClicked) return;
       if (onMapClickRef.current) {
         onMapClickRef.current();
       }
@@ -566,20 +574,20 @@ export const ASRMap = forwardRef(({
          });
 
          marker.on("click", (e) => {
-            (e.originalEvent as any)._markerClicked = true;
-            if (!mapRef.current) return;
+            (e.originalEvent as MouseEvent & { _markerClicked?: boolean })._markerClicked = true;
+            if (!mapRef.current || !c.parsedCoords) return;
 
             // Intelligent Panning
             const currentZoom = Math.max(mapRef.current.getZoom(), 12);
             const pt = mapRef.current.project(c.parsedCoords, currentZoom);
             const isDesktop = window.innerWidth >= 768;
-            
+
             if (!isDesktop) {
-               const targetLatLng = mapRef.current.unproject({ x: pt.x, y: pt.y + (window.innerHeight * 0.22) }, currentZoom);
+               const targetLatLng = mapRef.current.unproject(L.point(pt.x, pt.y + (window.innerHeight * 0.22)), currentZoom);
                mapRef.current.flyTo(targetLatLng, currentZoom, { duration: 1.0 });
             } else {
                const panelWidth = window.innerWidth >= 1024 ? 450 : 400;
-               const targetLatLng = mapRef.current.unproject({ x: pt.x - (panelWidth / 2), y: pt.y }, currentZoom);
+               const targetLatLng = mapRef.current.unproject(L.point(pt.x - (panelWidth / 2), pt.y), currentZoom);
                mapRef.current.flyTo(targetLatLng, currentZoom, { duration: 1.0 });
             }
 
@@ -598,21 +606,52 @@ export const ASRMap = forwardRef(({
 
   }, [courses, mapReady]); 
 
-  // Active Pin State, Theme, AND User Location updates (re-render icons with live distance badge)
+  // O(1) Active Pin State update: only redraw previous & current active marker
+  useEffect(() => {
+    if (!mapReady) return;
+    const prevId = prevActiveCourseIdRef.current;
+    if (prevId && prevId !== activeCourseId) {
+      const prevMarker = markersRef.current.get(prevId);
+      if (prevMarker) {
+        prevMarker.setIcon(createPinIcon(prevId, false, courseCoordsRef.current.get(prevId)));
+        prevMarker.setZIndexOffset(0);
+      }
+    }
+    if (activeCourseId) {
+      const nextMarker = markersRef.current.get(activeCourseId);
+      if (nextMarker) {
+        nextMarker.setIcon(
+          createPinIcon(activeCourseId, true, courseCoordsRef.current.get(activeCourseId)),
+        );
+        nextMarker.setZIndexOffset(1000);
+      }
+    }
+    prevActiveCourseIdRef.current = activeCourseId;
+  }, [activeCourseId, mapReady]);
+
+  // Theme changes redraw all pin icons
   useEffect(() => {
     if (!mapReady) return;
     for (const [id, marker] of markersRef.current.entries()) {
-      const isActive = activeCourseId === id;
+      const isActive = activeCourseIdRef.current === id;
       marker.setIcon(createPinIcon(id, isActive, courseCoordsRef.current.get(id)));
-      
-      // Feature: push to top visually
-      if (isActive) {
-        marker.setZIndexOffset(1000);
-      } else {
-        marker.setZIndexOffset(0);
-      }
+      marker.setZIndexOffset(isActive ? 1000 : 0);
     }
-  }, [activeCourseId, isDark, mapReady, userLocation]);
+  }, [isDark, mapReady]);
+
+  // Distance-gated User Location updates (only rebuild marker distance badges when moved > 50m)
+  useEffect(() => {
+    if (!mapReady || !userLocation) return;
+    const prevLoc = lastIconUserLocRef.current;
+    if (!isSignificantGpsMove(prevLoc, userLocation, 0.05)) {
+      return;
+    }
+    lastIconUserLocRef.current = userLocation;
+    for (const [id, marker] of markersRef.current.entries()) {
+      const isActive = activeCourseIdRef.current === id;
+      marker.setIcon(createPinIcon(id, isActive, courseCoordsRef.current.get(id)));
+    }
+  }, [userLocation, mapReady]);
 
   const applyHeadingToDom = React.useCallback((deg: number | null) => {
     const el = userMarkerRef.current?.getElement();
@@ -680,7 +719,7 @@ export const ASRMap = forwardRef(({
         }
       };
       orientationListenerRef.current = handler;
-      window.addEventListener("deviceorientationabsolute" as any, handler as any, true);
+      window.addEventListener("deviceorientationabsolute", handler as EventListener, true);
       window.addEventListener("deviceorientation", handler, true);
     };
 

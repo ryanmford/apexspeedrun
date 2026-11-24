@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React, { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useDataStore } from "../../store/useDataStore";
@@ -14,10 +12,50 @@ import {
 } from "../../lib/asr-utils";
 import { ASRSectionHeading } from "../common/ASRSectionHeading";
 import { ASRRankBadge } from "../ASRListItems";
-import { ASRPromotionBanner } from "../common/ASRPromotionBanner";
+import { ASRPromotionBanner, type PromoType } from "../common/ASRPromotionBanner";
+import type { PlayerProfile, SetterProfile } from "../../types";
+
+type HOFStatKey =
+ | "rating"
+ | "courses"
+ | "runs"
+ | "reruns"
+ | "cities"
+ | "countries"
+ | "wins"
+ | "winPercentage"
+ | "contributionScore"
+ | "totalFireCount"
+ | "impact"
+ | "sets";
+
+type HOFEntry = (PlayerProfile | SetterProfile) & {
+ id?: string;
+ reruns?: number;
+ cities?: number;
+ countries?: number;
+ winPercentage?: number;
+ impact?: number;
+};
 
 interface ASRHOFProps {
- onEntityClick: (type: string, data: any, options?: any) => void;
+ onEntityClick: (
+  type: string,
+  data: Record<string, unknown>,
+  options?: { initialMode?: string },
+ ) => void;
+ medalSort: { key: string; direction: "ascending" | "descending" };
+ onMedalSort: (key: string) => void;
+ theme: "light" | "dark";
+}
+
+interface MedalHeaderProps {
+ l: string;
+ k: string;
+ a?: "left" | "right";
+ sortable?: boolean;
+ className?: string;
+ style?: React.CSSProperties;
  medalSort: { key: string; direction: "ascending" | "descending" };
  onMedalSort: (key: string) => void;
  theme: "light" | "dark";
@@ -30,13 +68,15 @@ const MedalHeader = React.memo(
  a = "left",
  sortable = true,
  className,
+ style,
  medalSort,
  onMedalSort,
  theme,
- }: any) => {
+ }: MedalHeaderProps) => {
  const isActive = medalSort.key === k;
  return (
  <th
+ style={style}
  className={cn(
  "py-3 sm:py-5 px-3 sm:px-5 uppercase text-[10px] sm:text-[13px] font-black tracking-widest transition-all select-none group h-full",
  sortable ? "cursor-pointer hover:bg-black/5" : "cursor-default",
@@ -97,12 +137,12 @@ export const ASRHOF = React.memo(
  if (!data || data.length === 0) return null;
  return calculateWofStats(
  data,
- atPerfs as any,
+ atPerfs,
  lbAT,
- atMet as any,
+ atMet,
  medalSort,
  settersWithImpact,
- cMet as any,
+ cMet,
  courseRunsHistory,
  );
  }, [data, lbAT, atMet, atPerfs, medalSort, settersWithImpact, cMet, courseRunsHistory]);
@@ -126,7 +166,7 @@ export const ASRHOF = React.memo(
   return null;
  }
 
- const sections = [
+ const sections: Array<{ l: string; subtitle: React.ReactNode; k: HOFStatKey }> = [
  { l: "TOP LQ", subtitle: "LOCOMOTIVE QUOTIENT = POINTS / RUNS", k: "rating" },
  { l: "MOST COURSES", subtitle: "TOTAL COURSES COMPLETED", k: "courses" },
  { l: "MOST RUNS", subtitle: "TOTAL VERIFIED RUNS", k: "runs" },
@@ -263,26 +303,26 @@ export const ASRHOF = React.memo(
  <div className="flex flex-col divide-y divide-zinc-800/10">
  {(() => {
    const limit = visibleCounts[sec.k] || 10;
-   const items = stats.topStats[sec.k] || [];
+   const items = (stats.topStats[sec.k] || []) as HOFEntry[];
    return (
      <>
-       {items.slice(0, limit).map((a: any, i: number) => {
+       {items.slice(0, limit).map((a, i) => {
          const isSetterBoard = ["impact", "sets"].includes(sec.k);
- let displayVal: any;
+ let displayVal: string | number;
  if (sec.k === "rating")
- displayVal = (a.rating || 0).toFixed(2);
+ displayVal = ((a as PlayerProfile).rating || 0).toFixed(2);
  else if (sec.k === "winPercentage")
  displayVal = (a.winPercentage || 0).toFixed(2);
  else if (sec.k === "contributionScore")
- displayVal = (a.contributionScore || 0).toFixed(2);
+ displayVal = ((a as PlayerProfile).contributionScore || 0).toFixed(2);
  else if (sec.k === "totalFireCount")
- displayVal = a.allTimeFireCount || 0;
+ displayVal = (a as PlayerProfile).allTimeFireCount || 0;
  else if (sec.k === "impact") displayVal = a.impact || 0;
  else if (sec.k === "sets") displayVal = a.sets || 0;
  else if (sec.k === "reruns") displayVal = a.reruns || 0;
  else if (sec.k === "cities") displayVal = a.cities || 0;
  else if (sec.k === "countries") displayVal = a.countries || 0;
- else displayVal = a[sec.k] || 0;
+ else displayVal = Number((a as unknown as Record<string, unknown>)[sec.k]) || 0;
 
  const isTop3 = i < 3;
  const flags = getCombinedFlags(a);
@@ -297,7 +337,7 @@ export const ASRHOF = React.memo(
  onClick={() =>
  onEntityClick(
  isSetterBoard ? "setter" : "player",
- a,
+ a as unknown as Record<string, unknown>,
  { initialMode: "all-time" },
  )
  }
@@ -452,7 +492,7 @@ export const ASRHOF = React.memo(
  </tr>
  </thead>
  <tbody className="divide-y divide-zinc-800/10">
- {stats.medalCount.map((c: any) => (
+ {stats.medalCount.map((c) => (
  <tr
  key={c.name}
  onClick={() => {
@@ -527,9 +567,9 @@ export const ASRHOF = React.memo(
  <div className="px-4 sm:px-6 mt-8">
  <ASRPromotionBanner
  type={
- ["skool", "setter"][
+ (["skool", "setter"] as PromoType[])[
  Math.floor(Math.random() * 2)
- ] as any
+ ]
  }
  theme={theme}
  />

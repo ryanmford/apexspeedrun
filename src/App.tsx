@@ -12,18 +12,16 @@ import { useLocation, useNavigate, Routes, Route, Navigate } from "react-router-
 import {
   AlertCircle,
 } from "lucide-react";
-import {
-  ASRHeader,
-  ASRNavDock,
-  ASRLiveTicker,
-  ASRBaseModal,
-  ASRIntroOverlay,
-  ASROnboarding,
-  ASRFooter,
-} from "./components/ASRComponents";
-import { ASRVideoModal } from "./components/common/ASRVideoModal";
-import { ASRSubmitModal } from "./components/common/ASRSubmitModal";
+import { ASRHeader } from "./components/common/ASRHeader";
+import { ASRNavDock } from "./components/common/ASRNavDock";
+import { ASRLiveTicker } from "./components/common/ASRLiveTicker";
+import { ASRBaseModal } from "./components/common/ASRBaseModal";
+import { ASRFooter } from "./components/common/ASRFooter";
 
+const ASRIntroOverlay = React.lazy(() => import("./components/common/ASRIntroOverlay").then(m => ({ default: m.ASRIntroOverlay })));
+const ASROnboarding = React.lazy(() => import("./components/common/ASROnboarding").then(m => ({ default: m.ASROnboarding })));
+const ASRVideoModal = React.lazy(() => import("./components/common/ASRVideoModal").then(m => ({ default: m.ASRVideoModal })));
+const ASRSubmitModal = React.lazy(() => import("./components/common/ASRSubmitModal").then(m => ({ default: m.ASRSubmitModal })));
 const RankingsView = React.lazy(() => import("./components/views/RankingsView").then(m => ({ default: m.RankingsView })));
 const HomeView = React.lazy(() => import("./components/views/HomeView").then(m => ({ default: m.HomeView })));
 const MapCoursesView = React.lazy(() => import("./components/views/MapCoursesView").then(m => ({ default: m.MapCoursesView })));
@@ -185,18 +183,24 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
       <RouteScrollRestoration />
 
       {showIntro && (
-        <ASRIntroOverlay
-          theme={theme}
-          onStart={() => {
-            setShowIntro(false);
-            trackEvent("initialize_app", { source: "intro_button" });
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <ASRIntroOverlay
+            theme={theme}
+            onStart={() => {
+              setShowIntro(false);
+              trackEvent("initialize_app", { source: "intro_button" });
+            }}
+          />
+        </React.Suspense>
       )}
-      <ASROnboarding
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-      />
+      {showOnboarding && (
+        <React.Suspense fallback={null}>
+          <ASROnboarding
+            isOpen={showOnboarding}
+            onClose={() => setShowOnboarding(false)}
+          />
+        </React.Suspense>
+      )}
 
       <div 
         className={cn(
@@ -400,8 +404,19 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
         </RouteErrorBoundary>
       </ASRBaseModal>
 
-      <ASRVideoModal />
-      <ASRSubmitModal />
+      <LazyGlobalModals />
     </div>
+  );
+}
+
+function LazyGlobalModals() {
+  const playingVideoUrl = useAppStore((s) => s.playingVideoUrl);
+  const isSubmitModalOpen = useAppStore((s) => s.isSubmitModalOpen);
+
+  return (
+    <React.Suspense fallback={null}>
+      {playingVideoUrl && <ASRVideoModal />}
+      {isSubmitModalOpen && <ASRSubmitModal />}
+    </React.Suspense>
   );
 }

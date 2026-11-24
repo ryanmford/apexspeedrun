@@ -5,7 +5,7 @@ import { ThemeContext } from "../theme-context";
 import { useAppStore } from "../store/useAppStore";
 
 export const ASRRankBadge = React.memo(
- ({ rank, size = "md", scale = 1 }: { rank?: string | number | null; size?: "sm" | "md" | "lg"; scale?: number }) => {
+ ({ rank, size = "md", scale = 1, isUnclaimed: _isUnclaimed }: { rank?: string | number | null; size?: "sm" | "md" | "lg"; scale?: number; isUnclaimed?: boolean }) => {
  const theme = useContext(ThemeContext);
  const isUnranked = String(rank || "").trim() === "UR";
  const rankNum = isUnranked ? "UR" : rank === "-" ? "?" : rank;
@@ -49,6 +49,39 @@ export const ASRRankBadge = React.memo(
 
 
 
+export interface ASRListItemStat {
+  value?: React.ReactNode;
+  label?: string;
+  color?: string;
+}
+
+export interface ASRListItemColumn {
+  isRank?: boolean;
+  type?: string;
+  width?: string;
+}
+
+export interface ASRListItemProps {
+  rank?: string | number | null;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  variant?: "table" | "card" | "hero";
+  stats?: ASRListItemStat[];
+  columns?: ASRListItemColumn[];
+  videoUrl?: string | null;
+  icon?: React.ReactNode;
+  onClick?: (e?: React.MouseEvent | React.KeyboardEvent) => void;
+  badgeContent?: React.ReactNode;
+  shouldFade?: boolean;
+  flag?: string | null;
+  mapUrl?: string | null;
+  showVideoIcon?: boolean;
+  isUnclaimed?: boolean;
+  isCompact?: boolean;
+  onHover?: (isHovering: boolean) => void;
+  isHighlighted?: boolean;
+}
+
 export const ASRListItem = React.memo(
  ({
  rank,
@@ -67,26 +100,7 @@ export const ASRListItem = React.memo(
  showVideoIcon = false,
  isUnclaimed = false,
  isCompact = false, onHover, isHighlighted,
- }: {
-   rank?: string | number | null;
-   title?: React.ReactNode;
-   subtitle?: React.ReactNode;
-   variant?: "table" | "card" | "hero";
-   stats?: { value?: React.ReactNode }[];
-   columns?: { isRank?: boolean; type?: string }[];
-   videoUrl?: string | null;
-   icon?: React.ReactNode;
-   onClick?: (e?: React.MouseEvent | React.KeyboardEvent) => void;
-   badgeContent?: React.ReactNode;
-   shouldFade?: boolean;
-   flag?: string | null;
-   mapUrl?: string | null;
-   showVideoIcon?: boolean;
-   isUnclaimed?: boolean;
-   isCompact?: boolean;
-   onHover?: (isHovering: boolean) => void;
-   isHighlighted?: boolean;
- }) => {
+ }: ASRListItemProps) => {
  const setPlayingVideoUrl = useAppStore((s) => s.setPlayingVideoUrl);
  const theme = useContext(ThemeContext);
  const accentColor = theme === "dark" ? "text-white" : "text-zinc-900";
@@ -199,9 +213,9 @@ export const ASRListItem = React.memo(
  {subtitle}
  </div>
  </div>
- {(stats || []).map((s: { value?: React.ReactNode }, idx: number) => {
+ {(stats || []).map((s: ASRListItemStat, idx: number) => {
  const colDef = columns?.filter(
- (c: { isRank?: boolean; type?: string }) => !c.isRank && c.type !== "profile",
+ (c: ASRListItemColumn) => !c.isRank && c.type !== "profile",
  )[idx];
  return (
  <div
@@ -470,7 +484,7 @@ export const ASRListItem = React.memo(
  </ItemWrapper>
  );
  },
- (prev: Record<string, unknown>, next: Record<string, unknown>) => {
+ (prev: ASRListItemProps, next: ASRListItemProps) => {
  if (prev.rank !== next.rank) return false;
  if (prev.title !== next.title) return false;
  if (prev.subtitle !== next.subtitle) return false;
@@ -482,14 +496,17 @@ export const ASRListItem = React.memo(
  if (prev.showVideoIcon !== next.showVideoIcon) return false;
  if (prev.mapUrl !== next.mapUrl) return false;
  if (prev.icon !== next.icon) return false;
+ if (prev.isHighlighted !== next.isHighlighted) return false;
 
  // Check array lengths
  if (prev.stats?.length !== next.stats?.length) return false;
 
  // Check specific stats recursively rather than shallow checking the new stats array
- for (let i = 0; i < (prev.stats?.length || 0); i++) {
- if (prev.stats[i]?.value !== next.stats[i]?.value) return false;
- if (prev.stats[i]?.label !== next.stats[i]?.label) return false;
+ const prevStats = prev.stats || [];
+ const nextStats = next.stats || [];
+ for (let i = 0; i < prevStats.length; i++) {
+ if (prevStats[i]?.value !== nextStats[i]?.value) return false;
+ if (prevStats[i]?.label !== nextStats[i]?.label) return false;
  }
 
  return true;

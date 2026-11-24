@@ -1,5 +1,3 @@
- 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import { cn } from "../../lib/asr-utils";
 
@@ -13,7 +11,7 @@ interface FittingHeaderProps {
 }
 
 export const FittingHeader = React.memo(
- ({ children, className, textClassName, theme, align = "center", baseSize = "2rem" }: FittingHeaderProps) => {
+ ({ children, className, textClassName, align = "center", baseSize = "2rem" }: FittingHeaderProps) => {
  const containerRef = useRef<HTMLHeadingElement>(null);
  const textRef = useRef<HTMLDivElement>(null);
  const [scale, setScale] = useState(1);

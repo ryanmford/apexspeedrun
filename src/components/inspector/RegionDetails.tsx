@@ -10,7 +10,21 @@ import { ModalScrollContext } from "../common/ASRBaseModal";
 import { ASREmptyState } from "../common/ASREmptyState";
 import { useDataStore } from "../../store/useDataStore";
 
-import { ASRDataContext } from "../../types";
+import { ASRDataContext, CourseData, PlayerProfile, PlayerTeamRef } from "../../types";
+
+interface RegionMatchable {
+  flag?: string;
+  country?: string;
+  countryName?: string;
+  location?: string;
+  region?: string;
+  state?: string;
+  stateProv?: string;
+  city?: string;
+  teamLocation?: string;
+  homeGym?: string;
+  teams?: PlayerTeamRef[];
+}
 
 interface RegionDetailsProps {
   region: { name: string; flag?: string };
@@ -28,7 +42,7 @@ export const RegionDetails = React.memo(
 
     const allTimeRankedPKeys = useMemo(() => {
       const pKeys = new Set<string>();
-      [...(playerList_M_AT || []), ...(playerList_F_AT || [])].forEach((p: any) => {
+      [...(playerList_M_AT || []), ...(playerList_F_AT || [])].forEach((p: PlayerProfile) => {
         if (p.currentRank !== "UR" && !p.isDivider) {
           pKeys.add(p.pKey || normalizeName(p.name));
         }
@@ -73,7 +87,7 @@ export const RegionDetails = React.memo(
       }
     };
 
-    const matchRegion = (obj: any): boolean => {
+    const matchRegion = (obj: RegionMatchable): boolean => {
       const locStr = formatLocation(obj);
       if (!locStr || locStr === "UNKNOWN") return false;
 
@@ -101,7 +115,7 @@ export const RegionDetails = React.memo(
       ].filter(Boolean).map(v => String(v).toUpperCase().replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim());
       
       if (Array.isArray(obj.teams)) {
-          obj.teams.forEach((t: any) => {
+          obj.teams.forEach((t: PlayerTeamRef) => {
               if (t.location) rawValues.push(String(t.location).toUpperCase().replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim());
           });
       }
@@ -117,7 +131,7 @@ export const RegionDetails = React.memo(
     };
 
     const regionalCourses = useMemo(() => {
-      const allCourses = (dataContext.masterCourseList || []) as any[];
+      const allCourses: CourseData[] = dataContext.masterCourseList || [];
       return allCourses
         .filter(matchRegion)
         .map(c => ({
@@ -137,7 +151,7 @@ export const RegionDetails = React.memo(
 
         const mMAll = c.allTimeAthletesM || c.athletesMAll;
         if (Array.isArray(mMAll) && mRecord) {
-          mMAll.forEach((a: any) => {
+          mMAll.forEach((a) => {
             if (a && a[0]) {
               const pKey = normalizeName(a[0]);
               if (!regionStats[pKey]) regionStats[pKey] = { runs: 0, lqSum: 0 };
@@ -149,7 +163,7 @@ export const RegionDetails = React.memo(
 
         const fFAll = c.allTimeAthletesF || c.athletesFAll;
         if (Array.isArray(fFAll) && fRecord) {
-          fFAll.forEach((a: any) => {
+          fFAll.forEach((a) => {
             if (a && a[0]) {
               const pKey = normalizeName(a[0]);
               if (!regionStats[pKey]) regionStats[pKey] = { runs: 0, lqSum: 0 };
@@ -161,14 +175,14 @@ export const RegionDetails = React.memo(
       });
 
       return Object.values(atMet)
-        .filter((p: any) => {
+        .filter((p: PlayerProfile) => {
           const pKey = p.pKey || normalizeName(p.name);
           if (!allTimeRankedPKeys.has(pKey)) return false;
           const isFromRegion = matchRegion(p);
           const competedHere = !!regionStats[pKey];
           return isFromRegion || competedHere;
         })
-        .map((p: any) => {
+        .map((p: PlayerProfile) => {
           const pKey = p.pKey || normalizeName(p.name);
           const stats = regionStats[pKey] || { runs: 0, lqSum: 0 };
           return {
@@ -176,7 +190,7 @@ export const RegionDetails = React.memo(
             runs: stats.runs,
           };
         })
-        .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }, [atMet, region, regionalCourses, allTimeRankedPKeys]);
 
     return (
@@ -199,10 +213,10 @@ export const RegionDetails = React.memo(
 
         <div
           className={cn(
-            "flex items-center justify-center border-y sticky top-0 z-40 backdrop-blur-3xl transition-colors py-2",
+            "flex items-center justify-center border-y sticky top-0 z-40 transition-colors py-2",
             theme === "dark"
-              ? "border-white/5 bg-zinc-950/80 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
-              : "border-black/5 bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
+              ? "border-white/5 bg-zinc-950/95 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+              : "border-black/5 bg-white/95 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
           )}
         >
           <div className="flex w-full max-w-2xl px-4">
@@ -235,14 +249,14 @@ export const RegionDetails = React.memo(
                 <ASRStatCard label="PLAYERS" value={regionalPlayers.length} />
                 <ASRStatCard 
                   label="RUNS" 
-                  value={regionalPlayers.reduce((sum, p: any) => sum + (p.runs || 0), 0)} 
+                  value={regionalPlayers.reduce((sum, p) => sum + (p.runs || 0), 0)} 
                 />
               </div>
 
               {regionalPlayers.length > 0 ? (
                 <div className="mt-4">
                   <ASRRankList
-                    athletes={regionalPlayers.map((p: any) => [
+                    athletes={regionalPlayers.map((p) => [
                       p.pKey || normalizeName(p.name),
                       p.rating || 0,
                     ])}
@@ -271,7 +285,7 @@ export const RegionDetails = React.memo(
                 <ASRStatCard label="COURSES" value={regionalCourses.length} />
                 <ASRStatCard 
                   label="RUNS" 
-                  value={regionalCourses.reduce((sum, c: any) => sum + (c.runs || 0), 0)} 
+                  value={regionalCourses.reduce((sum, c) => sum + (c.runs || 0), 0)} 
                 />
               </div>
 

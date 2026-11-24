@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React from "react";
 import { Zap, ChevronsRight, Network, MapPin, Rocket } from "lucide-react";
 import { cn, CONFIG } from "../../lib/asr-utils";
@@ -7,10 +5,16 @@ import { ASRPremiumButton } from "./ASRPremiumButton";
 
 export type PromoType = "skool" | "setter" | "crowdfund" | "sponsor";
 
+interface PromoCourseInfo {
+ name?: string;
+ sponsorName?: string;
+ sponsorLink?: string;
+}
+
 interface ASRPromotionBannerProps {
  type: PromoType;
  theme: "light" | "dark";
- course?: any;
+ course?: PromoCourseInfo;
 }
 
 export const ASRPromotionBanner = React.memo(
@@ -56,7 +60,7 @@ export const ASRPromotionBanner = React.memo(
  : "Course sponsorships go directly to maintaining the course IRL, digital leaaderboards, and continued development. Adopt a course to support ASR and showcase your brand.",
  btnText: hasSponsor ? "LEARN MORE" : "INQUIRE",
  btnSubText: null, // "SUPPORT THE SPEED COMMUNITY" could go here if we wanted text under the button, but we cut it for sponsors as requested
- btnProps: { color: "gold" as any, effect: "metallic" as any },
+ btnProps: { color: "gold" as const, effect: "metallic" as const },
  link: sponsorLink,
  };
  case "setter":
@@ -79,8 +83,8 @@ export const ASRPromotionBanner = React.memo(
  btnText: "BECOME A SETTER",
  btnSubText: "DESIGN THE NEXT GENERATION OF COURSES",
  btnProps: {
- variant: "solid" as any,
-          effect: "none" as any,
+ variant: "solid" as const,
+          effect: "none" as const,
  className:
  "bg-emerald-600 hover:bg-emerald-500 text-white border-none",
  },
@@ -105,8 +109,8 @@ export const ASRPromotionBanner = React.memo(
  btnText: "CONTRIBUTE NOW",
  btnSubText: "FUEL THE SPEED PARKOUR MOVEMENT",
  btnProps: {
- variant: "solid" as any,
-          effect: "none" as any,
+ variant: "solid" as const,
+          effect: "none" as const,
  className: "bg-pink-600 hover:bg-pink-500 text-white border-none",
  },
  link: CONFIG.SKOOL_LINK,
@@ -130,7 +134,7 @@ export const ASRPromotionBanner = React.memo(
  desc: "Join the official ASR community to share tips and clips, get your runs verified, learn new training methods, and connect with other speed parkour athletes.",
  btnText: "JOIN NOW",
  btnSubText: "CONNECT WITH THE WORLDWIDE COMMUNITY",
- btnProps: { variant: "solid" as any, effect: "none" as any },
+ btnProps: { variant: "solid" as const, effect: "none" as const },
  link: CONFIG.SKOOL_LINK,
  };
  }

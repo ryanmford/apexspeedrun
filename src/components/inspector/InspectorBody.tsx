@@ -5,6 +5,7 @@ import { useLeaderboards } from "../../hooks/useAppCalculations";
 import { DetailsSkeleton } from "../common/Skeletons";
 import { cn } from "../../lib/asr-utils";
 import { SearchX, AlertCircle } from "lucide-react";
+import type { CourseData, PlayerProfile, TeamProfile } from "../../types";
 
 const PlayerDetails = React.lazy(() =>
   import("./PlayerDetails").then((m) => ({ default: m.PlayerDetails })),
@@ -147,7 +148,7 @@ export const InspectorBody = React.memo(
       case "player":
         content = (
           <PlayerDetails
-            player={finalData}
+            player={(finalData || {}) as unknown as PlayerProfile}
             dataContext={dataContext}
             onEntityClick={onEntityClick}
             theme={theme}
@@ -158,7 +159,7 @@ export const InspectorBody = React.memo(
       case "setter":
         content = (
           <PlayerDetails
-            player={finalData}
+            player={(finalData || {}) as unknown as PlayerProfile}
             dataContext={dataContext}
             onEntityClick={onEntityClick}
             theme={theme}
@@ -169,7 +170,7 @@ export const InspectorBody = React.memo(
       case "course":
         content = (
           <CourseDetails
-            course={finalData}
+            course={(finalData || {}) as unknown as CourseData}
             dataContext={dataContext}
             onEntityClick={onEntityClick}
             theme={theme}
@@ -179,7 +180,7 @@ export const InspectorBody = React.memo(
       case "team":
         content = (
           <TeamDetails
-            team={finalData}
+            team={(finalData || {}) as unknown as TeamProfile}
             dataContext={dataContext}
             onEntityClick={onEntityClick}
             theme={theme}
@@ -190,7 +191,7 @@ export const InspectorBody = React.memo(
       case "region":
         content = (
           <RegionDetails
-            region={finalData}
+            region={(finalData || {}) as { name: string }}
             dataContext={dataContext}
             onEntityClick={onEntityClick}
             theme={theme}
@@ -201,7 +202,7 @@ export const InspectorBody = React.memo(
         content = (
           <div className="p-10 text-center flex flex-col gap-4 items-center justify-center min-h-[50vh]">
             <h2 className="text-2xl font-black uppercase tracking-widest">
-              {finalData?.name || "INFORMATION"}
+              {String(finalData?.name || "INFORMATION")}
             </h2>
             <p
               className={cn(

@@ -1,13 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Share, CornerUpLeft, CornerUpRight, X, Check } from "lucide-react";
 import { cn } from "../../lib/asr-utils";
 
+interface ModalHistoryItem {
+  data?: {
+    name?: string;
+    courseName?: string;
+    level?: string;
+    athleteName?: string;
+  };
+}
+
 interface ASRBaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  history: any[];
+  history: ModalHistoryItem[];
   historyIndex: number;
   onJump?: (index: number) => void;
   children: React.ReactNode;
@@ -219,7 +226,7 @@ export const ASRBaseModal = React.memo(
                   <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap px-2">
                     {history &&
                       history.length > 0 &&
-                      history.map((item: any, idx: number) => {
+                      history.map((item, idx) => {
                         const isLast = idx === historyIndex;
                         const isFuture = idx > historyIndex;
 

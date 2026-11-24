@@ -1,43 +1,60 @@
 import { create } from 'zustand';
-import type { PlayerProfile, CourseData, SetterProfile, TeamProfile } from '../types';
+import type {
+  CourseData,
+  CourseRecordEntry,
+  CourseRunEntry,
+  GenderedCourseBoards,
+  GenderedPlayerMap,
+  KpiStats,
+  KpiTrends,
+  PlayerPerformance,
+  PlayerProfile,
+  RawBestRun,
+  RecentFeedItem,
+  SearchLocationItem,
+  SetterProfile,
+  TeamProfile,
+  TeamsAggregated,
+} from '../types';
 
-interface ASRDataState {
+export interface ASRDataState {
   data: PlayerProfile[];
   openData: PlayerProfile[];
-  atPerfs: Record<string, unknown>;
-  opPerfs: Record<string, unknown>;
-  season26Perfs: Record<string, unknown>;
-  lbAT: { M: Record<string, unknown>; F: Record<string, unknown> };
-  lbOpen: { M: Record<string, unknown>; F: Record<string, unknown> };
-  lbSeason26: { M: Record<string, unknown>; F: Record<string, unknown> };
-  atMet: Record<string, unknown>;
+  season26Data: PlayerProfile[];
+  atPerfs: Record<string, PlayerPerformance[]>;
+  opPerfs: Record<string, PlayerPerformance[]>;
+  season26Perfs: Record<string, PlayerPerformance[]>;
+  lbAT: GenderedCourseBoards;
+  lbOpen: GenderedCourseBoards;
+  lbSeason26: GenderedCourseBoards;
+  atMet: Record<string, PlayerProfile>;
   dnMap: Record<string, string>;
-  cMet: Record<string, unknown>;
-  settersData: SetterProfile[];
-  atRawBest: Record<string, unknown>;
-  opRawBest: Record<string, unknown>;
-  season26RawBest: Record<string, unknown>;
-  recentFeed: unknown[];
-  courseRunsHistory: Record<string, unknown[]>;
-  
+  cMet: Record<string, CourseData>;
+  atRawBest: Record<string, Record<string, RawBestRun>>;
+  opRawBest: Record<string, Record<string, RawBestRun>>;
+  season26RawBest: Record<string, Record<string, RawBestRun>>;
+  recentFeed: RecentFeedItem[];
+  courseRunsHistory: Record<string, CourseRunEntry[]>;
+
   // Computed Data
   masterCourseList: CourseData[];
-  kpiStats: Record<string, unknown> | null;
-  kpiTrends: Record<string, { value: number }[]> | null;
+  searchLocations: SearchLocationItem[];
+  kpiStats: KpiStats | null;
+  kpiTrends: KpiTrends | null;
   settersWithImpact: SetterProfile[];
-  setterMet: Record<string, unknown>;
-  teamsAggregated: TeamProfile[];
-  playerLB_AT: { M: PlayerProfile[]; F: PlayerProfile[] };
-  playerLB_OP: { M: PlayerProfile[]; F: PlayerProfile[] };
-  playerLB_2026: { M: PlayerProfile[]; F: PlayerProfile[] };
+  setterMet: Record<string, SetterProfile>;
+  teamsAggregated: TeamsAggregated;
+  playerLB_AT: GenderedPlayerMap;
+  playerLB_OP: GenderedPlayerMap;
+  playerLB_2026: GenderedPlayerMap;
 
   // Pre-computed lists
-  courseRecords_M_AT: Record<string, unknown>;
-  courseRecords_F_AT: Record<string, unknown>;
-  courseRecords_M_OP: Record<string, unknown>;
-  courseRecords_F_OP: Record<string, unknown>;
-  courseRecords_M_2026: Record<string, unknown>;
-  courseRecords_F_2026: Record<string, unknown>;
+  courseRecords_M_AT: Record<string, CourseRecordEntry[]>;
+  courseRecords_F_AT: Record<string, CourseRecordEntry[]>;
+  courseRecords_M_OP: Record<string, CourseRecordEntry[]>;
+  courseRecords_F_OP: Record<string, CourseRecordEntry[]>;
+  courseRecords_M_2026: Record<string, CourseRecordEntry[]>;
+  courseRecords_F_2026: Record<string, CourseRecordEntry[]>;
   playerList_M_AT: PlayerProfile[];
   playerList_F_AT: PlayerProfile[];
   playerList_M_OP: PlayerProfile[];
@@ -62,18 +79,22 @@ interface ASRDataState {
   lastUpdated: number | null;
   refreshTrigger: number;
   triggerRefresh: () => void;
-  
+
   setData: (payload: Partial<ASRDataState>) => void;
   setFetchStatus: (status: { isLoading?: boolean; isSyncing?: boolean; hasError?: boolean; hasPartialError?: boolean }) => void;
 }
 
+const EMPTY_TEAMS_AGGREGATED: TeamsAggregated = {
+  gyms: { open: [], allTime: [], season26: [] },
+  teams: { open: [], allTime: [], season26: [] },
+};
+
 export const useDataStore = create<ASRDataState>((set) => {
-  // Check if initial data was provided synchronously via SSR
-  let initialData = {};
+  let initialData: Partial<ASRDataState> = {};
   let initialIsLoading = true;
 
-  if (typeof window !== "undefined" && "window" in globalThis && (window as unknown as { __INITIAL_DATA__?: Record<string, unknown> }).__INITIAL_DATA__) {
-    initialData = (window as unknown as { __INITIAL_DATA__?: Record<string, unknown> }).__INITIAL_DATA__;
+  if (typeof window !== "undefined" && "window" in globalThis && (window as unknown as { __INITIAL_DATA__?: Partial<ASRDataState> }).__INITIAL_DATA__) {
+    initialData = (window as unknown as { __INITIAL_DATA__?: Partial<ASRDataState> }).__INITIAL_DATA__ || {};
     initialIsLoading = false;
   }
 
@@ -90,7 +111,6 @@ export const useDataStore = create<ASRDataState>((set) => {
     atMet: {},
     dnMap: {},
     cMet: {},
-    settersData: [],
     atRawBest: {},
     opRawBest: {},
     season26RawBest: {},
@@ -98,11 +118,12 @@ export const useDataStore = create<ASRDataState>((set) => {
     courseRunsHistory: {},
 
     masterCourseList: [],
+    searchLocations: [],
     kpiStats: null,
     kpiTrends: null,
     settersWithImpact: [],
     setterMet: {},
-    teamsAggregated: [],
+    teamsAggregated: EMPTY_TEAMS_AGGREGATED,
     playerLB_AT: { M: {}, F: {} },
     playerLB_OP: { M: {}, F: {} },
     playerLB_2026: { M: {}, F: {} },

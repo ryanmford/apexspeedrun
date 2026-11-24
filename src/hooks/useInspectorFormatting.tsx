@@ -1,38 +1,62 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { normalizeName } from "../lib/asr-utils";
 import { Zap, Medal, Waypoints } from "lucide-react";
-import { PlayerProfile, SetterProfile, TeamProfile, ASRDataContext } from "../types";
+import {
+  PlayerProfile,
+  SetterProfile,
+  TeamProfile,
+  CourseData,
+  PlayerPerformance,
+  CourseRunEntry,
+  GenderedPlayerMap,
+  GenderedCourseBoards,
+  TeamsAggregated,
+  ASRDataContext,
+} from "../types";
 
-const EMPTY_OBJ = {};
-const EMPTY_ARR: unknown[] = [];
-const EMPTY_LB = { M: {}, F: {} };
+const EMPTY_MET: Record<string, PlayerProfile> = {};
+const EMPTY_CMET: Record<string, CourseData> = {};
+const EMPTY_PRAW: Record<string, Record<string, PlayerPerformance[]>> = {};
+const EMPTY_SETTER_MET: Record<string, SetterProfile> = {};
+const EMPTY_HISTORY: Record<string, CourseRunEntry[]> = {};
+const EMPTY_COURSES: CourseData[] = [];
+const EMPTY_PLAYERS: PlayerProfile[] = [];
+const EMPTY_SETTERS: SetterProfile[] = [];
+const EMPTY_PLAYER_LB: GenderedPlayerMap = { M: {}, F: {} };
+const EMPTY_COURSE_LB: GenderedCourseBoards = { M: {}, F: {} };
+
+const toSetterList = (val?: string | string[]): string[] => {
+  if (!val) return [];
+  const raw = Array.isArray(val) ? val : val.split(",");
+  return raw.map((s) => normalizeName(s)).filter(Boolean);
+};
 
 export const usePlayerDetailsData = (
   player: PlayerProfile,
   activeMode: "open" | "all-time" | "2026",
   dataContext: ASRDataContext,
 ) => {
-  const lbAT = dataContext.lbAT || EMPTY_LB;
-  const lbOP = dataContext.lbOP || EMPTY_LB;
-  const atMet = dataContext.atMet || EMPTY_OBJ;
-  const cMet = dataContext.cMet || EMPTY_OBJ;
-  const pRaw = dataContext.pRaw || EMPTY_OBJ;
-  const setterMet = dataContext.setterMet || EMPTY_OBJ;
-  const lbAT_Courses = dataContext.lbAT_Courses || EMPTY_LB;
-  const courseRunsHistory = dataContext.courseRunsHistory || EMPTY_OBJ;
-  const masterCourseList = dataContext.masterCourseList || EMPTY_ARR;
+  const lbAT = dataContext.lbAT || EMPTY_PLAYER_LB;
+  const lbOP = dataContext.lbOP || EMPTY_PLAYER_LB;
+  const atMet = dataContext.atMet || EMPTY_MET;
+  const cMet = dataContext.cMet || EMPTY_CMET;
+  const pRaw = dataContext.pRaw || EMPTY_PRAW;
+  const setterMet = dataContext.setterMet || EMPTY_SETTER_MET;
+  const lbAT_Courses = dataContext.lbAT_Courses || EMPTY_COURSE_LB;
+  const courseRunsHistory = dataContext.courseRunsHistory || EMPTY_HISTORY;
+  const masterCourseList = dataContext.masterCourseList || EMPTY_COURSES;
 
   const pKey = player.pKey || normalizeName(player.name);
   const meta = atMet[pKey] || player;
 
   const stats = useMemo(() => {
     const lbSeason26 = dataContext.lbSeason26;
-    const lb = (activeMode === "all-time" ? lbAT : activeMode === "2026" ? lbSeason26 : lbOP) || { M: {}, F: {} };
-    const allStats = { ...(lb.M || {}), ...(lb.F || {}) };
-    const pData = allStats[pKey] || {};
+    const lb = (activeMode === "all-time" ? lbAT : activeMode === "2026" ? lbSeason26 : lbOP) || EMPTY_PLAYER_LB;
+    const allStats: Record<string, PlayerProfile> = { ...(lb.M || {}), ...(lb.F || {}) };
+    const pData: Partial<PlayerProfile> = allStats[pKey] || {};
 
-    const allTimeStats = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
-    const atData = allTimeStats[pKey] || {};
+    const allTimeStats: Record<string, PlayerProfile> = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
+    const atData: Partial<PlayerProfile> = allTimeStats[pKey] || {};
 
     return {
       rank: pData.rank || "UR",
@@ -70,25 +94,23 @@ export const usePlayerDetailsData = (
   }, [lbAT, lbOP, dataContext.lbSeason26, activeMode, pKey, meta]);
 
   const runs = useMemo(() => {
-    const sourceData = pRaw || {};
+    const sourceData = pRaw || EMPTY_PRAW;
     const raw = sourceData[activeMode]?.[pKey] || [];
     return raw
-      .map((r: Record<string, unknown>) => ({
+      .map((r: PlayerPerformance) => ({
         ...r,
         courseMeta: cMet[(r.label || "").toUpperCase()],
       }))
-      .sort(
-        (a: Record<string, unknown>, b: Record<string, unknown>) => {
-          const aPts = (a.pts ?? a.points ?? 0) as number;
-          const bPts = (b.pts ?? b.points ?? 0) as number;
-          if (bPts !== aPts) {
-            return bPts - aPts;
-          }
-          const aTime = (a.num ?? a.time ?? Infinity) as number;
-          const bTime = (b.num ?? b.time ?? Infinity) as number;
-          return aTime - bTime;
+      .sort((a, b) => {
+        const aPts = Number(a["pts"] ?? a.points ?? 0);
+        const bPts = Number(b["pts"] ?? b.points ?? 0);
+        if (bPts !== aPts) {
+          return bPts - aPts;
         }
-      );
+        const aTime = Number(a.num ?? a["time"] ?? Infinity);
+        const bTime = Number(b.num ?? b["time"] ?? Infinity);
+        return aTime - bTime;
+      });
   }, [pRaw, pKey, activeMode, cMet]);
 
   const allRuns = useMemo(() => {
@@ -115,23 +137,16 @@ export const usePlayerDetailsData = (
 
   const coursesSet = useMemo(() => {
     return Object.entries(cMet)
-      .filter(([_k, c]: [string, { rating?: number }]) => {
-        const leads = (c.leadSetters || "")
-          .split(",")
-          .map((s: string) => normalizeName(s));
-        const assists = (c.assistantsetters || "")
-          .split(",")
-          .map((s: string) => normalizeName(s));
+      .filter(([_k, c]: [string, CourseData]) => {
+        const leads = toSetterList(c.leadSetters);
+        const assists = toSetterList(c.assistantsetters);
         return leads.includes(pKey) || assists.includes(pKey);
       })
-      .map(([name, c]: [string, { is2026?: boolean; rating?: number; length?: number }]) => {
-        const isLead = (c.leadSetters || "")
-          .split(",")
-          .map((s: string) => normalizeName(s))
-          .includes(pKey);
+      .map(([name, c]: [string, CourseData]) => {
+        const isLead = toSetterList(c.leadSetters).includes(pKey);
         const normName = String(name).toUpperCase();
         const mc = masterCourseList.find(
-          (course: { name?: string }) => String(course.name).toUpperCase() === normName,
+          (course) => String(course.name).toUpperCase() === normName,
         );
         const courseRuns =
           mc?.totalAllTimeRuns ||
@@ -139,18 +154,18 @@ export const usePlayerDetailsData = (
           Object.keys(lbAT_Courses.M?.[name] || {}).length +
             Object.keys(lbAT_Courses.F?.[name] || {}).length;
         return {
-          name,
           ...c,
+          name,
           role: isLead ? "LEAD" : "ASSIST",
           runs: courseRuns,
           impact: courseRuns,
         };
       })
-      .sort((a: { runs: number }, b: { runs: number }) => b.runs - a.runs);
+      .sort((a, b) => b.runs - a.runs);
   }, [cMet, pKey, lbAT_Courses, courseRunsHistory, masterCourseList]);
 
   const rankListSets = useMemo(() => {
-    return coursesSet.map((s: { length?: string | number, dateSet?: string, name?: string, rating?: number }) => ({
+    return coursesSet.map((s) => ({
       ...s,
       athleteSlug: s.name,
       pKey: s.name,
@@ -158,7 +173,7 @@ export const usePlayerDetailsData = (
   }, [coursesSet]);
 
   const mappedSetsChartData = useMemo(() => {
-    return coursesSet.map((s: { length?: string | number, dateSet?: string, name?: string, rating?: number }) => ({ ...s, date: s.dateSet }));
+    return coursesSet.map((s) => ({ ...s, date: s.dateSet }));
   }, [coursesSet]);
 
   const calculatedAvgLength = useMemo(() => {
@@ -191,9 +206,9 @@ export const usePlayerDetailsData = (
   }, [meta]);
 
   const rankListRuns = useMemo(() => {
-    return runs.map((r: any) => ({
+    return runs.map((r) => ({
       ...r,
-      pKey: r.pKey || r.label,
+      pKey: String(r.pKey || r.label || ""),
       _sortDate: new Date(r.date || 0).getTime(),
       _sortName: String(r.pKey || r.label || "").toUpperCase(),
       _sortTime: Number(r.num ?? r.time ?? Infinity),
@@ -203,8 +218,8 @@ export const usePlayerDetailsData = (
 
   const vaultItems = useMemo(() => {
     const totalRuns = allRuns.length;
-    const allTimeStats = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
-    const vaultAtData = allTimeStats[pKey] || {};
+    const allTimeStats: Record<string, PlayerProfile> = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
+    const vaultAtData: Partial<PlayerProfile> = allTimeStats[pKey] || {};
 
     const golds = allRuns.filter((r: { rank?: number }) => r.rank === 1).length;
     const silvers = allRuns.filter((r: { rank?: number }) => r.rank === 2).length;
@@ -256,7 +271,21 @@ export const usePlayerDetailsData = (
       },
     ];
 
-    const cards = [
+    const cards: Array<{
+      id: string;
+      title: string;
+      metric: string | number;
+      metricLabel: string;
+      tier: number;
+      maxTier: number;
+      progress: number;
+      nextGoal: number;
+      rarity: string;
+      locked: boolean;
+      icon: ReactNode;
+      date: string;
+      telemetry: Array<{ label: string; value: string | number }>;
+    }> = [
       {
         id: "c1",
         title: "Speed Demon",
@@ -348,22 +377,23 @@ export const useTeamDetailsData = (
   mode: "open" | "all-time" | "2026",
   dataContext: ASRDataContext,
 ) => {
-  const atMet = dataContext?.atMet || EMPTY_OBJ;
-  const openData = dataContext?.openData || EMPTY_ARR;
-  const settersWithImpact = dataContext?.settersWithImpact || EMPTY_ARR;
-  const pRaw = dataContext?.pRaw || EMPTY_OBJ;
-  const lbAT = dataContext?.lbAT || EMPTY_LB;
-  const teamsAggregated = dataContext?.teamsAggregated || EMPTY_OBJ;
+  const atMet = dataContext?.atMet || EMPTY_MET;
+  const openData = dataContext?.openData || EMPTY_PLAYERS;
+  const settersWithImpact = dataContext?.settersWithImpact || EMPTY_SETTERS;
+  const pRaw = dataContext?.pRaw || EMPTY_PRAW;
+  const lbAT = dataContext?.lbAT || EMPTY_PLAYER_LB;
+  const teamsAggregated = dataContext?.teamsAggregated;
 
-  const teamCategory = team?.category || "gyms";
+  const teamCategory: keyof TeamsAggregated =
+    team?.category === "teams" ? "teams" : "gyms";
   const contextStr = mode === "all-time" ? "allTime" : mode === "2026" ? "season26" : "open";
   const teamsAggregatedMap =
-    teamsAggregated?.[teamCategory] || teamsAggregated?.["gyms"];
+    teamsAggregated?.[teamCategory] || teamsAggregated?.gyms;
   const teamsAgg = teamsAggregatedMap?.[contextStr] || [];
 
   const tMeta = Array.isArray(teamsAgg)
     ? teamsAgg.find(
-        (t: { name?: string }) =>
+        (t) =>
           (t.name || "").toUpperCase() === (team?.name || "").toUpperCase(),
       ) || team
     : team;
@@ -371,7 +401,7 @@ export const useTeamDetailsData = (
   const players = useMemo(() => {
     if (tMeta?.players) {
       return [...tMeta.players].sort(
-        (a: PlayerProfile & { contribution?: number }, b: PlayerProfile & { contribution?: number }) => (b.contribution || 0) - (a.contribution || 0),
+        (a, b) => (b.contribution || 0) - (a.contribution || 0),
       );
     }
     const season26Data = dataContext.season26Data;
@@ -379,31 +409,37 @@ export const useTeamDetailsData = (
     return source
       .filter((p: PlayerProfile) => {
         const normalizedTarget = (team?.name || "").toUpperCase();
-        if (!normalizedTarget) return [];
+        if (!normalizedTarget) return false;
         const gymMatch =
-          p.homeGym && p.homeGym.toUpperCase() === normalizedTarget;
+          Boolean(p.homeGym && p.homeGym.toUpperCase() === normalizedTarget);
         const teamsMatch =
-          p.teams &&
-          p.teams.some(
-            (t: { name?: string } | string) => (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+          Boolean(
+            p.teams &&
+              p.teams.some(
+                (t: { name?: string } | string) =>
+                  (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+              ),
           );
         return gymMatch || teamsMatch;
       })
-      .map((p: PlayerProfile & { pts?: number }) => ({ ...p, contribution: p.pts || 0 }))
-      .sort((a: PlayerProfile & { contribution?: number }, b: PlayerProfile & { contribution?: number }) => (b.contribution || 0) - (a.contribution || 0));
-  }, [atMet, openData, mode, team.name, tMeta]);
+      .map((p: PlayerProfile) => ({ ...p, contribution: p.pts || 0 }))
+      .sort((a, b) => (b.contribution || 0) - (a.contribution || 0));
+  }, [atMet, openData, dataContext.season26Data, mode, team.name, tMeta]);
 
   const setters = useMemo(() => {
     return settersWithImpact
       .filter((s: SetterProfile) => {
         const normalizedTarget = (team?.name || "").toUpperCase();
-        if (!normalizedTarget) return [];
+        if (!normalizedTarget) return false;
         const gymMatch =
-          s.homeGym && s.homeGym.toUpperCase() === normalizedTarget;
+          Boolean(s.homeGym && s.homeGym.toUpperCase() === normalizedTarget);
         const teamsMatch =
-          s.teams &&
-          s.teams.some(
-            (t: { name?: string } | string) => (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+          Boolean(
+            s.teams &&
+              s.teams.some(
+                (t: { name?: string } | string) =>
+                  (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+              ),
           );
         return gymMatch || teamsMatch;
       })
@@ -467,16 +503,16 @@ export const useTeamDetailsData = (
     });
 
     uniqueMembers.forEach((member, pKey) => {
-      const sourceData = pRaw || {};
+      const sourceData = pRaw || EMPTY_PRAW;
       const allRuns = sourceData["all-time"]?.[pKey] || [];
 
-      golds += allRuns.filter((r: { rank?: number }) => r.rank === 1).length;
-      silvers += allRuns.filter((r: { rank?: number }) => r.rank === 2).length;
-      bronzes += allRuns.filter((r: { rank?: number }) => r.rank === 3).length;
+      golds += allRuns.filter((r) => r.rank === 1).length;
+      silvers += allRuns.filter((r) => r.rank === 2).length;
+      bronzes += allRuns.filter((r) => r.rank === 3).length;
 
-      const allTimeStats = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
-      const vaultAtData = allTimeStats[pKey] || {};
-      const meta = atMet?.[pKey] || member;
+      const allTimeStats: Record<string, PlayerProfile> = { ...(lbAT?.M || {}), ...(lbAT?.F || {}) };
+      const vaultAtData: Partial<PlayerProfile> = allTimeStats[pKey] || {};
+      const meta: Partial<PlayerProfile> = atMet?.[pKey] || member;
 
       const pFires =
         meta.allTimeFireCount ??

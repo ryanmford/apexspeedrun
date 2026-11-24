@@ -20,10 +20,10 @@ import { ASREmptyState } from "../common/ASREmptyState";
 import { FallbackAvatar } from "../common/FallbackAvatar";
 import { SectionTitle } from "./InspectorComponents";
 import { useAppStore } from "../../store/useAppStore";
-import { PlayerProfile, ASRDataContext } from "../../types";
+import { PlayerProfile, CourseData, ASRDataContext } from "../../types";
 
 interface ASRRivalryDrawerProps {
-  playerA: PlayerProfile & Record<string, unknown>;
+  playerA: PlayerProfile;
   dataContext: ASRDataContext;
   onEntityClick: (type: string, data: Record<string, unknown>) => void;
   theme: "light" | "dark";
@@ -44,7 +44,7 @@ interface RawRunItem {
 interface AthleteSummaryStats {
   pKey: string;
   name: string;
-  meta: PlayerProfile & Record<string, unknown>;
+  meta: PlayerProfile;
   rank: number | string;
   rating: number;
   pts: number;
@@ -72,15 +72,15 @@ export const ASRRivalryDrawer = React.memo(
     const [searchQuery, setSearchQuery] = useState("");
     const [isPickingRival, setIsPickingRival] = useState(false);
 
-    const atMet = useMemo(
-      () => (dataContext.atMet || {}) as Record<string, PlayerProfile & Record<string, unknown>>,
+    const atMet = useMemo<Record<string, PlayerProfile>>(
+      () => dataContext.atMet || {},
       [dataContext.atMet],
     );
-    const cMet = useMemo(
-      () => (dataContext.cMet || {}) as Record<string, Record<string, unknown>>,
+    const cMet = useMemo<Record<string, CourseData>>(
+      () => dataContext.cMet || {},
       [dataContext.cMet],
     );
-    const pRaw = useMemo(
+    const pRaw = useMemo<Record<string, Record<string, RawRunItem[]>>>(
       () => (dataContext.pRaw || {}) as Record<string, Record<string, RawRunItem[]>>,
       [dataContext.pRaw],
     );
@@ -106,30 +106,29 @@ export const ASRRivalryDrawer = React.memo(
       }
     }, [isRivalryOpen, pKeyA]);
 
-    const activeLB = useMemo(() => {
+    const activeLB = useMemo<Record<string, PlayerProfile>>(() => {
       const lb = dataContext.lbAT;
       return {
-        ...((lb?.M || {}) as Record<string, Record<string, unknown>>),
-        ...((lb?.F || {}) as Record<string, Record<string, unknown>>),
+        ...(lb?.M || {}),
+        ...(lb?.F || {}),
       };
     }, [dataContext.lbAT]);
 
     const getAthleteStats = React.useCallback(
-      (pKey: string, fallbackMeta?: PlayerProfile & Record<string, unknown>): AthleteSummaryStats => {
-        const meta =
+      (pKey: string, fallbackMeta?: PlayerProfile): AthleteSummaryStats => {
+        const meta: PlayerProfile =
           atMet[pKey] ||
-          fallbackMeta ||
-          ({
+          fallbackMeta || {
             pKey,
             name: pKey,
             gender: "M",
             rating: 0,
             runs: 0,
-          } as PlayerProfile & Record<string, unknown>);
-        const lbEntry = activeLB[pKey] || {};
+          };
+        const lbEntry: Partial<PlayerProfile> = activeLB[pKey] || {};
         const rawRuns = pRaw["all-time"]?.[pKey] || [];
 
-        const rank = (lbEntry.rank as number | string) || "UR";
+        const rank = lbEntry.rank || "UR";
         const rating = Number(lbEntry.rating ?? meta.rating ?? 0);
         const pts = Number(
           lbEntry.pts ??
@@ -180,7 +179,7 @@ export const ASRRivalryDrawer = React.memo(
       const list: Array<{
         pKey: string;
         name: string;
-        meta: PlayerProfile & Record<string, unknown>;
+        meta: PlayerProfile;
         rating: number;
         rank: number | string;
         sharedCount: number;
@@ -188,7 +187,7 @@ export const ASRRivalryDrawer = React.memo(
         searchStr: string;
       }> = [];
 
-      Object.entries(atMet).forEach(([k, m]) => {
+      Object.entries<PlayerProfile>(atMet).forEach(([k, m]) => {
         if (k === pKeyA) return;
         if (!m || !m.name || isPlaceholderPlayer(m.name)) return;
 
@@ -201,9 +200,9 @@ export const ASRRivalryDrawer = React.memo(
           if (cName && allTimeRunsAMap.has(cName)) shared++;
         });
 
-        const lbData = activeLB[k] || {};
+        const lbData: Partial<PlayerProfile> = activeLB[k] || {};
         const rating = Number(lbData.rating ?? m.rating ?? 0);
-        const rank = (lbData.rank as number | string) || "UR";
+        const rank = lbData.rank || "UR";
 
         list.push({
           pKey: k,
@@ -214,7 +213,7 @@ export const ASRRivalryDrawer = React.memo(
           sharedCount: shared,
           sameGender: (m.gender || "M") === genderA,
           searchStr:
-            (m.searchKey as string) ||
+            m.searchKey ||
             normalizeForSearch(
               `${m.name} ${m.location || ""} ${m.countryName || ""} ${m.homeGym || ""}`,
             ),
@@ -315,7 +314,7 @@ export const ASRRivalryDrawer = React.memo(
           ties++;
         }
 
-        const cInfo = cMet[cKey] || {};
+        const cInfo: Partial<CourseData> = cMet[cKey] || {};
         shared.push({
           courseKey: cKey,
           courseName: String(rA.label || rB.label || cKey),

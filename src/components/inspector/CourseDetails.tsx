@@ -160,7 +160,7 @@ export const CourseDetails = React.memo(
     const setPlayingVideoUrl = useAppStore(s => s.setPlayingVideoUrl);
     const userLocation = useAppStore(s => s.userLocation);
     const cName = (course?.name || "").toUpperCase();
-    const meta = cMet[cName] || course || {};
+    const meta: Partial<CourseData> = cMet[cName] || course || {};
 
     const scrollRef = React.useContext(ModalScrollContext);
 
@@ -175,36 +175,39 @@ export const CourseDetails = React.memo(
     const allCourseRuns = useMemo(() => {
       let runList: Record<string, unknown>[] = [];
       if (courseRunsHistory[cName]) {
-        runList = courseRunsHistory[cName].map((r: Record<string, unknown>) => ({
-          ...r,
-          athlete: atMet[r.pKey]?.name || r.athlete || r.pKey,
-          gender: atMet[r.pKey]?.gender || r.gender || "M",
-          country:
-            atMet[r.pKey]?.countryName || atMet[r.pKey]?.country || r.country,
-          flag: atMet[r.pKey]?.region || atMet[r.pKey]?.flag || r.flag,
-          _sortDate: new Date(r.date || 0).getTime(),
-          _sortName: String(atMet[r.pKey]?.name || r.athlete || r.pKey || "").toUpperCase(),
-          _sortTime: Number(r.num ?? r.time ?? Infinity),
-          _sortPts: Number(r.pts ?? r.points ?? 0),
-        }));
+        runList = courseRunsHistory[cName].map((r) => {
+          const pMeta = atMet[r.pKey];
+          return {
+            ...r,
+            athlete: pMeta?.name || r.athlete || r.pKey,
+            gender: pMeta?.gender || r.gender || "M",
+            country: pMeta?.countryName || "",
+            flag: pMeta?.region || pMeta?.flag || "",
+            _sortDate: new Date(r.date || 0).getTime(),
+            _sortName: String(pMeta?.name || r.athlete || r.pKey || "").toUpperCase(),
+            _sortTime: Number(r.num ?? r.time ?? Infinity),
+            _sortPts: 0,
+          };
+        });
       } else {
         const allTimePlayers = pRaw["all-time"] || {};
         Object.entries(allTimePlayers).forEach(
           ([pKey, playerRuns]: [string, unknown]) => {
             if (Array.isArray(playerRuns)) {
-              const filtered = playerRuns.filter(
-                (r) => (r.course || r.label || "").toUpperCase() === cName,
+              const filtered = (playerRuns as Record<string, unknown>[]).filter(
+                (r) => String(r.course || r.label || "").toUpperCase() === cName,
               );
               filtered.forEach((r) => {
+                const pMeta = atMet[pKey];
                 runList.push({
                   ...r,
                   pKey,
-                  athlete: atMet[pKey]?.name || pKey,
-                  gender: atMet[pKey]?.gender || "M",
-                  country: atMet[pKey]?.countryName || atMet[pKey]?.country,
-                  flag: atMet[pKey]?.region || atMet[pKey]?.flag,
-                  _sortDate: new Date(r.date || 0).getTime(),
-                  _sortName: String(atMet[pKey]?.name || pKey || "").toUpperCase(),
+                  athlete: pMeta?.name || pKey,
+                  gender: pMeta?.gender || "M",
+                  country: pMeta?.countryName || "",
+                  flag: pMeta?.region || pMeta?.flag || "",
+                  _sortDate: new Date(String(r.date || 0)).getTime(),
+                  _sortName: String(pMeta?.name || pKey || "").toUpperCase(),
                   _sortTime: Number(r.num ?? r.time ?? Infinity),
                   _sortPts: Number(r.pts ?? r.points ?? 0),
                 });
@@ -213,21 +216,31 @@ export const CourseDetails = React.memo(
           },
         );
       }
-      
-      const mInterims = (dataContext.courseRecords_M_AT?.[cName] || []).filter((r: any) => r.isInterim);
-      mInterims.forEach((r: any) => {
-        runList.push({ 
-          ...r, athlete: "INTERIM TOP TIME", date: "2026-03-01T00:00:00Z", gender: "M", num: r.time, isInterim: true,
+
+      const mInterims = (dataContext.courseRecords_M_AT?.[cName] || []).filter((r) => r.isInterim);
+      mInterims.forEach((r) => {
+        runList.push({
+          ...r,
+          athlete: "INTERIM TOP TIME",
+          date: "2026-03-01T00:00:00Z",
+          gender: "M",
+          num: r.time,
+          isInterim: true,
           _sortDate: new Date("2026-03-01T00:00:00Z").getTime(),
           _sortName: "INTERIM TOP TIME",
           _sortTime: Number(r.time ?? Infinity),
           _sortPts: 0,
         });
       });
-      const fInterims = (dataContext.courseRecords_F_AT?.[cName] || []).filter((r: any) => r.isInterim);
-      fInterims.forEach((r: any) => {
-        runList.push({ 
-          ...r, athlete: "INTERIM TOP TIME", date: "2026-03-01T00:00:00Z", gender: "F", num: r.time, isInterim: true,
+      const fInterims = (dataContext.courseRecords_F_AT?.[cName] || []).filter((r) => r.isInterim);
+      fInterims.forEach((r) => {
+        runList.push({
+          ...r,
+          athlete: "INTERIM TOP TIME",
+          date: "2026-03-01T00:00:00Z",
+          gender: "F",
+          num: r.time,
+          isInterim: true,
           _sortDate: new Date("2026-03-01T00:00:00Z").getTime(),
           _sortName: "INTERIM TOP TIME",
           _sortTime: Number(r.time ?? Infinity),
@@ -287,7 +300,7 @@ export const CourseDetails = React.memo(
       ? (dataContext.courseRecords_F_AT?.[cName] || [])
       : (dataContext.courseRecords_F_2026?.[cName] || []);
 
-    const sortRecords = (records: any[]) => {
+    const sortRecords = (records: typeof recordsM) => {
       const sorted = [...records];
       sorted.sort((a, b) => {
         if (a.isInterim && !b.isInterim) return -1;
@@ -295,12 +308,12 @@ export const CourseDetails = React.memo(
 
         const aDate = new Date(a.date || 0).getTime();
         const bDate = new Date(b.date || 0).getTime();
-        const aName = String(a.pKey || a.athlete || "").toUpperCase();
-        const bName = String(b.pKey || b.athlete || "").toUpperCase();
-        const aTime = Number(a.num ?? a.time ?? Infinity);
-        const bTime = Number(b.num ?? b.time ?? Infinity);
-        const aPts = Number(a.pts ?? a.points ?? 0);
-        const bPts = Number(b.pts ?? b.points ?? 0);
+        const aName = String(a.pKey || a.name || "").toUpperCase();
+        const bName = String(b.pKey || b.name || "").toUpperCase();
+        const aTime = Number(a.time ?? Infinity);
+        const bTime = Number(b.time ?? Infinity);
+        const aPts = Number(a.pts ?? 0);
+        const bPts = Number(b.pts ?? 0);
 
         if (sortCategory === "date") {
           const primary = aDate - bDate;
@@ -494,10 +507,10 @@ export const CourseDetails = React.memo(
 
         <div
           className={cn(
-            "flex items-center justify-center border-b sticky top-0 z-40 backdrop-blur-3xl transition-colors py-2",
+            "flex items-center justify-center border-b sticky top-0 z-40 transition-colors py-2",
             theme === "dark"
-              ? "border-white/5 bg-zinc-950/80 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
-              : "border-black/5 bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
+              ? "border-white/5 bg-zinc-950/95 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+              : "border-black/5 bg-white/95 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
           )}
         >
           <div className="flex w-full max-w-2xl px-4">
@@ -534,8 +547,8 @@ export const CourseDetails = React.memo(
                 className={cn(
                   "flex justify-center border-b transition-colors overflow-visible sticky top-[46px] z-30 py-3",
                   theme === "dark"
-                    ? "border-white/[0.05] bg-zinc-950/80 backdrop-blur-xl"
-                    : "border-black/[0.05] bg-white/90 backdrop-blur-xl",
+                    ? "border-white/[0.05] bg-zinc-950/95"
+                    : "border-black/[0.05] bg-white/95",
                 )}
               >
                 <ASRNeonToggle
@@ -610,8 +623,8 @@ export const CourseDetails = React.memo(
                 className={cn(
                   "flex justify-center border-b transition-colors overflow-visible sticky top-[46px] z-30 py-3",
                   theme === "dark"
-                    ? "border-white/[0.05] bg-zinc-950/80 backdrop-blur-xl"
-                    : "border-black/[0.05] bg-white/90 backdrop-blur-xl",
+                    ? "border-white/[0.05] bg-zinc-950/95"
+                    : "border-black/[0.05] bg-white/95",
                 )}
               >
                 <ASRNeonToggle
@@ -741,7 +754,11 @@ export const CourseDetails = React.memo(
                           )}
                         >
                           <SetterDisplay
-                            text={meta.leadSetters || meta.setter}
+                            text={
+                              Array.isArray(meta.leadSetters)
+                                ? meta.leadSetters.join(", ")
+                                : meta.leadSetters || meta.setter || ""
+                            }
                             dataContext={dataContext}
                             onSetterClick={onEntityClick}
                             theme={theme}
@@ -762,7 +779,11 @@ export const CourseDetails = React.memo(
                           )}
                         >
                           <SetterDisplay
-                            text={meta.assistantsetters}
+                            text={
+                              Array.isArray(meta.assistantsetters)
+                                ? meta.assistantsetters.join(", ")
+                                : meta.assistantsetters
+                            }
                             dataContext={dataContext}
                             onSetterClick={onEntityClick}
                             theme={theme}

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from "react";
 import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
@@ -12,13 +10,44 @@ import {
  DenseOverlay,
 } from "../common/VisualEffects";
 
+interface CollectiblePlayer {
+ name?: string;
+}
+
+interface CollectibleCardData {
+ rarity?: string;
+ icon?: React.ReactNode;
+ title?: string;
+ metricLabel?: string;
+ metric?: React.ReactNode;
+ telemetry?: Array<{ label: string; value: React.ReactNode }>;
+ progress: number;
+ nextGoal: number;
+ date?: string;
+}
+
+interface CollectibleTrophyData {
+ tier?: number;
+ title?: string;
+ metric?: React.ReactNode;
+ metricLabel?: string;
+ date?: string;
+}
+
+interface CollectibleTokenData {
+ id?: string;
+ title?: string;
+ icon?: React.ReactNode;
+ count?: React.ReactNode;
+}
+
 interface CollectibleProps {
-  player: any;
+  player: CollectiblePlayer;
   theme?: "light" | "dark";
 }
 
 export const InteractiveCard = React.memo(
- ({ card, player }: { card: any } & CollectibleProps) => {
+ ({ card, player }: { card: CollectibleCardData } & CollectibleProps) => {
  const { tilt, handleMouseMove, handleMouseLeave } = use3DTilt(15);
  const isMythic = card.rarity === "mythic";
  const isEpic = card.rarity === "epic";
@@ -115,7 +144,7 @@ export const InteractiveCard = React.memo(
  </div>
 
  <div className="grid grid-cols-2 gap-3">
- {card.telemetry?.map((t: any, i: number) => (
+ {card.telemetry?.map((t, i) => (
  <div
  key={i}
  className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col"
@@ -170,7 +199,7 @@ export const InteractiveCard = React.memo(
 );
 
 export const InteractiveTrophy = React.memo(
- ({ trophy, player }: { trophy: any } & CollectibleProps) => {
+ ({ trophy, player }: { trophy: CollectibleTrophyData } & CollectibleProps) => {
  const { tilt, handleMouseMove, handleMouseLeave } = use3DTilt(10);
  const isGold = trophy.tier === 1;
  const isSilver = trophy.tier === 2;
@@ -257,7 +286,7 @@ const TokenDisc = ({
   shadowClass,
   theme
 }: { 
-  item: any; 
+  item: CollectibleTokenData; 
   colorClass: string; 
   borderColorClass: string; 
   shadowClass: string;
@@ -381,7 +410,7 @@ const TokenDisc = ({
 };
 
 export const InteractiveMedal = React.memo(
-  ({ medal, player, theme }: { medal: any } & CollectibleProps) => {
+  ({ medal, theme }: { medal: CollectibleTokenData } & CollectibleProps) => {
     const { tilt, handleMouseMove, handleMouseLeave } = use3DTilt(20);
     const isGold = medal.id === "gold";
     const isSilver = medal.id === "silver";
@@ -407,7 +436,7 @@ export const InteractiveMedal = React.memo(
 );
 
 export const InteractiveToken = React.memo(
-  ({ token, player, theme }: { token: any } & CollectibleProps) => {
+  ({ token, theme }: { token: CollectibleTokenData } & CollectibleProps) => {
     const { tilt, handleMouseMove, handleMouseLeave } = use3DTilt(20);
     const isFire = token.title === "FIRE";
     

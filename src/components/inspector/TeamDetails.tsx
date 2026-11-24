@@ -117,10 +117,10 @@ export const TeamDetails = React.memo(
 
         <div
           className={cn(
-            "flex items-center justify-center border-b sticky top-0 z-40 backdrop-blur-3xl transition-colors py-2",
+            "flex items-center justify-center border-b sticky top-0 z-40 transition-colors py-2",
             theme === "dark"
-              ? "border-white/5 bg-zinc-950/80 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
-              : "border-black/5 bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
+              ? "border-white/5 bg-zinc-950/95 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+              : "border-black/5 bg-white/95 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
           )}
         >
           <div className="flex w-full max-w-2xl px-4">
@@ -201,7 +201,7 @@ export const TeamDetails = React.memo(
                   <BioStat
                     theme={theme}
                     label="RECORD HOLDERS"
-                    value={players.filter((p) => p.wins > 0).length}
+                    value={players.filter((p) => (p.wins || 0) > 0).length}
                   />
                 </div>
               </div>
@@ -213,8 +213,8 @@ export const TeamDetails = React.memo(
                 className={cn(
                   "flex justify-center border-b transition-colors overflow-visible sticky top-[46px] z-30 py-3",
                   theme === "dark"
-                    ? "border-white/[0.05] bg-zinc-950/80 backdrop-blur-xl"
-                    : "border-black/[0.05] bg-white/90 backdrop-blur-xl",
+                    ? "border-white/[0.05] bg-zinc-950/95"
+                    : "border-black/[0.05] bg-white/95",
                 )}
               >
                 <ASRNeonToggle

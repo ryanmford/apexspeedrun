@@ -1,5 +1,5 @@
 export const CONFIG = {
-  SNAPSHOT_KEY: "asr_data_vault_v1_integrated_v65_2026_qual",
+  SNAPSHOT_KEY: "asr_data_vault_v1_integrated_v69_compact_snap",
   PREFS_KEY: "asr_user_prefs_v1",
   REFRESH_INTERVAL: 300000, // 5 mins
   SKOOL_LINK:
@@ -203,6 +203,21 @@ export const fixCountryEntity = (name: string, flag: string) => {
     THAILAND: "🇹🇭",
     MALAYSIA: "🇲🇾",
     PHILIPPINES: "🇵🇭",
+    MOROCCO: "🇲🇦",
+    GUATEMALA: "🇬🇹",
+    "EL SALVADOR": "🇸🇻",
+    BOLIVIA: "🇧🇴",
+    INDIA: "🇮🇳",
+    JAMAICA: "🇯🇲",
+    "SAO TOME AND PRINCIPE": "🇸🇹",
+    PAKISTAN: "🇵🇰",
+    TUNISIA: "🇹🇳",
+    NEPAL: "🇳🇵",
+    PERU: "🇵🇪",
+    HONDURAS: "🇭🇳",
+    VENEZUELA: "🇻🇪",
+    IRAN: "🇮🇷",
+    ICELAND: "🇮🇸",
   };
 
   const finalName = normalized || CONFIG.FALLBACKS.UNKNOWN_LOCATION;
@@ -219,7 +234,17 @@ export const getSetterLevel = (impact: number, sets: number): string | null => {
   return null;
 };
 
-export const formatLocation = (locObj: { city?: string; country?: string }) => {
+export interface LocationLike {
+  city?: string;
+  location?: string;
+  state?: string;
+  stateProv?: string;
+  region?: string;
+  country?: string;
+  nation?: string;
+}
+
+export const formatLocation = (locObj: string | LocationLike | null | undefined) => {
   if (!locObj) return CONFIG.FALLBACKS.UNKNOWN_LOCATION;
 
   let city: string;
@@ -335,11 +360,23 @@ const parseLine = (line: string = "") => {
   return result;
 };
 
-export const csvToObjects = (
+export const parseCoords = (raw: string | null | undefined): [number, number] | null => {
+  if (!raw) return null;
+  const match = String(raw).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  if (lat === 0 && lng === 0) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return [lat, lng];
+};
+
+export const csvToObjects = <K extends string>(
   csv: string,
-  mapping: Record<string, string[]>,
+  mapping: Record<K, string[]>,
   headerRowIndex: number = 0,
-) => {
+): (Record<K, string | undefined> & { __raw: string[]; __headers: string[] })[] => {
   if (!csv) return [];
   const lines = csv
     .replace(/^\uFEFF/, "")
@@ -347,26 +384,55 @@ export const csvToObjects = (
     .filter((l) => l.trim());
   if (lines.length <= headerRowIndex) return [];
 
-  const headers = parseLine(lines[headerRowIndex]);
-  const colMap: Record<string, number> = {};
+  let resolvedHeaderIdx = headerRowIndex;
+  if (resolvedHeaderIdx === 0) {
+    while (
+      resolvedHeaderIdx < lines.length &&
+      parseLine(lines[resolvedHeaderIdx]).every((cell) => !cell.trim())
+    ) {
+      resolvedHeaderIdx++;
+    }
+    if (resolvedHeaderIdx >= lines.length) return [];
+  }
 
-  Object.entries(mapping).forEach(([field, searchTerms]: [string, string[]]) => {
-    colMap[field] = headers.findIndex((h) =>
-      searchTerms.some((term: string) =>
-        h.toLowerCase().trim().includes(term.toLowerCase()),
-      ),
-    );
+  const headers = parseLine(lines[resolvedHeaderIdx]);
+  const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
+  const colMap = {} as Record<K, number>;
+
+  (Object.entries(mapping) as [K, string[]][]).forEach(([field, searchTerms]) => {
+    let foundIdx = -1;
+    // Pass 1: exact header match in searchTerms priority order
+    for (const term of searchTerms) {
+      const target = term.toLowerCase().trim();
+      const idx = normalizedHeaders.findIndex((h) => h === target);
+      if (idx !== -1) {
+        foundIdx = idx;
+        break;
+      }
+    }
+    // Pass 2: substring fallback in searchTerms priority order
+    if (foundIdx === -1) {
+      for (const term of searchTerms) {
+        const target = term.toLowerCase().trim();
+        const idx = normalizedHeaders.findIndex((h) => h.includes(target));
+        if (idx !== -1) {
+          foundIdx = idx;
+          break;
+        }
+      }
+    }
+    colMap[field] = foundIdx;
   });
 
-  return lines.slice(headerRowIndex + 1).map((line) => {
+  const keys = Object.keys(mapping) as K[];
+  return lines.slice(resolvedHeaderIdx + 1).map((line) => {
     const vals = parseLine(line);
-    const obj: Record<string, string | number> = {};
-    Object.keys(mapping).forEach((field) => {
+    const obj: Record<string, unknown> = { __raw: vals, __headers: headers };
+    keys.forEach((field) => {
       const idx = colMap[field];
       obj[field] = idx !== -1 ? vals[idx] : undefined;
     });
-    obj.__raw = vals;
-    return obj;
+    return obj as Record<K, string | undefined> & { __raw: string[]; __headers: string[] };
   });
 };
 
@@ -387,7 +453,6 @@ export interface FlaggedObject {
   countryName?: string | null;
   townFlag?: string | null;
   gymFlag?: string | null;
-  [key: string]: unknown;
 }
 
 export const getCombinedFlags = (...objects: (string | FlaggedObject | null | undefined)[]): string => {
@@ -573,6 +638,7 @@ export const getContinentData = (country: string) => {
       "BRUNEI",
       "CAMBODIA",
       "CHINA",
+      "HONG KONG",
       "INDIA",
       "INDONESIA",
       "IRAN",
@@ -586,6 +652,7 @@ export const getContinentData = (country: string) => {
       "KYRGYZSTAN",
       "LAOS",
       "LEBANON",
+      "MACAU",
       "MALAYSIA",
       "MALDIVES",
       "MONGOLIA",
@@ -681,7 +748,7 @@ export const getContinentData = (country: string) => {
     ],
   };
   const c = normalizeCountryName(country);
-  const regionMap: Record<string, { lat: number; lng: number; zoom: number; abbr: string; full: string }> = {
+  const regionMap: Record<string, { name: string; flag: string }> = {
     eu: { name: "EUROPE", flag: "🌍" },
     na: { name: "NORTH AMERICA", flag: "🌎" },
     sa: { name: "SOUTH AMERICA", flag: "🌎" },
@@ -690,7 +757,7 @@ export const getContinentData = (country: string) => {
     af: { name: "AFRICA", flag: "🌍" },
   };
   for (const [regionCode, countriesArr] of Object.entries(continents)) {
-    if ((countriesArr as string[]).includes(c)) return regionMap[regionCode];
+    if (countriesArr.includes(c)) return regionMap[regionCode];
   }
   return { name: "OTHER", flag: "🌐" };
 };
@@ -789,24 +856,26 @@ export const formatYYYYMMDD = (date: Date): string => {
 export const parseCourseDifficulty = (diff: string): string => {
   if (!diff) return "-";
   const d = diff.toLowerCase();
-  
+  const isMinus = d.includes("-") || d.includes("➖") || d.includes("−") || d.includes("minus");
+  const isPlus = d.includes("+") || d.includes("➕") || d.includes("plus");
+
   if (d.includes("green") || d.includes("🟢")) {
-    if (d.includes("-") || d.includes("minus")) return "1";
-    if (d.includes("+") || d.includes("plus")) return "3";
+    if (isMinus) return "1";
+    if (isPlus) return "3";
     return "2";
   }
-  
+
   if (d.includes("blue") || d.includes("🔵")) {
-    if (d.includes("-") || d.includes("minus")) return "4";
-    if (d.includes("+") || d.includes("plus")) return "6";
+    if (isMinus) return "4";
+    if (isPlus) return "6";
     return "5";
   }
-  
+
   if (d.includes("black") || d.includes("⚫")) {
-    if (d.includes("-") || d.includes("minus")) return "7";
-    if (d.includes("+") || d.includes("plus")) return "9";
+    if (isMinus) return "7";
+    if (isPlus) return "9";
     return "8";
   }
-  
+
   return diff;
 };

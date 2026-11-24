@@ -3,6 +3,7 @@ import { Building2, ArrowRight } from "lucide-react";
 import { cn, trackEvent } from "../../lib/asr-utils";
 import { ASRPremiumButton } from "../common/ASRPremiumButton";
 import { FittingHeader } from "../common/FittingHeader";
+import type { CourseData } from "../../types";
 
 interface ProfileHeaderProps {
   avatar: React.ReactNode;
@@ -103,9 +104,9 @@ export const ProfileHeader = React.memo(
 
 
 
-export const ASRPatronPill = React.memo(({ course, theme, isBanner }: { course: Record<string, unknown> & { asrPatron?: string }; theme: "light" | "dark"; isBanner?: boolean }) => {
+export const ASRPatronPill = React.memo(({ course, theme, isBanner }: { course: CourseData & { asrPatron?: string }; theme: "light" | "dark"; isBanner?: boolean }) => {
   const hasSponsor = !!course.sponsorName;
-  const sponsorName = course.sponsorName;
+  const sponsorName = course.sponsorName || "";
   const sponsorLink =
     course.sponsorLink ||
     `mailto:apexmovement@gmail.com?subject=Course Sponsorship Enquiry: ${course.name}`;

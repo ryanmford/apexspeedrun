@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React from "react";
 import { cn } from "../../lib/asr-utils";
 
 export interface ASRPremiumButtonProps {
  children: React.ReactNode;
- onClick?: (e?: any) => void;
+ onClick?: (e: React.MouseEvent<HTMLElement>) => void;
  className?: string;
  theme?: "light" | "dark";
  href?: string;

@@ -1,9 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React from "react";
 import { cn } from "../../lib/asr-utils";
 
-export const PageHeader = ({ title, theme, children }: any) => {
+interface PageHeaderProps {
+  title?: React.ReactNode;
+  theme: "light" | "dark";
+  children?: React.ReactNode;
+}
+
+export const PageHeader = ({ title, theme, children }: PageHeaderProps) => {
   return (
     <>
       {title && (

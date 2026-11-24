@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React from "react";
 import {
   cn,
@@ -7,9 +5,13 @@ import {
   getCombinedFlags,
 } from "../../lib/asr-utils";
 import { useDataStore } from "../../store/useDataStore";
+import type { RecentFeedItem } from "../../types";
 
 interface ASRLiveTickerProps {
-  onEntityClick: (type: string, data: any) => void;
+  onEntityClick: (
+    type: string,
+    data: Record<string, unknown> | { name?: string; pKey?: string },
+  ) => void;
   theme: "light" | "dark";
 }
 
@@ -73,7 +75,7 @@ export const ASRLiveTicker = React.memo(
               "linear-gradient(to right, transparent, black 1.5rem, black calc(100% - 1.5rem), transparent)",
           }}
         >
-          {duplicatedFeed.map((item: any, idx: number) => {
+          {duplicatedFeed.map((item: RecentFeedItem, idx: number) => {
             const fires = item.fireCount || 0;
             const rank = item.rank || 0;
             const athleteFlag = getCombinedFlags(item.athlete).trim();
@@ -89,7 +91,7 @@ export const ASRLiveTicker = React.memo(
               .trim()
               .toUpperCase();
             const rawCity = String(
-              item.course?.city || item.course?.location || "",
+              item.course?.city || "",
             )
               .trim()
               .toUpperCase();

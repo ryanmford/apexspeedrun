@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, {
   useMemo,
   useState,
@@ -18,6 +17,14 @@ import {
   computeOriginalRanks,
   computeSimulatedGlobalImpact,
 } from "../../lib/asr-data-compute";
+
+interface LiveLadderEntry {
+  pKey: string;
+  name: string;
+  time: number;
+  rank: number | string;
+  isMe?: boolean;
+}
 
 interface ASRWhatIfSliderProps {
   theme: "light" | "dark";
@@ -160,7 +167,7 @@ export const ASRWhatIfSlider = ({
     return computeSimulatedPlacement(deferredTargetTime, records);
   }, [deferredTargetTime, records]);
 
-  const [liveLadderWindow, setLiveLadderWindow] = useState<any[]>([]);
+  const [liveLadderWindow, setLiveLadderWindow] = useState<LiveLadderEntry[]>([]);
 
   useEffect(() => {
     const myKey = selectedAthlete ? selectedAthlete.pKey : "SIMULATED_USER";
@@ -199,6 +206,13 @@ export const ASRWhatIfSlider = ({
   const [popEffect, setPopEffect] = useState<"cr" | "pr" | null>(null);
   const prevBeatsCR = useRef(false);
   const prevBeatsPR = useRef(false);
+  const popTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (popTimerRef.current !== null) clearTimeout(popTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const beatsCR = deferredTargetTime <= courseRecord;
@@ -219,7 +233,11 @@ export const ASRWhatIfSlider = ({
       if (typeof navigator !== "undefined" && navigator.vibrate)
         navigator.vibrate(15);
       setPopEffect(effectType);
-      setTimeout(() => setPopEffect(null), 500);
+      if (popTimerRef.current !== null) clearTimeout(popTimerRef.current);
+      popTimerRef.current = setTimeout(() => {
+        popTimerRef.current = null;
+        setPopEffect(null);
+      }, 500);
     }
 
     prevBeatsCR.current = beatsCR;
@@ -309,7 +327,7 @@ export const ASRWhatIfSlider = ({
             <div ref={searchRef} className="relative">
               <ASRSearchInput
                 value={searchQuery}
-                onChange={(e: any) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearching(true)}
                 theme={theme}
                 placeholder="search players..."
@@ -428,7 +446,7 @@ export const ASRWhatIfSlider = ({
         {liveLadderWindow.length > 0 && (
           <div className="flex flex-col gap-1 w-full bg-black/5 dark:bg-white/5 rounded-xl p-1.5 relative overflow-hidden">
             <LayoutGroup>
-              {liveLadderWindow.map((r: any) => (
+              {liveLadderWindow.map((r) => (
                 <motion.div
                   layout
                   key={r.pKey}

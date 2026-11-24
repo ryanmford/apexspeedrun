@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React, { useMemo } from "react";
 import { cn, fixCountryEntity, formatFlagsWithSpace, THEME, trackEvent } from "../../lib/asr-utils";
 import { Trophy, Calendar, Play } from "lucide-react";
@@ -7,8 +5,35 @@ import { useAppNavigation } from "../../hooks/useDerivedData";
 import { useAppStore } from "../../store/useAppStore";
 import { formatYYYYMMDD } from "../../lib/asr-utils";
 
+interface CourseChampionRun {
+ num?: number;
+ time?: number;
+ gender?: string;
+ date?: string | number | Date;
+ pKey?: string;
+ athlete?: string;
+ country?: string;
+ flag?: string;
+ videoUrl?: string;
+ demoVideo?: string;
+ isInterim?: boolean;
+}
+
+interface ChampionEntry {
+ time: number;
+ date: string;
+ dateMs: number;
+ pKey?: string;
+ athlete: string;
+ country?: string;
+ flag?: string;
+ videoUrl?: string;
+ isInterim?: boolean;
+ daysHeld: number;
+}
+
 interface ChampionsProps {
- runs: any[];
+ runs: CourseChampionRun[];
  theme: "light" | "dark";
 }
 
@@ -19,12 +44,12 @@ export const CourseChampions = ({ runs, theme }: ChampionsProps) => {
  const getChampions = (genderFilter: string) => {
  const valid = runs
  .filter((r) => {
- const timeVal = typeof r.num === "number" ? r.num : r.time;
+ const timeVal = typeof r.num === "number" ? r.num : (typeof r.time === "number" ? r.time : 0);
  // Accept only runs strictly under this gender
- return timeVal && timeVal > 0 && r.gender === genderFilter;
+ return timeVal > 0 && r.gender === genderFilter;
  })
  .map((r) => {
- const timeVal = typeof r.num === "number" ? r.num : r.time;
+ const timeVal = typeof r.num === "number" ? r.num : (typeof r.time === "number" ? r.time : 0);
  const validDate = r.date ? new Date(r.date) : null;
  const isDateValid = validDate && !isNaN(validDate.getTime());
  return {
@@ -39,7 +64,7 @@ export const CourseChampions = ({ runs, theme }: ChampionsProps) => {
  if (valid.length === 0) return [];
 
  let currentWR = Infinity;
- const wrs = [];
+ const wrs: ChampionEntry[] = [];
 
  for (const run of valid) {
  if (run.timeVal < currentWR) {
@@ -57,6 +82,7 @@ export const CourseChampions = ({ runs, theme }: ChampionsProps) => {
  flag: run.flag,
  videoUrl: run.videoUrl || run.demoVideo,
  isInterim: run.isInterim,
+ daysHeld: 0,
  };
  } else {
  wrs.push({
@@ -69,6 +95,7 @@ export const CourseChampions = ({ runs, theme }: ChampionsProps) => {
  flag: run.flag,
  videoUrl: run.videoUrl || run.demoVideo,
  isInterim: run.isInterim,
+ daysHeld: 0,
  });
  }
  }
@@ -109,7 +136,7 @@ export const CourseChampions = ({ runs, theme }: ChampionsProps) => {
  );
  }
 
- const renderChampsList = (champs: any[], label: string) => {
+ const renderChampsList = (champs: ChampionEntry[], label: string) => {
  if (champs.length === 0) return null;
  return (
  <div className="flex flex-col gap-3">

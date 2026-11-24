@@ -1,6 +1,18 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, Square, Download, Video, Trash2 } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  Download,
+  Video,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { cn } from "../../lib/asr-utils";
+import { stepFrameTime } from "../../lib/annotator-utils";
 
 interface Annotation {
   id: string;
@@ -21,6 +33,7 @@ interface DecimalInputProps {
   value: number;
   min?: number;
   max?: number;
+  step?: number;
   onChange: (val: number) => void;
   className?: string;
 }
@@ -29,6 +42,7 @@ const ASRDecimalInput = ({
   value,
   min = 0,
   max,
+  step: _step,
   onChange,
   className,
 }: DecimalInputProps) => {
@@ -65,30 +79,234 @@ const ASRDecimalInput = ({
     }
   };
 
-  const handleFocus = () => {
-    setIsFocused(true);
-  };
-
   return (
     <input
       type="text"
       inputMode="decimal"
       value={localVal}
       onChange={handleInputChange}
-      onFocus={handleFocus}
+      onFocus={() => setIsFocused(true)}
       onBlur={handleBlur}
-      className={className}
+      className={cn("text-base", className)}
     />
   );
 };
+
+function buildNodeRenderScript(
+  annotations: Annotation[],
+  sourceFilename: string,
+  fps: number,
+): string {
+  const safeName = sourceFilename.replace(/[^a-zA-Z0-9._-]/g, "_") || "input.mp4";
+  const serialized = JSON.stringify(annotations, null, 2);
+
+  return `#!/usr/bin/env node
+/**
+ * APEX SPEED RUN — Offline 4K/60fps HD Annotation Render Pipeline
+ *
+ * Prerequisites:
+ *   1. FFmpeg & ffprobe installed on PATH (brew install ffmpeg / apt install ffmpeg)
+ *   2. Place this script next to your raw video file: "${safeName}"
+ *   3. Run:
+ *        npm install @resvg/resvg-js
+ *        node asr_hd_render.mjs "${safeName}" "asr_annotated_output.mp4"
+ */
+
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
+import { Resvg } from "@resvg/resvg-js";
+
+const TARGET_FPS = ${fps};
+const ANNOTATIONS = ${serialized};
+
+const inputPath = path.resolve(process.argv[2] || ${JSON.stringify(safeName)});
+const outputPath = path.resolve(process.argv[3] || "asr_annotated_output.mp4");
+
+if (!fs.existsSync(inputPath)) {
+  console.error("Input video not found:", inputPath);
+  process.exit(1);
+}
+
+function run(cmd, args) {
+  return execFileSync(cmd, args, { stdio: ["ignore", "pipe", "inherit"] }).toString("utf8");
+}
+
+function probeVideo(file) {
+  const raw = run("ffprobe", [
+    "-v", "error",
+    "-show_entries", "stream=codec_type,width,height,r_frame_rate:format=duration",
+    "-of", "json",
+    file,
+  ]);
+  const info = JSON.parse(raw);
+  const vStream = (info.streams || []).find((s) => s.codec_type === "video");
+  const hasAudio = (info.streams || []).some((s) => s.codec_type === "audio");
+  if (!vStream) throw new Error("No video stream detected in " + file);
+  return {
+    width: Number(vStream.width),
+    height: Number(vStream.height),
+    duration: Number(info.format?.duration || 0),
+    hasAudio,
+  };
+}
+
+function renderOverlayPng(ann, width, height, outFile) {
+  const pts = ann.points.map((p) => \`\${(p.x * width).toFixed(2)},\${(p.y * height).toFixed(2)}\`).join(" ");
+  const scaleFactor = Math.max(1, width / 1280);
+  const strokeWidth = ((ann.lineWidth || 4) * scaleFactor).toFixed(2);
+  const isPolygon = ann.type !== "laser" && ann.points.length >= 3;
+  const shapeSvg = isPolygon
+    ? \`<polygon points="\${pts}" fill="\${ann.color}" fill-opacity="0.25" stroke="\${ann.color}" stroke-width="\${strokeWidth}" stroke-linejoin="round" filter="url(#glow)" />\`
+    : \`<polyline points="\${pts}" fill="none" stroke="\${ann.color}" stroke-width="\${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />\`;
+
+  const svg = \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="\${(6 * scaleFactor).toFixed(1)}" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  \${shapeSvg}
+</svg>\`;
+
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: width } });
+  fs.writeFileSync(outFile, resvg.render().asPng());
+}
+
+const meta = probeVideo(inputPath);
+const sorted = [...ANNOTATIONS]
+  .filter((a) => a.points && a.points.length >= 2 && a.time >= 0 && a.time <= meta.duration)
+  .sort((a, b) => a.time - b.time);
+
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "asr-render-"));
+const segmentFiles = [];
+
+console.log(\`Probed \${meta.width}x\${meta.height}, duration \${meta.duration.toFixed(2)}s, \${sorted.length} freeze layers.\`);
+
+try {
+  let cursor = 0;
+  let segIdx = 0;
+
+  const encodeSlice = (start, end) => {
+    if (end - start <= 0.01) return;
+    const out = path.join(tmpDir, \`seg_\${String(segIdx++).padStart(3, "0")}.mp4\`);
+    const args = [
+      "-y",
+      "-ss", start.toFixed(4),
+      "-to", end.toFixed(4),
+      "-i", inputPath,
+      "-r", String(TARGET_FPS),
+      "-c:v", "libx264",
+      "-crf", "16",
+      "-preset", "slow",
+      "-pix_fmt", "yuv420p",
+    ];
+    if (meta.hasAudio) {
+      args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2");
+    } else {
+      args.push("-an");
+    }
+    args.push(out);
+    run("ffmpeg", args);
+    segmentFiles.push(out);
+  };
+
+  for (let i = 0; i < sorted.length; i++) {
+    const ann = sorted[i];
+    encodeSlice(cursor, ann.time);
+
+    if (ann.freezeDuration > 0.01) {
+      const framePng = path.join(tmpDir, \`frame_\${i}.png\`);
+      const overlayPng = path.join(tmpDir, \`overlay_\${i}.png\`);
+      const freezeOut = path.join(tmpDir, \`seg_\${String(segIdx++).padStart(3, "0")}.mp4\`);
+
+      run("ffmpeg", [
+        "-y",
+        "-ss", ann.time.toFixed(4),
+        "-i", inputPath,
+        "-frames:v", "1",
+        framePng,
+      ]);
+
+      renderOverlayPng(ann, meta.width, meta.height, overlayPng);
+
+      const freezeArgs = [
+        "-y",
+        "-loop", "1",
+        "-t", ann.freezeDuration.toFixed(4),
+        "-i", framePng,
+        "-i", overlayPng,
+      ];
+      if (meta.hasAudio) {
+        freezeArgs.push(
+          "-f", "lavfi",
+          "-t", ann.freezeDuration.toFixed(4),
+          "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+        );
+      }
+      freezeArgs.push(
+        "-filter_complex", "[0:v][1:v]overlay=0:0:format=auto,format=yuv420p[v]",
+        "-map", "[v]",
+      );
+      if (meta.hasAudio) {
+        freezeArgs.push("-map", "2:a", "-c:a", "aac", "-b:a", "192k", "-shortest");
+      } else {
+        freezeArgs.push("-an");
+      }
+      freezeArgs.push(
+        "-r", String(TARGET_FPS),
+        "-c:v", "libx264",
+        "-crf", "16",
+        "-preset", "slow",
+        "-pix_fmt", "yuv420p",
+        freezeOut,
+      );
+      run("ffmpeg", freezeArgs);
+      segmentFiles.push(freezeOut);
+    }
+
+    cursor = ann.time;
+  }
+
+  encodeSlice(cursor, meta.duration);
+
+  const concatList = path.join(tmpDir, "concat.txt");
+  fs.writeFileSync(
+    concatList,
+    segmentFiles.map((f) => \`file '\${f.replace(/'/g, "'\\\\''")}'\`).join("\\n"),
+  );
+
+  run("ffmpeg", [
+    "-y",
+    "-f", "concat",
+    "-safe", "0",
+    "-i", concatList,
+    "-c", "copy",
+    "-movflags", "+faststart",
+    outputPath,
+  ]);
+
+  console.log("HD render complete:", outputPath);
+} finally {
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+`;
+}
 
 export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [videoFilename, setVideoFilename] = useState<string>("video.mp4");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [fps, setFps] = useState<30 | 60>(60);
 
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [drawingState, setDrawingState] = useState<{
@@ -109,6 +327,7 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
   );
 
   const lastFrozenIdRef = useRef<string | null>(null);
+  const freezeTimerRef = useRef<number | null>(null);
   const isPlayingRef = useRef<boolean>(isPlaying);
 
   // Recording
@@ -118,11 +337,24 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
+
+  const clearFreezeTimer = useCallback(() => {
+    if (freezeTimerRef.current !== null) {
+      window.clearTimeout(freezeTimerRef.current);
+      freezeTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      clearFreezeTimer();
+    };
+  }, [clearFreezeTimer]);
 
   // Prevent memory leak on videoSrc upload/cleanup
   useEffect(() => {
@@ -153,10 +385,13 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      clearFreezeTimer();
       const url = URL.createObjectURL(file);
       setVideoSrc(url);
+      setVideoFilename(file.name || "video.mp4");
       setAnnotations([]);
       setRecordingUrl(null);
+      setIsPlaying(false);
       lastFrozenIdRef.current = null;
     }
   };
@@ -176,7 +411,6 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     }
 
     if (ann.type === "laser" || ann.points.length < 3) {
-      // Laser Line
       ctx.strokeStyle = ann.color;
       ctx.lineWidth = ann.lineWidth || 4;
       ctx.shadowBlur = 15;
@@ -186,9 +420,8 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
       ctx.stroke();
       ctx.shadowBlur = 0;
     } else {
-      // Polygon for Blocks
       ctx.closePath();
-      ctx.fillStyle = ann.color + "40"; // 25% opacity
+      ctx.fillStyle = ann.color + "40";
       ctx.fill();
 
       ctx.strokeStyle = ann.color;
@@ -240,7 +473,8 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     }
   };
 
-  const drawFrame = useCallback(() => {
+  // Renders a single frame to the canvas (no rAF scheduling here)
+  const renderFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -258,7 +492,6 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
 
       const time = video.currentTime;
 
-      // Reset lastFrozenId if we move away organically (scrubbing)
       if (lastFrozenIdRef.current) {
         const lastFrozenAnn = annotations.find(
           (a) => a.id === lastFrozenIdRef.current,
@@ -268,7 +501,6 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
         }
       }
 
-      // Trigger Freeze
       if (!video.paused && !video.seeking) {
         const toFreeze = annotations.find(
           (a) =>
@@ -280,16 +512,17 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
         if (toFreeze) {
           video.pause();
           lastFrozenIdRef.current = toFreeze.id;
+          clearFreezeTimer();
 
-          setTimeout(() => {
+          freezeTimerRef.current = window.setTimeout(() => {
+            freezeTimerRef.current = null;
             if (isPlayingRef.current && videoRef.current) {
-              videoRef.current.play();
+              videoRef.current.play().catch(() => {});
             }
           }, toFreeze.freezeDuration * 1000);
         }
       }
 
-      // Draw annotations if frozen or scrubbing manually over the exact frame
       annotations.forEach((ann) => {
         const isCurrentFreeze =
           lastFrozenIdRef.current === ann.id && video.paused;
@@ -300,7 +533,6 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
         }
       });
 
-      // Draw currently drawing shape
       if (drawingState.active && drawingState.currentPoints.length > 0) {
         drawActiveShape(
           ctx,
@@ -313,90 +545,75 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
         );
       }
     }
+  }, [annotations, drawingState, clearFreezeTimer]);
 
-    setCurrentTime(video.currentTime);
-    requestRef.current = requestAnimationFrame(drawFrame);
-  }, [annotations, drawingState]);
-
+  // Run rAF loop ONLY while actively playing or recording; zero idle GPU/CPU drain when paused
   useEffect(() => {
-    if (videoSrc) {
-      requestRef.current = requestAnimationFrame(drawFrame);
-    }
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-  }, [drawFrame, videoSrc]);
+    if (!videoSrc) return;
 
-  const handlePlayPause = () => {
+    if (!isPlaying && !isRecording) {
+      renderFrame();
+      return;
+    }
+
+    let active = true;
+    const tick = () => {
+      if (!active) return;
+      renderFrame();
+      if (videoRef.current) {
+        setCurrentTime(videoRef.current.currentTime);
+      }
+      requestRef.current = requestAnimationFrame(tick);
+    };
+
+    requestRef.current = requestAnimationFrame(tick);
+    return () => {
+      active = false;
+      if (requestRef.current !== undefined) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = undefined;
+      }
+    };
+  }, [renderFrame, videoSrc, isPlaying, isRecording]);
+
+  const handlePlayPause = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawingState.active || !canvasRef.current || !videoRef.current) return;
-
-    // Pause instantly when drawing starts
-    if (isPlaying) {
+      clearFreezeTimer();
       videoRef.current.pause();
       setIsPlaying(false);
-    }
-
-    const rect = canvasRef.current.getBoundingClientRect();
-
-    if (canvasRef.current.width === 0 || canvasRef.current.height === 0) return;
-
-    const canvasAsp = canvasRef.current.width / canvasRef.current.height;
-    const rectAsp = rect.width / rect.height;
-
-    const rawX = e.nativeEvent.offsetX;
-    const rawY = e.nativeEvent.offsetY;
-
-    // The dimensions of the canvas element itself (not the buffer)
-    const cw = rect.width;
-    const ch = rect.height;
-
-    let renderedW = cw;
-    let renderedH = ch;
-    let imgOffsetX = 0;
-    let imgOffsetY = 0;
-
-    if (canvasAsp > rectAsp) {
-      // letterbox top/bottom
-      renderedH = cw / canvasAsp;
-      imgOffsetY = (ch - renderedH) / 2;
     } else {
-      // pillarbox left/right
-      renderedW = ch * canvasAsp;
-      imgOffsetX = (cw - renderedW) / 2;
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
     }
+  }, [isPlaying, clearFreezeTimer]);
 
-    const x = (rawX - imgOffsetX) / renderedW;
-    const y = (rawY - imgOffsetY) / renderedH;
+  const stepFrames = useCallback(
+    (deltaFrames: number) => {
+      const video = videoRef.current;
+      if (!video) return;
+      clearFreezeTimer();
+      if (!video.paused) {
+        video.pause();
+        setIsPlaying(false);
+      }
+      const nextTime = stepFrameTime(
+        video.currentTime,
+        deltaFrames,
+        fps,
+        duration || video.duration || 0,
+      );
+      video.currentTime = nextTime;
+      setCurrentTime(nextTime);
+    },
+    [fps, duration, clearFreezeTimer],
+  );
 
-    // ensure inside bounds
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-
-    const newPoints = [...drawingState.currentPoints, { x, y }];
-    const maxPts = Infinity; // Support any number of points
-
-    if (newPoints.length >= maxPts) {
-      // This path is disabled, handled by "Finish Shape" mostly, but just in case:
-      // ..
-    } else {
-      setDrawingState((prev) => ({ ...prev, currentPoints: newPoints }));
-    }
-  };
-
-  const finalizeShape = () => {
+  const finalizeShape = useCallback(() => {
     if (!drawingState.active || drawingState.currentPoints.length < 2) return;
 
     const newAnn: Annotation = {
-      id: Math.random().toString(36).substring(7),
+      id: Math.random().toString(36).substring(2, 9),
       type: drawingState.tool,
       points: drawingState.currentPoints,
       time: videoRef.current ? videoRef.current.currentTime : 0,
@@ -407,10 +624,91 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     setAnnotations((prev) => [...prev, newAnn].sort((a, b) => a.time - b.time));
     setDrawingState((prev) => ({ ...prev, active: false, currentPoints: [] }));
     setActiveAnnotationId(newAnn.id);
+  }, [drawingState]);
+
+  // Keyboard shortcuts for fast frame-accurate scrubbing & annotation workflow
+  useEffect(() => {
+    if (!videoSrc) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        stepFrames(e.shiftKey ? -10 : -1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        stepFrames(e.shiftKey ? 10 : 1);
+      } else if (e.key === "Enter" && drawingState.active && drawingState.currentPoints.length >= 2) {
+        e.preventDefault();
+        finalizeShape();
+      } else if (e.key === "Escape" && drawingState.active) {
+        e.preventDefault();
+        setDrawingState((prev) => ({ ...prev, active: false, currentPoints: [] }));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [videoSrc, handlePlayPause, stepFrames, drawingState.active, drawingState.currentPoints.length, finalizeShape]);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drawingState.active || !canvasRef.current || !videoRef.current) return;
+
+    if (isPlaying) {
+      clearFreezeTimer();
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    if (canvasRef.current.width === 0 || canvasRef.current.height === 0) return;
+
+    const canvasAsp = canvasRef.current.width / canvasRef.current.height;
+    const rectAsp = rect.width / rect.height;
+
+    const rawX = e.nativeEvent.offsetX;
+    const rawY = e.nativeEvent.offsetY;
+
+    const cw = rect.width;
+    const ch = rect.height;
+
+    let renderedW = cw;
+    let renderedH = ch;
+    let imgOffsetX = 0;
+    let imgOffsetY = 0;
+
+    if (canvasAsp > rectAsp) {
+      renderedH = cw / canvasAsp;
+      imgOffsetY = (ch - renderedH) / 2;
+    } else {
+      renderedW = ch * canvasAsp;
+      imgOffsetX = (cw - renderedW) / 2;
+    }
+
+    const x = (rawX - imgOffsetX) / renderedW;
+    const y = (rawY - imgOffsetY) / renderedH;
+
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+    setDrawingState((prev) => ({
+      ...prev,
+      currentPoints: [...prev.currentPoints, { x, y }],
+    }));
   };
 
   const handleExportJSON = () => {
-    const data = JSON.stringify(annotations, null, 2);
+    const data = JSON.stringify({ fps, source: videoFilename, annotations }, null, 2);
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -424,13 +722,12 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     if (!canvasRef.current || !videoRef.current) return;
     const canvas = canvasRef.current;
 
-    // Reset to beginning
+    clearFreezeTimer();
     videoRef.current.currentTime = 0;
     lastFrozenIdRef.current = null;
 
-    const stream = canvas.captureStream(30); // 30fps is stable and smooth without dropping too many canvas frames
+    const stream = canvas.captureStream(30);
 
-    // Add audio track if video has one
     const capturableVid = videoRef.current as CapturableVideoElement;
     const audioTrack = capturableVid.mozCaptureStream
       ? capturableVid.mozCaptureStream().getAudioTracks()[0]
@@ -468,7 +765,7 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     mediaRecorderRef.current.start();
     setIsRecording(true);
 
-    videoRef.current.play();
+    videoRef.current.play().catch(() => {});
     setIsPlaying(true);
   };
 
@@ -476,6 +773,7 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      clearFreezeTimer();
       if (videoRef.current) {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -484,20 +782,12 @@ export function ASRVideoAnnotator({ theme }: { theme: "light" | "dark" }) {
   };
 
   const handleNodescriptGen = () => {
-    const scriptContent = `
-// ASR HD Node.js Export Script
-// Save next to your raw video: "\${videoSrc ? 'video.mp4' : 'video.mov'}"
-// Usage: \`npm init -y && npm install fluent-ffmpeg canvas\` then \`node render.js\`
-
-// NOTE: This is a placeholder indicating a feature. Pro backend rendering is recommended.
-// This requires a robust pipeline. Stay tuned!
-console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
-`;
+    const scriptContent = buildNodeRenderScript(annotations, videoFilename, fps);
     const blob = new Blob([scriptContent], { type: "text/javascript" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "asr_hd_render.js";
+    a.download = "asr_hd_render.mjs";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -517,7 +807,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
             ASR Video Annotator
           </h1>
           <p className="text-[10px] font-medium tracking-widest opacity-60 mt-1">
-            INTERNAL TOOL: EXPORT RAW METADATA OR WEBM
+            INTERNAL TOOL: FRAME-ACCURATE ANNOTATIONS, WEBM & FFMPEG PIPELINE
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
@@ -559,11 +849,16 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
               ref={videoRef}
               src={videoSrc || undefined}
               className="hidden"
-              loop
+              loop={!isRecording}
               playsInline
               muted
               controls={false}
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+              onLoadedData={() => renderFrame()}
+              onSeeked={(e) => {
+                setCurrentTime(e.currentTarget.currentTime);
+                renderFrame();
+              }}
               onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onEnded={() => {
                 setIsPlaying(false);
@@ -580,11 +875,12 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
 
           {/* Transport Controls permanently beneath the video */}
           {videoSrc && (
-            <div className="bg-zinc-950 border-t border-white/5 p-4 flex-shrink-0 z-10">
+            <div className="bg-zinc-950 border-t border-white/5 p-4 flex-shrink-0 z-10 flex flex-col gap-3">
               <div className="flex items-center gap-4">
                 <button
                   type="button"
                   onClick={handlePlayPause}
+                  aria-label={isPlaying ? "Pause video" : "Play video"}
                   className="w-12 h-12 flex items-center justify-center bg-white text-black hover:bg-white/80 rounded-full transition-colors flex-shrink-0 shadow-lg"
                 >
                   {isPlaying ? (
@@ -594,25 +890,89 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                   )}
                 </button>
                 <div className="flex flex-col flex-1 gap-1">
-                  <div className="flex justify-between text-[10px] font-mono tracking-widest uppercase opacity-80 text-white">
-                    <span>{currentTime.toFixed(2)}s</span>
+                  <div className="flex justify-between text-[10px] font-mono tracking-widest uppercase opacity-80 text-white tabular-nums">
+                    <span>
+                      {currentTime.toFixed(2)}s (F{Math.round(currentTime * fps)})
+                    </span>
                     <span>{duration.toFixed(2)}s</span>
                   </div>
                   <input
                     type="range"
                     min={0}
-                    max={duration}
-                    step={0.01}
+                    max={duration || 0}
+                    step={Number((1 / fps).toFixed(4))}
                     value={currentTime}
                     onChange={(e) => {
                       if (videoRef.current) {
-                        videoRef.current.currentTime = parseFloat(
-                          e.target.value,
-                        );
+                        clearFreezeTimer();
+                        const next = parseFloat(e.target.value);
+                        videoRef.current.currentTime = next;
+                        setCurrentTime(next);
                       }
                     }}
                     className="w-full h-2 cursor-pointer appearance-none bg-white/30 rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
                   />
+                </div>
+              </div>
+
+              {/* Frame-step & FPS bar */}
+              <div className="flex items-center justify-between gap-2 text-white">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => stepFrames(-10)}
+                    title="Back 10 frames (Shift+Left)"
+                    className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1"
+                  >
+                    <ChevronsLeft size={12} /> 10F
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stepFrames(-1)}
+                    title="Back 1 frame (Left Arrow)"
+                    className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1"
+                  >
+                    <ChevronLeft size={12} /> 1F
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stepFrames(1)}
+                    title="Forward 1 frame (Right Arrow)"
+                    className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1"
+                  >
+                    1F <ChevronRight size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stepFrames(10)}
+                    title="Forward 10 frames (Shift+Right)"
+                    className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 text-[10px] font-mono uppercase tracking-wider flex items-center gap-1"
+                  >
+                    10F <ChevronsRight size={12} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-[9px] font-mono uppercase tracking-widest opacity-40">
+                    SPACE PLAY • ARROWS STEP
+                  </span>
+                  <div className="flex border border-white/15 text-[10px] font-mono uppercase">
+                    {([30, 60] as const).map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => setFps(rate)}
+                        className={cn(
+                          "px-2.5 py-1 transition-colors",
+                          fps === rate
+                            ? "bg-white text-black font-black"
+                            : "text-white/60 hover:text-white",
+                        )}
+                      >
+                        {rate}FPS
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -708,7 +1068,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                           color: e.target.value,
                         }))
                       }
-                      className="w-8 h-8 rounded cursor-pointer p-0 border-0 bg-transparent"
+                      className="w-8 h-8 rounded cursor-pointer p-0 border-0 bg-transparent text-base"
                     />
                   </label>
                   <label className="flex flex-col gap-1">
@@ -728,10 +1088,10 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                       onChange={(e) =>
                         setDrawingState((prev) => ({
                           ...prev,
-                          lineWidth: parseInt(e.target.value),
+                          lineWidth: parseInt(e.target.value, 10),
                         }))
                       }
-                      className="w-full accent-current h-1"
+                      className="w-full accent-current h-1 text-base"
                     />
                   </label>
                 </div>
@@ -760,7 +1120,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                   </button>
                 </div>
                 <p className="text-[10px] uppercase font-bold opacity-70 mt-1">
-                  Click on video to plot points.
+                  Click on video to plot points. Press Enter to finish or Esc to cancel.
                 </p>
               </div>
             )}
@@ -782,7 +1142,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                   NO CHECKPOINTS YET
                 </div>
               )}
-              {annotations.map((ann, _i) => (
+              {annotations.map((ann) => (
                 <div
                   key={ann.id}
                   className={cn(
@@ -831,6 +1191,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                           onClick={(e) => {
                             e.stopPropagation();
                             if (videoRef.current) {
+                              clearFreezeTimer();
                               videoRef.current.currentTime = ann.time;
                               videoRef.current.pause();
                               setIsPlaying(false);
@@ -845,11 +1206,12 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                         step={0.1}
                         min={0}
                         onChange={(val) => {
-                          const newAnns = [...annotations];
-                          const idx = newAnns.findIndex((a) => a.id === ann.id);
-                          newAnns[idx].time = val;
-                          setAnnotations(
-                            newAnns.sort((a, b) => a.time - b.time),
+                          setAnnotations((prev) =>
+                            prev
+                              .map((a) =>
+                                a.id === ann.id ? { ...a, time: val } : a,
+                              )
+                              .sort((a, b) => a.time - b.time),
                           );
                         }}
                         className="bg-current/5 border border-current/20 outline-none focus:border-current p-1.5 w-full text-base"
@@ -865,10 +1227,13 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                         min={0}
                         max={10}
                         onChange={(val) => {
-                          const newAnns = [...annotations];
-                          const idx = newAnns.findIndex((a) => a.id === ann.id);
-                          newAnns[idx].freezeDuration = val;
-                          setAnnotations(newAnns);
+                          setAnnotations((prev) =>
+                            prev.map((a) =>
+                              a.id === ann.id
+                                ? { ...a, freezeDuration: val }
+                                : a,
+                            ),
+                          );
                         }}
                         className="bg-current/5 border border-current/20 outline-none focus:border-current p-1.5 w-full text-base"
                       />
@@ -883,7 +1248,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
 
       {/* Export Options Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-white/10 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
             <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
               <h2 className="text-sm font-black uppercase tracking-widest text-white">
@@ -960,14 +1325,15 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                   </div>
                   <div className="flex-1">
                     <h3 className="font-black whitespace-nowrap uppercase text-sm tracking-widest flex items-center gap-3">
-                      HD Node Render{" "}
+                      HD FFmpeg Render{" "}
                       <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 border border-blue-500/30 tracking-widest">
-                        EXPERIMENTAL
+                        {fps}FPS MP4
                       </span>
                     </h3>
                     <p className="text-[10px] text-white/50 leading-tight mt-1 font-medium tracking-wide uppercase">
-                      Downloads an FFMPEG pipeline script + JSON. Generates 4K
-                      60fps MP4 offline. Perfect for YouTube/IG.
+                      Downloads runnable Node.js + FFmpeg script with embedded
+                      SVG overlays & freeze timings. Outputs lossless-grade 4K
+                      H.264 MP4.
                     </p>
                   </div>
                 </div>
@@ -976,7 +1342,7 @@ console.log("HD Export capability unlocked in version 2.0. Join ASR Discord.");
                   onClick={handleNodescriptGen}
                   className="flex items-center justify-center gap-2 w-full px-4 py-4 bg-blue-600 text-white font-black text-[10px] tracking-widest uppercase hover:bg-blue-500 transition-colors shadow-lg"
                 >
-                  <Download size={14} /> DOWNLOAD RENDER PIPELINE
+                  <Download size={14} /> DOWNLOAD RENDER PIPELINE (.MJS)
                 </button>
               </div>
 

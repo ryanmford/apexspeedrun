@@ -1,5 +1,3 @@
- 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useMemo, useCallback, startTransition } from "react";
 import { useDataStore } from "../store/useDataStore";
 import { useAppStore } from "../store/useAppStore";
@@ -10,12 +8,10 @@ import {
   useNavigationType,
 } from "react-router-dom";
 import {
-  isQualifiedAthlete,
-  isPlaceholderPlayer,
   normalizeName,
   createSlug,
 } from "../lib/asr-utils";
-import { CourseData, SetterProfile, TeamProfile } from "../types";
+import { CourseData, PlayerProfile, SetterProfile, TeamProfile } from "../types";
 
 export const useURLState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,7 +69,8 @@ export const useAppNavigation = () => {
     }
   }, [navigate]);
 
-  const prefetchEntity = useCallback(() => {
+  const prefetchEntity = useCallback((entity?: unknown) => {
+    void entity;
     // Zero-Latency Hover Prefetching: Eagerly load the inspector chunks
     import("../components/inspector/InspectorBody").catch(() => {});
     import("../components/inspector/PlayerDetails").catch(() => {});
@@ -206,7 +203,6 @@ const getInspectorDataForPath = (
   masterCourseList: CourseData[],
   settersWithImpact: SetterProfile[],
   setterMet: Record<string, SetterProfile>,
-  cMet: Record<string, unknown>,
 ) => {
   const pathSegments = pathname.split("/").filter(Boolean);
   const viewPrefix = pathSegments[0];
@@ -293,7 +289,6 @@ export const useInspectorData = () => {
   const masterCourseList = useDataStore((s) => s.masterCourseList);
   const settersWithImpact = useDataStore((s) => s.settersWithImpact);
   const setterMet = useDataStore((s) => s.setterMet as Record<string, SetterProfile>);
-  const cMet = useDataStore((s) => s.cMet as Record<string, unknown>);
 
   // Only recompute when pathname or state changes, ignoring search params/hash
   const locationPathname = location.pathname;
@@ -313,7 +308,6 @@ export const useInspectorData = () => {
         masterCourseList,
         settersWithImpact,
         setterMet,
-        cMet,
       );
       if (data) {
         history.unshift(data);
@@ -330,7 +324,7 @@ export const useInspectorData = () => {
       history: history,
       historyIndex: history.length > 0 ? history.length - 1 : -1,
     };
-  }, [locationPathname, locationState, atMet, masterCourseList, settersWithImpact, setterMet, cMet]);
+  }, [locationPathname, locationState, atMet, masterCourseList, settersWithImpact, setterMet]);
 };
 
 export const useCourseList = () => {
@@ -341,21 +335,21 @@ export const useCourseList = () => {
 
 
 
-export const useTeamList = () => {
+export const useTeamList = (): TeamProfile[] => {
   const teamCategory = useAppStore((s) => s.teamCategory);
   const { isAllTimeContext, eventType } = useURLState();
-  return useDataStore((s: any) => {
+  return useDataStore((s) => {
     if (isAllTimeContext) {
-      if (teamCategory === 'gyms') return s.teamList_gyms_AT;
-      if (teamCategory === 'teams') return s.teamList_teams_AT;
+      if (teamCategory === "gyms") return s.teamList_gyms_AT;
+      if (teamCategory === "teams") return s.teamList_teams_AT;
       return null;
     } else {
       if (eventType === "2026") {
-        if (teamCategory === 'gyms') return s.teamList_gyms_2026;
-        if (teamCategory === 'teams') return s.teamList_teams_2026;
+        if (teamCategory === "gyms") return s.teamList_gyms_2026;
+        if (teamCategory === "teams") return s.teamList_teams_2026;
       }
-      if (teamCategory === 'gyms') return s.teamList_gyms_OP;
-      if (teamCategory === 'teams') return s.teamList_teams_OP;
+      if (teamCategory === "gyms") return s.teamList_gyms_OP;
+      if (teamCategory === "teams") return s.teamList_teams_OP;
       return null;
     }
   }) || [];

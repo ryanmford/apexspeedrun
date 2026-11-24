@@ -1,7 +1,24 @@
- 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { PlayerProfile, CourseData, SetterProfile, TeamProfile, ASRDataContext } from "../types";
-import { CONFIG, getContinentData, isPlaceholderPlayer, normalizeName, isQualifiedAthlete } from "./asr-utils.ts";
+import type {
+  CourseData,
+  CourseRecordEntry,
+  CourseRunEntry,
+  GenderedCourseBoards,
+  PlayerPerformance,
+  PlayerProfile,
+  RawBestRun,
+  SearchLocationItem,
+  SetterProfile,
+  TeamProfile,
+  TeamsAggregated,
+} from "../types";
+import {
+  CONFIG,
+  getContinentData,
+  isPlaceholderPlayer,
+  normalizeName,
+  isQualifiedAthlete,
+  parseCoords,
+} from "./asr-utils.ts";
 import {
   processRankingData,
   processLiveFeedData,
@@ -10,6 +27,12 @@ import {
 } from "./asr-data.ts";
 import { normalizeForSearch } from "./utils";
 
+const toTimestamp = (d?: Date | string): number => {
+  if (!d) return Infinity;
+  const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
+  return isNaN(t) ? Infinity : t;
+};
+
 const sortAthletesWithTiebreakers = (a: PlayerProfile, b: PlayerProfile) => {
   if (Math.abs((b.rating || 0) - (a.rating || 0)) > 0.000001) {
     return (b.rating || 0) - (a.rating || 0);
@@ -17,18 +40,29 @@ const sortAthletesWithTiebreakers = (a: PlayerProfile, b: PlayerProfile) => {
   if ((b.runs || 0) !== (a.runs || 0)) {
     return (b.runs || 0) - (a.runs || 0);
   }
-  return (a.latestRunDate?.getTime() || Infinity) - (b.latestRunDate?.getTime() || Infinity);
+  return toTimestamp(a.latestRunDate) - toTimestamp(b.latestRunDate);
 };
 
-export function computeAllState(payload: { rM: string; rF: string; rLive: string; rSet: string; hasTotalError: boolean; hasPartialError: boolean }) {
+export function computeAllState(payload: {
+  rM: string;
+  rF: string;
+  rLive: string;
+  rSet: string;
+  hasTotalError: boolean;
+  hasPartialError: boolean;
+}) {
   const { rM, rF, rLive, rSet, hasTotalError, hasPartialError } = payload;
 
   const pM = processRankingData(rM || "", "M");
   const pF = processRankingData(rF || "", "F");
-  const initialMetadata: Record<string, PlayerProfile & { allTimeRank?: number | "UR", openRank?: number | "UR" }> = {};
+  const initialMetadata: Record<string, PlayerProfile> = {};
 
-  pM.forEach(p => initialMetadata[p.pKey] = { ...p, gender: "M" });
-  pF.forEach(p => initialMetadata[p.pKey] = { ...p, gender: "F" });
+  pM.forEach((p) => {
+    initialMetadata[p.pKey] = { ...p, gender: "M" };
+  });
+  pF.forEach((p) => {
+    initialMetadata[p.pKey] = { ...p, gender: "F" };
+  });
 
   const processed = processLiveFeedData(
     rLive || "",
@@ -38,30 +72,29 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
 
   const assignRanks = (
     arr: PlayerProfile[],
-    gender: string,
+    gender: "M" | "F",
     isAllTime: boolean | string = true,
   ) => {
     const qualified = arr
       .filter((p) => isQualifiedAthlete(p, isAllTime, gender))
       .sort(sortAthletesWithTiebreakers);
-    
-    // Build tiebreaker-aware rank mapping
+
     const buildRankMap = (qualifiedArr: PlayerProfile[]) => {
       const rm = new Map<string, number>();
       let currRank = 1;
       let prevRating = -1;
       let prevRuns = -1;
       let prevDate = -1;
-      
+
       qualifiedArr.forEach((q, i) => {
         const r = q.rating || 0;
         const runs = q.runs || 0;
-        const date = q.latestRunDate?.getTime() || Infinity;
+        const date = toTimestamp(q.latestRunDate);
 
         const diffRating = Math.abs(r - prevRating) > 0.000001;
         const diffRuns = runs !== prevRuns;
         const diffDate = date !== prevDate;
-        
+
         if (diffRating || diffRuns || diffDate) {
           currRank = i + 1;
           prevRating = r;
@@ -72,53 +105,42 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       });
       return rm;
     };
-    
+
     const rankMap = buildRankMap(qualified);
 
     arr.forEach((p) => {
-      const rankVal = rankMap.has(p.pKey) ? rankMap.get(p.pKey)! : "UR";
+      const rankVal: number | "UR" = rankMap.has(p.pKey) ? rankMap.get(p.pKey)! : "UR";
       if (isAllTime === true || isAllTime === "all-time") {
         p.allTimeRank = rankVal;
-        initialMetadata[p.pKey].allTimeRank = rankVal;
+        if (initialMetadata[p.pKey]) initialMetadata[p.pKey].allTimeRank = rankVal;
       } else if (isAllTime === "2026") {
         p.season26Rank = rankVal;
-        initialMetadata[p.pKey].season26Rank = rankVal;
+        if (initialMetadata[p.pKey]) initialMetadata[p.pKey].season26Rank = rankVal;
       } else {
         p.openRank = rankVal;
-        initialMetadata[p.pKey].openRank = rankVal;
+        if (initialMetadata[p.pKey]) initialMetadata[p.pKey].openRank = rankVal;
       }
     });
   };
 
   // Calculate Open Ranks after processing live feed
-  const openM = processed.openRankings.filter(
-    (p: PlayerProfile) => p.gender === "M",
-  );
-  const openF = processed.openRankings.filter(
-    (p: PlayerProfile) => p.gender === "F",
-  );
+  const openM = processed.openRankings.filter((p) => p.gender === "M");
+  const openF = processed.openRankings.filter((p) => p.gender === "F");
   assignRanks(openM, "M", false);
   assignRanks(openF, "F", false);
-  const s26M = processed.season26Rankings.filter(
-    (p: PlayerProfile) => p.gender === "M",
-  );
-  const s26F = processed.season26Rankings.filter(
-    (p: PlayerProfile) => p.gender === "F",
-  );
+
+  const s26M = processed.season26Rankings.filter((p) => p.gender === "M");
+  const s26F = processed.season26Rankings.filter((p) => p.gender === "F");
   assignRanks(s26M, "M", "2026");
   assignRanks(s26F, "F", "2026");
 
   // Calculate All Time Ranks dynamically
-  const atM = processed.allTimeRankings.filter(
-    (p: PlayerProfile) => p.gender === "M",
-  );
-  const atF = processed.allTimeRankings.filter(
-    (p: PlayerProfile) => p.gender === "F",
-  );
+  const atM = processed.allTimeRankings.filter((p) => p.gender === "M");
+  const atF = processed.allTimeRankings.filter((p) => p.gender === "F");
   assignRanks(atM, "M", true);
   assignRanks(atF, "F", true);
 
-  const allSetters = [
+  const allSetters: SetterProfile[] = [
     ...processSettersData(rM || ""),
     ...processSettersData(rF || ""),
   ];
@@ -136,25 +158,36 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     atMet: processed.athleteMetadata,
     dnMap: processed.athleteDisplayNameMap,
     cMet: processed.courseMetadata,
-    settersData: allSetters,
     atRawBest: processed.atRawBest,
     opRawBest: processed.opRawBest,
     season26RawBest: processed.season26RawBest,
     recentFeed: processed.recentFeed,
     courseRunsHistory: processed.courseRunsHistory,
     hasError: hasTotalError,
-    hasPartialError: hasPartialError,
+    hasPartialError,
     lastUpdated: Date.now(),
   };
 
-  const { 
-      cMet, lbAT, lbOpen, lbSeason26, atRawBest, opRawBest, season26RawBest, dnMap, 
-      data, 
-      settersData, atMet, 
-      openData, season26Data, atPerfs, season26Perfs,
-      courseRunsHistory
+  const settersData = allSetters;
+  const {
+    cMet,
+    lbAT,
+    lbOpen,
+    lbSeason26,
+    atRawBest,
+    opRawBest,
+    season26RawBest,
+    dnMap,
+    data,
+    atMet,
+    openData,
+    season26Data,
+    atPerfs,
+    opPerfs,
+    season26Perfs,
+    courseRunsHistory,
   } = nextState;
-  
+
   // COURSE STATS
   const courseNames = Array.from(
     new Set([
@@ -163,37 +196,38 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       ...Object.keys(lbAT?.F || {}),
     ]),
   ).filter(Boolean);
-  
-  const masterCourseList = courseNames.map((name) => {
-    const athletesMAll = Object.entries((lbAT?.M || {})[name as string] || {})
-      .map(([pKey, time]: [string, unknown]) => [
-        pKey,
-        time,
-        (atRawBest || {})[pKey]?.[name as string]?.videoUrl,
-      ] as [string, number, string?])
+
+  const masterCourseList: CourseData[] = courseNames.map((name) => {
+    const athletesMAll: [string, number, string?][] = Object.entries((lbAT?.M || {})[name] || {})
+      .map(
+        ([pKey, time]): [string, number, string?] => [
+          pKey,
+          time,
+          (atRawBest || {})[pKey]?.[name]?.videoUrl,
+        ],
+      )
       .sort((a, b) => a[1] - b[1]);
-    const athletesFAll = Object.entries((lbAT?.F || {})[name as string] || {})
-      .map(([pKey, time]: [string, unknown]) => [
-        pKey,
-        time,
-        (atRawBest || {})[pKey]?.[name as string]?.videoUrl,
-      ] as [string, number, string?])
+    const athletesFAll: [string, number, string?][] = Object.entries((lbAT?.F || {})[name] || {})
+      .map(
+        ([pKey, time]): [string, number, string?] => [
+          pKey,
+          time,
+          (atRawBest || {})[pKey]?.[name]?.videoUrl,
+        ],
+      )
       .sort((a, b) => a[1] - b[1]);
-    const meta = (cMet || {})[name as string] || {};
+    const meta: Partial<CourseData> = (cMet || {})[name] || {};
     const contData = getContinentData(meta.country || "UNKNOWN");
-    const mRecs = athletesMAll.map((a) => a[1] as number);
-    const fRecs = athletesFAll.map((a) => a[1] as number);
-    const coordsMatch = String(meta.coordinates || "").match(
-      /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/,
-    );
-    const filteredM = athletesMAll.filter(
-      (a) => !isPlaceholderPlayer(dnMap[a[0] as string] || a[0]),
-    );
-    const filteredF = athletesFAll.filter(
-      (a) => !isPlaceholderPlayer(dnMap[a[0] as string] || a[0]),
-    );
+    const mRecs = athletesMAll.map((a) => a[1]);
+    const fRecs = athletesFAll.map((a) => a[1]);
+    const parsedCoords = meta.parsedCoords ?? parseCoords(meta.coordinates);
+    const filteredM = athletesMAll.filter((a) => !isPlaceholderPlayer(dnMap[a[0]] || a[0]));
+    const filteredF = athletesFAll.filter((a) => !isPlaceholderPlayer(dnMap[a[0]] || a[0]));
     const normName = String(name).toUpperCase();
+    const totalAllTimeRuns =
+      (courseRunsHistory?.[normName] || []).length || filteredM.length + filteredF.length;
     return {
+      ...meta,
       name,
       videoUrl: meta.demoVideo || meta.videoUrl,
       city: meta.city || "UNKNOWN",
@@ -204,7 +238,7 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       mRecord: mRecs.length ? Math.min(...mRecs) : null,
       fRecord: fRecs.length ? Math.min(...fRecs) : null,
       totalAthletes: filteredM.length + filteredF.length,
-      totalRuns: (courseRunsHistory?.[normName] || []).length || (filteredM.length + filteredF.length),
+      totalRuns: totalAllTimeRuns,
       allTimeMRecord: mRecs.length ? Math.min(...mRecs) : null,
       allTimeFRecord: fRecs.length ? Math.min(...fRecs) : null,
       allTimeAthletesM: athletesMAll,
@@ -212,85 +246,117 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       athletesMAll,
       athletesFAll,
       totalAllTimeAthletes: filteredM.length + filteredF.length,
-      totalAllTimeRuns: (courseRunsHistory?.[normName] || []).length || (filteredM.length + filteredF.length),
-      parsedCoords: coordsMatch
-        ? [parseFloat(coordsMatch[1]), parseFloat(coordsMatch[2])]
-        : null,
-      ...meta,
+      totalAllTimeRuns,
+      parsedCoords,
+      searchKey:
+        meta.searchKey ||
+        normalizeForSearch(`${name} ${meta.city || ""} ${meta.stateProv || ""} ${meta.country || ""}`),
     };
   });
 
+  // PRECOMPUTED SEARCH LOCATIONS INDEX
+  const locationMap = new Map<string, SearchLocationItem>();
+  masterCourseList.forEach((c) => {
+    if (c.city || c.stateProv || c.country) {
+      const city = c.city || "";
+      const stateProv = c.stateProv || "";
+      const country = c.country || "";
+      const locKey = normalizeForSearch(`${city}, ${stateProv}, ${country}`);
+      const existing = locationMap.get(locKey);
+      if (!existing) {
+        const locName = [city, stateProv, country].filter(Boolean).join(", ");
+        const normName = normalizeForSearch(locName);
+        locationMap.set(locKey, {
+          name: locName,
+          city,
+          stateProv,
+          country,
+          flag: c.flag || "📍",
+          courseCount: 1,
+          type: "region",
+          searchKey: normName,
+          normCity: normalizeForSearch(city),
+          normState: normalizeForSearch(stateProv),
+          normCountry: normalizeForSearch(country),
+          normName,
+        });
+      } else {
+        existing.courseCount += 1;
+      }
+    }
+  });
+  const searchLocations: SearchLocationItem[] = Array.from(locationMap.values()).sort(
+    (a, b) => b.courseCount - a.courseCount,
+  );
+
   // KPI STATS
   const kpiStats = {
-      players: (data || []).filter((p: PlayerProfile) => !isPlaceholderPlayer(p.name)).length,
-      courses: masterCourseList.length,
-      cities: new Set(
-        masterCourseList.map((c: CourseData) => c.city).filter((v: string | undefined) => v && v !== "UNKNOWN"),
-      ).size,
-      countries: new Set(
-        masterCourseList
-          .map((c: CourseData) => c.country)
-          .filter((v: string | undefined) => v && v !== "UNKNOWN"),
-      ).size,
-      runs: masterCourseList.reduce(
-        (acc: number, c: CourseData) => acc + (c.totalAllTimeRuns || 0),
-        0,
-      ),
+    players: (data || []).filter((p) => !isPlaceholderPlayer(p.name)).length,
+    courses: masterCourseList.length,
+    cities: new Set(
+      masterCourseList.map((c) => c.city).filter((v): v is string => Boolean(v && v !== "UNKNOWN")),
+    ).size,
+    countries: new Set(
+      masterCourseList
+        .map((c) => c.country)
+        .filter((v): v is string => Boolean(v && v !== "UNKNOWN")),
+    ).size,
+    runs: masterCourseList.reduce((acc, c) => acc + (c.totalAllTimeRuns || 0), 0),
   };
 
   // KPI TRENDS (Sparklines)
-  let allRuns: Record<string, unknown>[] = [];
+  let allRuns: CourseRunEntry[] = [];
   Object.values(courseRunsHistory || {}).forEach((runsArray) => {
-    allRuns = allRuns.concat(runsArray as Record<string, unknown>[]);
+    allRuns = allRuns.concat(runsArray);
   });
 
-  const parsedRuns = allRuns.map(r => ({
+  const parsedRuns = allRuns.map((r) => ({
     ...r,
-    timeMs: r.date ? new Date(r.date as string).getTime() : NaN
+    timeMs: r.date ? new Date(r.date).getTime() : NaN,
   }));
 
-  const undatedRuns = parsedRuns.filter(r => isNaN(r.timeMs));
-  const datedRuns = parsedRuns.filter(r => !isNaN(r.timeMs)).sort((a,b) => a.timeMs - b.timeMs);
+  const undatedRuns = parsedRuns.filter((r) => isNaN(r.timeMs));
+  const datedRuns = parsedRuns.filter((r) => !isNaN(r.timeMs)).sort((a, b) => a.timeMs - b.timeMs);
 
-  const uniquePlayersAtStart = new Set(undatedRuns.map(r => r.pKey).filter(Boolean));
-  const uniqueCoursesAtStart = new Set(undatedRuns.map(r => String(r.course).toUpperCase()).filter(Boolean));
+  const uniquePlayersAtStart = new Set(undatedRuns.map((r) => r.pKey).filter(Boolean));
+  const uniqueCoursesAtStart = new Set(
+    undatedRuns.map((r) => String(r.course).toUpperCase()).filter(Boolean),
+  );
   const uniqueCountriesAtStart = new Set(
-    undatedRuns.map(r => {
-      const c = cMet?.[String(r.course).toUpperCase()];
-      return c?.country;
-    }).filter(v => v && v !== "UNKNOWN")
+    undatedRuns
+      .map((r) => cMet?.[String(r.course).toUpperCase()]?.country)
+      .filter((v): v is string => Boolean(v && v !== "UNKNOWN")),
   );
 
   let currentRunsCount = undatedRuns.length;
-  const currentUniquePlayers = new Set(uniquePlayersAtStart);
-  const currentUniqueCourses = new Set(uniqueCoursesAtStart);
-  const currentUniqueCountries = new Set(uniqueCountriesAtStart);
+  const currentUniquePlayers = new Set<string>(uniquePlayersAtStart);
+  const currentUniqueCourses = new Set<string>(uniqueCoursesAtStart);
+  const currentUniqueCountries = new Set<string>(uniqueCountriesAtStart);
 
   const runsTrend = [{ value: currentRunsCount }];
   const playersTrend = [{ value: currentUniquePlayers.size }];
   const coursesTrend = [{ value: currentUniqueCourses.size }];
   const countriesTrend = [{ value: currentUniqueCountries.size }];
 
-  // Sample points to make it ~40 data points
   const numDataPoints = 40;
-  
+
   if (datedRuns.length === 0) {
     for (let i = 0; i < numDataPoints - 1; i++) {
-       runsTrend.push({ value: currentRunsCount });
-       playersTrend.push({ value: currentUniquePlayers.size });
-       coursesTrend.push({ value: currentUniqueCourses.size });
-       countriesTrend.push({ value: currentUniqueCountries.size });
+      runsTrend.push({ value: currentRunsCount });
+      playersTrend.push({ value: currentUniquePlayers.size });
+      coursesTrend.push({ value: currentUniqueCourses.size });
+      countriesTrend.push({ value: currentUniqueCountries.size });
     }
   } else {
     const minTime = datedRuns[0].timeMs;
     const maxTime = datedRuns[datedRuns.length - 1].timeMs;
     const timeSpan = Math.max(maxTime - minTime, 1);
     const chunkMs = timeSpan / (numDataPoints - 1);
-    
+
     let runIdx = 0;
     for (let step = 1; step < numDataPoints; step++) {
-      const bucketEndTime = minTime + (step * chunkMs);
-      
+      const bucketEndTime = minTime + step * chunkMs;
+
       while (runIdx < datedRuns.length && datedRuns[runIdx].timeMs <= bucketEndTime) {
         const r = datedRuns[runIdx];
         currentRunsCount++;
@@ -300,34 +366,33 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
           currentUniqueCourses.add(courseKey);
           const countryStr = cMet?.[courseKey]?.country;
           if (countryStr && countryStr !== "UNKNOWN") {
-             currentUniqueCountries.add(countryStr);
+            currentUniqueCountries.add(countryStr);
           }
         }
         runIdx++;
       }
-      
+
       runsTrend.push({ value: currentRunsCount });
       playersTrend.push({ value: currentUniquePlayers.size });
       coursesTrend.push({ value: currentUniqueCourses.size });
       countriesTrend.push({ value: currentUniqueCountries.size });
     }
-    
-    // Ensure any remaining runs exactly equal to maxTime are accounted for
+
     while (runIdx < datedRuns.length) {
-        const r = datedRuns[runIdx];
-        currentRunsCount++;
-        if (r.pKey) currentUniquePlayers.add(r.pKey);
-        const courseKey = String(r.course).toUpperCase();
-        if (courseKey) {
-          currentUniqueCourses.add(courseKey);
-          const countryStr = cMet?.[courseKey]?.country;
-          if (countryStr && countryStr !== "UNKNOWN") {
-             currentUniqueCountries.add(countryStr);
-          }
+      const r = datedRuns[runIdx];
+      currentRunsCount++;
+      if (r.pKey) currentUniquePlayers.add(r.pKey);
+      const courseKey = String(r.course).toUpperCase();
+      if (courseKey) {
+        currentUniqueCourses.add(courseKey);
+        const countryStr = cMet?.[courseKey]?.country;
+        if (countryStr && countryStr !== "UNKNOWN") {
+          currentUniqueCountries.add(countryStr);
         }
-        runIdx++;
+      }
+      runIdx++;
     }
-    
+
     runsTrend[runsTrend.length - 1].value = currentRunsCount;
     playersTrend[playersTrend.length - 1].value = currentUniquePlayers.size;
     coursesTrend[coursesTrend.length - 1].value = currentUniqueCourses.size;
@@ -342,20 +407,28 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
   };
 
   // SETTER STATS
-  const leadMap: Record<string, string[]> = {};
-  const assistMap: Record<string, string[]> = {};
+  const leadMap: Record<string, CourseData[]> = {};
+  const assistMap: Record<string, CourseData[]> = {};
 
-  masterCourseList.forEach((c: CourseData) => {
-    const leads = c.leadSettersNormalized || (Array.isArray(c.leadSetters) ? c.leadSetters : [c.leadSetters]);
-    leads?.forEach((name: string) => {
+  masterCourseList.forEach((c) => {
+    const leads =
+      c.leadSettersNormalized ||
+      (Array.isArray(c.leadSetters) ? c.leadSetters : c.leadSetters ? [c.leadSetters] : []);
+    leads.forEach((name) => {
       if (!name) return;
       const norm = normalizeName(name);
       if (!leadMap[norm]) leadMap[norm] = [];
       leadMap[norm].push(c);
     });
 
-    const assists = c.assistantSettersNormalized || (Array.isArray(c.assistantsetters) ? c.assistantsetters : [c.assistantsetters]);
-    assists?.forEach((name: string) => {
+    const assists =
+      c.assistantSettersNormalized ||
+      (Array.isArray(c.assistantsetters)
+        ? c.assistantsetters
+        : c.assistantsetters
+          ? [c.assistantsetters]
+          : []);
+    assists.forEach((name) => {
       if (!name) return;
       const norm = normalizeName(name);
       if (!assistMap[norm]) assistMap[norm] = [];
@@ -363,26 +436,21 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     });
   });
 
-  const settersWithImpact = (settersData || [])
-    .map((s: string) => {
+  const settersWithImpact: SetterProfile[] = (settersData || [])
+    .map((s): SetterProfile | null => {
       const sName = s.name ? String(s.name).trim() : "";
       if (!sName) return null;
 
       const sNameNorm = normalizeName(sName);
       const leadCourses = leadMap[sNameNorm] || [];
       const assistCourses = assistMap[sNameNorm] || [];
-      
-      const allSetCourses = Array.from(
-        new Set([...leadCourses, ...assistCourses]),
-      );
+
+      const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
       const athleteMeta = atMet?.[sNameNorm];
       const totalCourses = allSetCourses.length;
       if (totalCourses === 0) return null;
 
-      const totalRuns = allSetCourses.reduce(
-        (sum, c) => sum + (c.totalAllTimeRuns || 0),
-        0,
-      );
+      const totalRuns = allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
 
       return {
         ...s,
@@ -391,36 +459,33 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
         sets: totalCourses,
         impact: totalRuns,
         films: athleteMeta?.films || 0,
-        isAthlete: !!athleteMeta,
+        isAthlete: Boolean(athleteMeta),
       };
     })
-    .filter(Boolean);
+    .filter((s): s is SetterProfile => s !== null);
 
   const setterMet: Record<string, SetterProfile> = {};
-  settersWithImpact.forEach((s: SetterProfile) => {
+  settersWithImpact.forEach((s) => {
     setterMet[normalizeName(s.name)] = s;
   });
 
   // RECALCULATE COIN STAT IN REAL TIME
   // Formula: (runs * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1)
-  const atDataMap = new Map<string, any>();
-  data.forEach((p: any) => atDataMap.set(p.pKey, p));
+  const atDataMap = new Map<string, PlayerProfile>();
+  data.forEach((p) => atDataMap.set(p.pKey, p));
 
-  const allKeys = new Set([
-    ...Object.keys(atMet || {}),
-    ...Object.keys(setterMet || {}),
-  ]);
+  const allKeys = new Set([...Object.keys(atMet || {}), ...Object.keys(setterMet || {})]);
 
   allKeys.forEach((pKey) => {
     const atPlayer = atDataMap.get(pKey);
     const runs = atPlayer?.runs || atMet[pKey]?.runs || 0;
     const wins = atPlayer?.wins || atMet[pKey]?.wins || 0;
-    
+
     const setter = setterMet[pKey];
     const leads = setter?.leads || 0;
     const assists = setter?.assists || 0;
 
-    const newCoins = (runs * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1);
+    const newCoins = runs * 0.1 + wins * 0.1 + leads * 0.2 + assists * 0.1;
 
     if (atMet[pKey]) atMet[pKey].contributionScore = newCoins;
     if (setterMet[pKey]) setterMet[pKey].contributionScore = newCoins;
@@ -430,62 +495,72 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     }
   });
 
-  data.forEach((p: any) => {
+  data.forEach((p) => {
     p.contributionScore = atMet[p.pKey]?.contributionScore || 0;
     p.sets = atMet[p.pKey]?.sets || setterMet[p.pKey]?.sets || 0;
   });
 
-  openData.forEach((p: any) => {
+  openData.forEach((p) => {
     p.contributionScore = atMet[p.pKey]?.contributionScore || 0;
     p.sets = atMet[p.pKey]?.sets || setterMet[p.pKey]?.sets || 0;
   });
 
-  settersWithImpact.forEach((s: any) => {
+  season26Data.forEach((p) => {
+    p.contributionScore = atMet[p.pKey]?.contributionScore || 0;
+    p.sets = atMet[p.pKey]?.sets || setterMet[p.pKey]?.sets || 0;
+  });
+
+  settersWithImpact.forEach((s) => {
     const pKey = s.pKey || normalizeName(s.name);
     s.contributionScore = atMet[pKey]?.contributionScore || setterMet[pKey]?.contributionScore || 0;
   });
 
-  // TEAM STATS (Gyms and Countries)
-  const computeTeamStats = (teamCategory: string, mode: boolean | string) => {
-    const aggregated: Record<string, TeamProfile & { pts: number; players: (PlayerProfile & { contribution: number })[], playersCount: number }> = {};
+  // TEAM STATS (Gyms and Teams)
+  const computeTeamStats = (teamCategory: "gyms" | "teams", mode: boolean | string): TeamProfile[] => {
+    const aggregated: Record<string, TeamProfile> = {};
     const isAllTime = mode === true || mode === "all-time";
-    const sourcePlayers = isAllTime
+    const sourcePlayers: PlayerProfile[] = isAllTime
       ? Object.values(atMet || {})
-      : (mode === "2026" ? season26Data : openData);
+      : mode === "2026"
+        ? season26Data
+        : openData;
 
-    (sourcePlayers || []).forEach((p: PlayerProfile) => {
+    (sourcePlayers || []).forEach((p) => {
       const pKey = p.pKey || normalizeName(p.name);
       if (!pKey) return;
 
-      const playerRuns = Object.keys(p).includes("runs") ? p.runs : ((mode === "2026" ? season26Perfs?.[pKey] : (isAllTime ? atPerfs?.[pKey] : opPerfs?.[pKey]))?.length || 0);
+      const perfsByMode: PlayerPerformance[] | undefined =
+        mode === "2026"
+          ? season26Perfs?.[pKey]
+          : isAllTime
+            ? atPerfs?.[pKey]
+            : opPerfs?.[pKey];
+
+      const playerRuns = Object.prototype.hasOwnProperty.call(p, "runs")
+        ? p.runs
+        : perfsByMode?.length || 0;
       if (playerRuns === 0) return;
 
-      const itemsToProcess: {
-        name: string;
-        flag: string;
-        location?: string;
-      }[] = [];
-      
+      const itemsToProcess: { name: string; flag: string; location?: string }[] = [];
+
       if (teamCategory === "gyms") {
         if (p.homeGym && p.homeGym !== CONFIG.FALLBACKS.UNAFFILIATED) {
           itemsToProcess.push({
             name: p.homeGym,
             flag: p.gymFlag || p.townFlag || "🏳️",
-            location: p.teamLocation || "UNKNOWN"
+            location: p.teamLocation || "UNKNOWN",
           });
         }
       } else {
         if (p.teams && p.teams.length > 0) {
-          p.teams.forEach((t: { name: string, location?: string, flag?: string }) => {
+          p.teams.forEach((t) => {
             if (t && t.name) {
               itemsToProcess.push({
                 name: t.name,
                 flag:
                   t.flag ||
-                  (String(t.name).toUpperCase().includes("BLACK TEAM")
-                    ? "🇲🇽"
-                    : "🏳️"),
-                location: t.location || "UNKNOWN"
+                  (String(t.name).toUpperCase().includes("BLACK TEAM") ? "🇲🇽" : "🏳️"),
+                location: t.location || "UNKNOWN",
               });
             }
           });
@@ -509,21 +584,19 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
           };
         }
         if (
-          (aggregated[normName].location === "UNKNOWN" ||
-            !aggregated[normName].location) &&
+          (aggregated[normName].location === "UNKNOWN" || !aggregated[normName].location) &&
           item.location &&
           item.location !== "UNKNOWN"
         ) {
           aggregated[normName].location = item.location;
         }
         let playerPts = p.pts || p.contributionScore || 0;
-        if ((!playerPts || playerPts === 0)) {
-          const perfs = mode === "2026" ? season26Perfs?.[pKey] : (isAllTime ? atPerfs?.[pKey] : opPerfs?.[pKey]);
-          if (perfs) {
-            playerPts = perfs.reduce((sum: number, perf: { points?: number }) => sum + (perf.points || 0), 0);
+        if (!playerPts || playerPts === 0) {
+          if (perfsByMode) {
+            playerPts = perfsByMode.reduce((sum, perf) => sum + (perf.points || 0), 0);
           }
         }
-        
+
         aggregated[normName].pts += playerPts;
         aggregated[normName].players.push({
           ...p,
@@ -533,9 +606,9 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       });
     });
 
-    Object.values(aggregated).forEach((t: TeamProfile & { players: (PlayerProfile & { contribution: number })[], playersCount: number, bestPlayers: PlayerProfile[] }) => {
+    Object.values(aggregated).forEach((t) => {
       t.playersCount = t.players.length;
-      t.players.sort((a, b) => b.contribution - a.contribution);
+      t.players.sort((a, b) => (b.contribution || 0) - (a.contribution || 0));
       t.bestPlayers = t.players.slice(0, 5);
       if (t.playersCount > 0) {
         let majorityFlag = t.players[0].gymFlag || t.players[0].townFlag;
@@ -551,47 +624,47 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
       }
     });
 
-    return Object.values(aggregated).sort((a: TeamProfile & { pts: number }, b: TeamProfile & { pts: number }) => b.pts - a.pts);
+    return Object.values(aggregated).sort((a, b) => b.pts - a.pts);
   };
 
-  const teamsAggregated = {
+  const teamsAggregated: TeamsAggregated = {
     gyms: {
-      open: computeTeamStats('gyms', false),
-      allTime: computeTeamStats('gyms', true),
-      season26: computeTeamStats('gyms', "2026")
+      open: computeTeamStats("gyms", false),
+      allTime: computeTeamStats("gyms", true),
+      season26: computeTeamStats("gyms", "2026"),
     },
     teams: {
-      open: computeTeamStats('teams', false),
-      allTime: computeTeamStats('teams', true),
-      season26: computeTeamStats('teams', "2026")
-    }
+      open: computeTeamStats("teams", false),
+      allTime: computeTeamStats("teams", true),
+      season26: computeTeamStats("teams", "2026"),
+    },
   };
 
   // LEADERBOARDS
   const calculateLeaderboard = (sourceData: PlayerProfile[], mode: boolean | string) => {
     const qualifiedM = (sourceData || [])
-      .filter((p: PlayerProfile) => p.gender === "M" && isQualifiedAthlete(p, mode, "M"))
+      .filter((p) => p.gender === "M" && isQualifiedAthlete(p, mode, "M"))
       .sort(sortAthletesWithTiebreakers);
     const qualifiedF = (sourceData || [])
-      .filter((p: PlayerProfile) => p.gender === "F" && isQualifiedAthlete(p, mode, "F"))
+      .filter((p) => p.gender === "F" && isQualifiedAthlete(p, mode, "F"))
       .sort(sortAthletesWithTiebreakers);
-      
+
     const buildRankMap = (qualifiedArr: PlayerProfile[]) => {
       const rm = new Map<string, number>();
       let currRank = 1;
       let prevRating = -1;
       let prevRuns = -1;
       let prevDate = -1;
-      
+
       qualifiedArr.forEach((q, i) => {
         const r = q.rating || 0;
         const runs = q.runs || 0;
-        const date = q.latestRunDate?.getTime() || Infinity;
+        const date = toTimestamp(q.latestRunDate);
 
         const diffRating = Math.abs(r - prevRating) > 0.000001;
         const diffRuns = runs !== prevRuns;
         const diffDate = date !== prevDate;
-        
+
         if (diffRating || diffRuns || diffDate) {
           currRank = i + 1;
           prevRating = r;
@@ -601,25 +674,24 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
         rm.set(q.pKey, currRank);
       });
       return rm;
-    }
+    };
 
     const rankMapM = buildRankMap(qualifiedM);
     const rankMapF = buildRankMap(qualifiedF);
 
     const mapM: Record<string, PlayerProfile> = {};
     const mapF: Record<string, PlayerProfile> = {};
-    (sourceData || []).forEach((p: PlayerProfile) => {
-      const rank = p.gender === "M" 
-        ? rankMapM.get(p.pKey) || "UR" 
-        : rankMapF.get(p.pKey) || "UR";
-        
-      const metadata = atMet?.[p.pKey] || {};
-        
-      const stats = { 
-        ...p, 
+    (sourceData || []).forEach((p) => {
+      const rank: number | "UR" =
+        p.gender === "M" ? rankMapM.get(p.pKey) || "UR" : rankMapF.get(p.pKey) || "UR";
+
+      const metadata = atMet?.[p.pKey];
+
+      const stats: PlayerProfile = {
+        ...p,
         rank,
-        allTimeFireCount: metadata.allTimeFireCount ?? p.allTimeFireCount,
-        openFireCount: metadata.openFireCount ?? p.openFireCount 
+        allTimeFireCount: metadata?.allTimeFireCount ?? p.allTimeFireCount,
+        openFireCount: metadata?.openFireCount ?? p.openFireCount,
       };
       if (p.gender === "M") mapM[p.pKey] = stats;
       else mapF[p.pKey] = stats;
@@ -631,103 +703,145 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
   const playerLB_2026 = calculateLeaderboard(season26Data, "2026");
   const playerLB_OP = calculateLeaderboard(openData, false);
 
-  const computePlayerList = (mode: boolean | string, gen: string) => {
-    const athletePool = mode === true || mode === "all-time" ? data : (mode === "2026" ? season26Data : openData);
-    const allTimeRankedKeys = new Set((data || []).map((p: PlayerProfile) => p.pKey));
-    const filtered = athletePool.filter((p: PlayerProfile) => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0);
-    
+  const computePlayerList = (mode: boolean | string, gen: "M" | "F"): PlayerProfile[] => {
+    const athletePool =
+      mode === true || mode === "all-time" ? data : mode === "2026" ? season26Data : openData;
+    const allTimeRankedKeys = new Set((data || []).map((p) => p.pKey));
+    const filtered = athletePool.filter(
+      (p) => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0,
+    );
+
     filtered.sort(sortAthletesWithTiebreakers);
 
     const qual: PlayerProfile[] = [];
     const unranked: PlayerProfile[] = [];
-    filtered.forEach((p: PlayerProfile) => {
+    filtered.forEach((p) => {
       if (isQualifiedAthlete(p, mode, gen)) {
         qual.push(p);
-      } else {
-        if (mode === "2026" || mode === true || mode === "all-time" || allTimeRankedKeys.has(p.pKey)) {
-          unranked.push(p);
-        }
+      } else if (
+        mode === "2026" ||
+        mode === true ||
+        mode === "all-time" ||
+        allTimeRankedKeys.has(p.pKey)
+      ) {
+        unranked.push(p);
       }
     });
 
-    const fQual = qual.map((p, i) => ({ ...p, currentRank: i + 1, isQualified: true, shouldFade: false }));
-    const fUnranked = unranked.map((p, i) => ({ ...p, currentRank: "UR", isQualified: false, shouldFade: true }));
-    
-    const dividerLabel = (mode === "open" || mode === false)
-      ? "RUN 3+ COURSES TO GET RANKED"
-      : mode === "2026"
-      ? (gen === "F" ? "RUN 3+ COURSES TO GET RANKED" : "RUN 5+ COURSES TO GET RANKED")
-      : (gen === "F" ? "RUN 4+ COURSES TO GET RANKED" : "RUN 8+ COURSES TO GET RANKED");
-    
-    if ((mode === false || mode === "open" || mode === "2026") && fQual.length === 0) return [{ isDivider: true, label: dividerLabel }, ...fUnranked];
-    return fQual.length && fUnranked.length ? [...fQual, { isDivider: true, label: dividerLabel }, ...fUnranked] : [...fQual, ...fUnranked];
+    const fQual: PlayerProfile[] = qual.map((p, i) => ({
+      ...p,
+      currentRank: i + 1,
+      isQualified: true,
+      shouldFade: false,
+    }));
+    const fUnranked: PlayerProfile[] = unranked.map((p) => ({
+      ...p,
+      currentRank: "UR",
+      isQualified: false,
+      shouldFade: true,
+    }));
+
+    const dividerLabel =
+      mode === "open" || mode === false
+        ? "RUN 3+ COURSES TO GET RANKED"
+        : mode === "2026"
+          ? gen === "F"
+            ? "RUN 3+ COURSES TO GET RANKED"
+            : "RUN 5+ COURSES TO GET RANKED"
+          : gen === "F"
+            ? "RUN 4+ COURSES TO GET RANKED"
+            : "RUN 8+ COURSES TO GET RANKED";
+
+    const dividerRow: PlayerProfile = {
+      pKey: `divider-${String(mode)}-${gen}`,
+      name: dividerLabel,
+      gender: gen,
+      rating: 0,
+      runs: 0,
+      isDivider: true,
+      label: dividerLabel,
+    };
+
+    if ((mode === false || mode === "open" || mode === "2026") && fQual.length === 0) {
+      return [dividerRow, ...fUnranked];
+    }
+    return fQual.length && fUnranked.length
+      ? [...fQual, dividerRow, ...fUnranked]
+      : [...fQual, ...fUnranked];
   };
 
-  const computeTeamList = (cat: string, mode: boolean | string) => {
-    const contextStr = mode === "2026" ? "season26" : (mode === true || mode === "all-time" ? "allTime" : "open");
-    let arr = ((teamsAggregated as Record<string, Record<string, (TeamProfile & { pts: number })[]>>)?.[cat]?.[contextStr] || []) as (TeamProfile & { pts: number })[];
-    arr = [...arr].sort((a: TeamProfile & { pts: number }, b: TeamProfile & { pts: number }) => (b.pts || 0) - (a.pts || 0));
-    return arr.map((t: TeamProfile & { pts: number }, i: number) => ({ ...t, currentRank: i + 1, category: cat }));
+  const computeTeamList = (cat: "gyms" | "teams", mode: boolean | string): TeamProfile[] => {
+    const contextStr =
+      mode === "2026" ? "season26" : mode === true || mode === "all-time" ? "allTime" : "open";
+    const arr = [...(teamsAggregated[cat][contextStr] || [])].sort(
+      (a, b) => (b.pts || 0) - (a.pts || 0),
+    );
+    return arr.map((t, i) => ({ ...t, currentRank: i + 1, category: cat }));
   };
 
-  const cListAT = [...masterCourseList]
-    .filter((c: CourseData) => c.isAllTimeCourse)
-    .sort((a: CourseData, b: CourseData) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0))
+  const cListAT: CourseData[] = [...masterCourseList]
+    .filter((c) => c.isAllTimeCourse)
+    .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0))
     .map((c, i) => ({ ...c, currentRank: i + 1 }));
-    
-  const cListOP = masterCourseList
-    .filter((c: CourseData) => c.isOpenCourse)
-    .map((c: CourseData) => {
+
+  const cListOP: CourseData[] = masterCourseList
+    .filter((c) => c.isOpenCourse)
+    .map((c) => {
       const mCount = Object.keys(lbOpen?.M?.[String(c.name).toUpperCase()] || {}).length;
       const fCount = Object.keys(lbOpen?.F?.[String(c.name).toUpperCase()] || {}).length;
       return { ...c, openRuns: mCount + fCount };
     })
-    .sort((a: any, b: any) => b.openRuns - a.openRuns)
-    .map((c: any, i: number) => ({ ...c, currentRank: i + 1 }));
-    
-  const cList2026 = masterCourseList
-    .filter((c: CourseData) => c.is2026Course)
-    .map((c: CourseData) => {
+    .sort((a, b) => (b.openRuns || 0) - (a.openRuns || 0))
+    .map((c, i) => ({ ...c, currentRank: i + 1 }));
+
+  const cList2026: CourseData[] = masterCourseList
+    .filter((c) => c.is2026Course)
+    .map((c) => {
       const mCount = Object.keys(lbSeason26?.M?.[String(c.name).toUpperCase()] || {}).length;
       const fCount = Object.keys(lbSeason26?.F?.[String(c.name).toUpperCase()] || {}).length;
       return { ...c, season26Runs: mCount + fCount };
     })
-    .sort((a: any, b: any) => b.season26Runs - a.season26Runs)
-    .map((c: any, i: number) => ({ ...c, currentRank: i + 1 }));
-  const sList = [...settersWithImpact].sort((a: SetterProfile, b: SetterProfile) => (b.impact || 0) - (a.impact || 0)).map((s, i) => ({ ...s, currentRank: i + 1 }));
+    .sort((a, b) => (b.season26Runs || 0) - (a.season26Runs || 0))
+    .map((c, i) => ({ ...c, currentRank: i + 1 }));
 
-  const courseRecords_M_AT: Record<string, unknown> = {};
-  const courseRecords_F_AT: Record<string, unknown> = {};
-  const courseRecords_M_OP: Record<string, unknown> = {};
-  const courseRecords_F_OP: Record<string, unknown> = {};
-  const courseRecords_M_2026: Record<string, unknown> = {};
-  const courseRecords_F_2026: Record<string, unknown> = {};
+  const sList: SetterProfile[] = [...settersWithImpact]
+    .sort((a, b) => (b.impact || 0) - (a.impact || 0))
+    .map((s, i) => ({ ...s, currentRank: i + 1 }));
 
-  const computeRecords = (sourceSector: Record<string, unknown> | undefined, rawBestSector: Record<string, unknown> | undefined, cName: string, allTimeSourceSector?: Record<string, unknown>) => {
-    const source = (sourceSector?.[cName] || {}) as Record<string, unknown>;
-    
-    // Find the record using the all-time source if available, otherwise fallback to the current source
-    const atSource = (allTimeSourceSector?.[cName] || source) as Record<string, unknown>;
-    const atTimes = Object.values(atSource) as number[];
+  const courseRecords_M_AT: Record<string, CourseRecordEntry[]> = {};
+  const courseRecords_F_AT: Record<string, CourseRecordEntry[]> = {};
+  const courseRecords_M_OP: Record<string, CourseRecordEntry[]> = {};
+  const courseRecords_F_OP: Record<string, CourseRecordEntry[]> = {};
+  const courseRecords_M_2026: Record<string, CourseRecordEntry[]> = {};
+  const courseRecords_F_2026: Record<string, CourseRecordEntry[]> = {};
+
+  const computeRecords = (
+    sourceSector: GenderedCourseBoards["M"] | undefined,
+    rawBestSector: Record<string, Record<string, RawBestRun>> | undefined,
+    cName: string,
+    allTimeSourceSector?: GenderedCourseBoards["M"],
+  ): CourseRecordEntry[] => {
+    const source = sourceSector?.[cName] || {};
+    const atSource = allTimeSourceSector?.[cName] || source;
+    const atTimes = Object.values(atSource);
     const record = atTimes.length > 0 ? Math.min(...atTimes) : 0;
-    
-    const runsForCourse = (courseRunsHistory?.[cName] || []) as Record<string, unknown>[];
+
+    const runsForCourse = courseRunsHistory?.[cName] || [];
 
     const sorted = Object.entries(source)
-      .map(([pKey, time]: [string, unknown]) => {
-        const num = typeof time === "number" ? time : parseFloat(time as string) || 0;
+      .map(([pKey, time]) => {
+        const num = typeof time === "number" ? time : parseFloat(String(time)) || 0;
         const isInterim = isPlaceholderPlayer(pKey);
-        
-        const run = runsForCourse.find(r => r.pKey === pKey && Math.abs((r.time as number) - num) < 0.001);
-        
+        const run = runsForCourse.find((r) => r.pKey === pKey && Math.abs(r.time - num) < 0.001);
+
         return {
           pKey,
           time: num,
           pts: num > 0 ? (record / num) * 100 : 0,
-          videoUrl: (rawBestSector?.[pKey] as Record<string, Record<string, { videoUrl?: string }>>)?.[cName]?.videoUrl,
+          videoUrl: rawBestSector?.[pKey]?.[cName]?.videoUrl,
           date: run?.date,
           isInterim,
-          name: isInterim ? "INTERIM TOP TIME" : undefined
+          name: isInterim ? "INTERIM TOP TIME" : undefined,
         };
       })
       .sort((a, b) => b.pts - a.pts);
@@ -755,13 +869,14 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
 
   return {
     ...nextState,
-    masterCourseList, 
-    kpiStats, 
+    masterCourseList,
+    searchLocations,
+    kpiStats,
     kpiTrends,
-    settersWithImpact, 
+    settersWithImpact,
     setterMet,
     teamsAggregated,
-    playerLB_AT, 
+    playerLB_AT,
     playerLB_OP,
     playerLB_2026,
     courseRunsHistory: nextState.courseRunsHistory || {},
@@ -783,7 +898,7 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
     teamList_teams_OP: computeTeamList("teams", false),
     teamList_gyms_2026: computeTeamList("gyms", "2026"),
     teamList_teams_2026: computeTeamList("teams", "2026"),
-    
+
     courseRecords_M_AT,
     courseRecords_F_AT,
     courseRecords_M_OP,
@@ -793,17 +908,20 @@ export function computeAllState(payload: { rM: string; rF: string; rLive: string
   };
 }
 
-export function computeSimulatedPlacement(targetTime: number, records: Array<{ time: number, rank: number | string }>) {
+export function computeSimulatedPlacement(
+  targetTime: number,
+  records: Array<{ time: number; rank: number | string }>,
+) {
   let rank = 1;
   for (let i = 0; i < records.length; i++) {
-      if (targetTime < records[i].time) {
-          break;
-      }
-      if (targetTime === records[i].time) {
-          rank = Number(records[i].rank);
-          break;
-      }
-      rank++;
+    if (targetTime < records[i].time) {
+      break;
+    }
+    if (targetTime === records[i].time) {
+      rank = Number(records[i].rank);
+      break;
+    }
+    rank++;
   }
   return rank;
 }
@@ -811,9 +929,11 @@ export function computeSimulatedPlacement(targetTime: number, records: Array<{ t
 export function computeOriginalRanks(athletePool: PlayerProfile[]) {
   const ranks: Record<string, number> = {};
   const sorted = [...athletePool]
-      .filter(a => a.currentRank !== "UR" && a.rating !== undefined)
-      .sort(sortAthletesWithTiebreakers);
-  sorted.forEach((a, idx) => ranks[a.pKey] = idx + 1);
+    .filter((a) => a.currentRank !== "UR" && a.rating !== undefined)
+    .sort(sortAthletesWithTiebreakers);
+  sorted.forEach((a, idx) => {
+    ranks[a.pKey] = idx + 1;
+  });
   return ranks;
 }
 
@@ -823,40 +943,43 @@ export function computeLiveLadderWindow(
   myName: string,
   targetTime: number,
   simulatedPts: number,
-  athletePool: PlayerProfile[]
+  athletePool: PlayerProfile[],
 ) {
   const recordsWithMe = [...records];
-  const myIndex = recordsWithMe.findIndex(r => r.pKey === myKey);
-  
+  const myIndex = recordsWithMe.findIndex((r) => r.pKey === myKey);
+
   if (myIndex !== -1) {
-      recordsWithMe[myIndex] = { ...recordsWithMe[myIndex], time: targetTime, pts: simulatedPts };
+    recordsWithMe[myIndex] = { ...recordsWithMe[myIndex], time: targetTime, pts: simulatedPts };
   } else {
-      recordsWithMe.push({ pKey: myKey, time: targetTime, pts: simulatedPts, rank: 0 });
+    recordsWithMe.push({ pKey: myKey, time: targetTime, pts: simulatedPts, rank: 0 });
   }
 
-  const namedRecords = recordsWithMe.map(r => ({
-      ...r,
-      name: r.pKey === myKey ? myName : (athletePool.find(a => a.pKey === r.pKey)?.name || "Unknown"),
-      isMe: r.pKey === myKey
+  const namedRecords = recordsWithMe.map((r) => ({
+    ...r,
+    name:
+      r.pKey === myKey
+        ? myName
+        : athletePool.find((a) => a.pKey === r.pKey)?.name || "Unknown",
+    isMe: r.pKey === myKey,
   }));
 
   namedRecords.sort((a, b) => a.time - b.time);
 
   let curRank = 1;
   for (let i = 0; i < namedRecords.length; i++) {
-      if (i > 0 && namedRecords[i].time > namedRecords[i - 1].time) {
-          curRank = i + 1;
-      }
-      namedRecords[i].rank = curRank;
+    if (i > 0 && namedRecords[i].time > namedRecords[i - 1].time) {
+      curRank = i + 1;
+    }
+    namedRecords[i].rank = curRank;
   }
 
-  const myLiveRankIndex = namedRecords.findIndex(r => r.isMe);
+  const myLiveRankIndex = namedRecords.findIndex((r) => r.isMe);
   const startIdx = Math.max(0, myLiveRankIndex - 1);
   const endIdx = Math.min(namedRecords.length, startIdx + 3);
-  
+
   let finalStart = startIdx;
   if (endIdx - startIdx < 3) {
-      finalStart = Math.max(0, endIdx - 3);
+    finalStart = Math.max(0, endIdx - 3);
   }
 
   return namedRecords.slice(finalStart, endIdx);
@@ -869,127 +992,134 @@ export function computeSimulatedGlobalImpact(
   fullLeaderboards: Record<string, Record<string, number>>,
   athletePool: PlayerProfile[],
   courseRecord: number,
-  originalRanks: Record<string, number>
+  originalRanks: Record<string, number>,
 ) {
   const existingTimesList = fullLeaderboards[courseName] || {};
   let minOtherTime = Infinity;
   for (const pKey in existingTimesList) {
-      const t = existingTimesList[pKey];
-      if (pKey !== selectedAthlete.pKey && typeof t === "number" && t > 0 && t < minOtherTime) {
-          minOtherTime = t;
-      }
+    const t = existingTimesList[pKey];
+    if (pKey !== selectedAthlete.pKey && typeof t === "number" && t > 0 && t < minOtherTime) {
+      minOtherTime = t;
+    }
   }
-  
-  const simulatedCR = Math.min(minOtherTime !== Infinity ? minOtherTime : courseRecord, targetTime > 0 ? targetTime : courseRecord);
+
+  const simulatedCR = Math.min(
+    minOtherTime !== Infinity ? minOtherTime : courseRecord,
+    targetTime > 0 ? targetTime : courseRecord,
+  );
   const oldCR = courseRecord || 1;
 
-  // Precompute course records for the entire state array
   const courseRecords: Record<string, number> = {};
   for (const cName in fullLeaderboards) {
-      if (cName === courseName) {
-          courseRecords[cName] = simulatedCR;
-      } else {
-          const times = Object.values(fullLeaderboards[cName]);
-          const validTimes = times.filter(t => typeof t === "number" && t > 0);
-          courseRecords[cName] = validTimes.length > 0 ? Math.min(...validTimes) : 0;
-      }
+    if (cName === courseName) {
+      courseRecords[cName] = simulatedCR;
+    } else {
+      const times = Object.values(fullLeaderboards[cName]);
+      const validTimes = times.filter((t) => typeof t === "number" && t > 0);
+      courseRecords[cName] = validTimes.length > 0 ? Math.min(...validTimes) : 0;
+    }
   }
 
   const simulatedRatings: Record<string, number> = {};
   const simulatedCoursesCount: Record<string, number> = {};
   let totalPointsDestroyed = 0;
-  
-  for (const pt of athletePool) {
-      let totalPts = 0;
-      let totalRuns = 0;
-      
-      for (const cName in fullLeaderboards) {
-          let time = fullLeaderboards[cName][pt.pKey];
-          
-          if (cName === courseName) {
-              if (pt.pKey === selectedAthlete.pKey) {
-                  time = targetTime;
-              }
-              const cr = courseRecords[cName];
-              if (typeof time === "number" && time > 0 && cr > 0) {
-                  totalPts += Math.min(100, (cr / time) * 100);
-                  totalRuns++;
-              }
-          } else {
-              const cr = courseRecords[cName];
-              if (typeof time === "number" && time > 0 && cr > 0) {
-                  totalPts += Math.min(100, (cr / time) * 100);
-                  totalRuns++;
-              }
-          }
-      }
-      
-      simulatedRatings[pt.pKey] = totalRuns > 0 ? totalPts / totalRuns : 0;
-      simulatedCoursesCount[pt.pKey] = totalRuns;
 
-      // Track points destroyed for others
-      if (pt.pKey !== selectedAthlete.pKey) {
-          const ptOriginalTime = existingTimesList[pt.pKey];
-          if (typeof ptOriginalTime === "number" && ptOriginalTime > 0) {
-              const oldCoursePts = Math.min(100, (oldCR / ptOriginalTime) * 100);
-              const newCoursePts = Math.min(100, (simulatedCR / ptOriginalTime) * 100);
-              const pointsDelta = newCoursePts - oldCoursePts;
-              if (pointsDelta < 0) {
-                  totalPointsDestroyed += Math.abs(pointsDelta);
-              }
-          }
+  for (const pt of athletePool) {
+    let totalPts = 0;
+    let totalRuns = 0;
+
+    for (const cName in fullLeaderboards) {
+      let time = fullLeaderboards[cName][pt.pKey];
+
+      if (cName === courseName) {
+        if (pt.pKey === selectedAthlete.pKey) {
+          time = targetTime;
+        }
+        const cr = courseRecords[cName];
+        if (typeof time === "number" && time > 0 && cr > 0) {
+          totalPts += Math.min(100, (cr / time) * 100);
+          totalRuns++;
+        }
+      } else {
+        const cr = courseRecords[cName];
+        if (typeof time === "number" && time > 0 && cr > 0) {
+          totalPts += Math.min(100, (cr / time) * 100);
+          totalRuns++;
+        }
       }
+    }
+
+    simulatedRatings[pt.pKey] = totalRuns > 0 ? totalPts / totalRuns : 0;
+    simulatedCoursesCount[pt.pKey] = totalRuns;
+
+    if (pt.pKey !== selectedAthlete.pKey) {
+      const ptOriginalTime = existingTimesList[pt.pKey];
+      if (typeof ptOriginalTime === "number" && ptOriginalTime > 0) {
+        const oldCoursePts = Math.min(100, (oldCR / ptOriginalTime) * 100);
+        const newCoursePts = Math.min(100, (simulatedCR / ptOriginalTime) * 100);
+        const pointsDelta = newCoursePts - oldCoursePts;
+        if (pointsDelta < 0) {
+          totalPointsDestroyed += Math.abs(pointsDelta);
+        }
+      }
+    }
   }
 
   const mySimRating = Math.round(simulatedRatings[selectedAthlete.pKey] * 1000000) / 1000000;
   let simulatedGlobalRank = 1;
-  
-  for (const pt of athletePool) {
-      if (pt.pKey === selectedAthlete.pKey) continue;
-      if (!pt.currentRank || pt.currentRank === "UR") continue;
 
-      const theirSimRating = Math.round(simulatedRatings[pt.pKey] * 1000000) / 1000000;
-      if (theirSimRating > mySimRating) {
-          simulatedGlobalRank++;
-      }
+  for (const pt of athletePool) {
+    if (pt.pKey === selectedAthlete.pKey) continue;
+    if (!pt.currentRank || pt.currentRank === "UR") continue;
+
+    const theirSimRating = Math.round(simulatedRatings[pt.pKey] * 1000000) / 1000000;
+    if (theirSimRating > mySimRating) {
+      simulatedGlobalRank++;
+    }
   }
 
   const currentRating = Math.round((selectedAthlete.rating || 0) * 1000000) / 1000000;
   const myQualifies =
-      (selectedAthlete.currentRank && selectedAthlete.currentRank !== "UR") ||
-      isQualifiedAthlete(
-          simulatedCoursesCount[selectedAthlete.pKey] || 0,
-          selectedAthlete.gender || "M",
-          "all-time",
-      );
-  
+    Boolean(selectedAthlete.currentRank && selectedAthlete.currentRank !== "UR") ||
+    isQualifiedAthlete(
+      {
+        courses: simulatedCoursesCount[selectedAthlete.pKey] || 0,
+        gender: selectedAthlete.gender || "M",
+        name: selectedAthlete.name,
+      },
+      "all-time",
+      selectedAthlete.gender || "M",
+    );
+
   const newRanks: Record<string, number> = {};
   const sortedNew = [...athletePool]
-      .filter(
-          a =>
-              (a.currentRank !== "UR" && a.rating !== undefined) ||
-              (a.pKey === selectedAthlete.pKey && myQualifies),
-      )
-      .sort((a, b) => simulatedRatings[b.pKey] - simulatedRatings[a.pKey]);
-  sortedNew.forEach((a, idx) => newRanks[a.pKey] = idx + 1);
+    .filter(
+      (a) =>
+        (a.currentRank !== "UR" && a.rating !== undefined) ||
+        (a.pKey === selectedAthlete.pKey && myQualifies),
+    )
+    .sort((a, b) => simulatedRatings[b.pKey] - simulatedRatings[a.pKey]);
+  sortedNew.forEach((a, idx) => {
+    newRanks[a.pKey] = idx + 1;
+  });
 
   let athletesDemoted = 0;
   for (const pKey of Object.keys(originalRanks)) {
-      if (pKey === selectedAthlete.pKey) continue;
-      if ((newRanks[pKey] || 0) > (originalRanks[pKey] || 0)) {
-          athletesDemoted++;
-      }
+    if (pKey === selectedAthlete.pKey) continue;
+    if ((newRanks[pKey] || 0) > (originalRanks[pKey] || 0)) {
+      athletesDemoted++;
+    }
   }
 
   return {
-      originalRating: selectedAthlete.rating || 0,
-      newRating: mySimRating,
-      originalRank: selectedAthlete.currentRank || "UR",
-      newRank: simulatedGlobalRank,
-      isImprovement: mySimRating > currentRating,
-      pointsDestroyed: totalPointsDestroyed,
-      athletesDemoted,
-      beatsCR: targetTime < courseRecord,
-      simulatedCR
+    originalRating: selectedAthlete.rating || 0,
+    newRating: mySimRating,
+    originalRank: selectedAthlete.currentRank || "UR",
+    newRank: simulatedGlobalRank,
+    isImprovement: mySimRating > currentRating,
+    pointsDestroyed: totalPointsDestroyed,
+    athletesDemoted,
+    beatsCR: targetTime < courseRecord,
+    simulatedCR,
   };
 }

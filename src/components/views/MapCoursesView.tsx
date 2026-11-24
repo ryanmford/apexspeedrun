@@ -1,54 +1,54 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React, { useMemo, startTransition, useRef } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
-import { ASRDataTable } from "../ASRComponents";
+import { ASRDataTable, type ASRDataTableRef } from "../list/ASRDataTable";
 import { ErrorBoundary } from "../common/ErrorBoundary";
 import { ASRBottomSheet } from "../common/ASRBottomSheet";
 import { CourseData } from "../../types";
+import type { ASRMapHandle } from "../ASRMap";
 import { useDataStore } from "../../store/useDataStore";
 import { useAppNavigation, useCourseList, useURLState } from "../../hooks/useDerivedData";
 import { useDebounce } from "../../hooks/useDataHooks";
 import { useAppStore } from "../../store/useAppStore";
 import { cn } from "../../lib/asr-utils";
+import { computeDistanceKm } from "../../lib/geo-utils";
 import { normalizeForSearch } from "../../lib/utils";
 import { ChevronLeft, ChevronRight, Navigation, Compass } from "lucide-react";
 import { ASRSearchInput } from "../common/ASRSearchInput";
 
 const ASRMap = React.lazy(() => import("../ASRMap").then((m) => ({ default: m.ASRMap })));
 
-const computeDistanceKm = (a: [number, number], b: [number, number]): number => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const R = 6371; // Earth radius in km
-  const dLat = toRad(b[0] - a[0]);
-  const dLon = toRad(b[1] - a[1]);
-  const lat1 = toRad(a[0]);
-  const lat2 = toRad(b[0]);
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLon = Math.sin(dLon / 2);
-  const h =
-    sinDLat * sinDLat +
-    Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+type MapCourseItem = CourseData & {
+  isDivider?: boolean;
+  parsedCoords?: [number, number];
+  distanceKm?: number;
+  searchKey?: string;
+  subtitle?: string;
 };
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
 
 export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }) => {
   const isLoading = useDataStore(s => s.isLoading);
   const { navigateToEntity } = useAppNavigation();
   const { isAllTimeContext, eventType } = useURLState();
-  const courseList = useCourseList();
+  const courseList = useCourseList() as MapCourseItem[];
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const searchKey = `q_COURSES`;
   const search = searchParams.get("q") || searchParams.get(searchKey) || "";
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
-  const listRefDesktop = useRef<any>(null);
-  const listRefMobile = useRef<any>(null);
+  const listRefDesktop = useRef<ASRDataTableRef>(null);
+  const listRefMobile = useRef<ASRDataTableRef>(null);
   const scrollContainerRefDesktop = React.useRef<HTMLDivElement>(null);
   const scrollContainerRefMobile = React.useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const [visibleBounds, setVisibleBounds] = React.useState<any>(null);
+  const mapRef = useRef<ASRMapHandle>(null);
+  const [visibleBounds, setVisibleBounds] = React.useState<MapBounds | null>(null);
   const [snap, setSnap] = React.useState<number>(0.2);
   const containerRef = useRef<HTMLDivElement>(null);
   const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
@@ -100,7 +100,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
 
   const coursesWithDistance = useMemo(() => {
     if (!userLocation) return courseList;
-    return courseList.map((item: any) => {
+    return courseList.map((item) => {
       if (item?.isDivider || !item?.parsedCoords) return item;
       const distKm = computeDistanceKm(userLocation, item.parsedCoords);
       return {
@@ -115,7 +115,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
     const term = normalizeForSearch(String(debouncedSearch || ""));
     if (!term) return coursesWithDistance;
     const searchTerms = term.split(/[\s,]+/).filter(Boolean);
-    return coursesWithDistance.filter((item: any) => {
+    return coursesWithDistance.filter((item) => {
       if (item?.isDivider) return true;
       const key = item?.searchKey || "";
       return searchTerms.every((t: string) => key.includes(t));
@@ -124,10 +124,12 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
 
   const nearestOverallCourse = useMemo(() => {
     if (!userLocation) return null;
-    const source = searchedData.filter((c: any) => c && !c.isDivider && c.parsedCoords && typeof c.distanceKm === "number");
+    const isWithDist = (c: MapCourseItem): c is MapCourseItem & { distanceKm: number } =>
+      Boolean(c && !c.isDivider && c.parsedCoords && typeof c.distanceKm === "number");
+    const source = searchedData.filter(isWithDist);
     const pool = source.length > 0
       ? source
-      : coursesWithDistance.filter((c: any) => c && !c.isDivider && c.parsedCoords && typeof c.distanceKm === "number");
+      : coursesWithDistance.filter(isWithDist);
     if (pool.length === 0) return null;
     let best = pool[0];
     for (let i = 1; i < pool.length; i++) {
@@ -142,7 +144,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
 
   React.useEffect(() => {
     if (debouncedSearch && debouncedSearch !== lastAutoOpenedQueryRef.current) {
-      const activeCourses = searchedData.filter((c: any) => c && !c.isDivider);
+      const activeCourses = searchedData.filter((c) => c && !c.isDivider);
       if (activeCourses.length === 1) {
         lastAutoOpenedQueryRef.current = debouncedSearch;
         setSnap(0.5);
@@ -156,7 +158,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   const visibleData = useMemo(() => {
     const filtered = !visibleBounds
       ? searchedData
-      : searchedData.filter((item: any) => {
+      : searchedData.filter((item) => {
           if (item?.isDivider) return true;
           if (!item?.parsedCoords) return true;
           const [lat, lng] = item.parsedCoords;
@@ -171,8 +173,8 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
         });
 
     if (userLocation && courseSortMode === "nearest") {
-      const realItems = filtered.filter((item: any) => !item?.isDivider);
-      return [...realItems].sort((a: any, b: any) => {
+      const realItems = filtered.filter((item) => !item?.isDivider);
+      return [...realItems].sort((a, b) => {
         const da = typeof a.distanceKm === "number" ? a.distanceKm : Infinity;
         const db = typeof b.distanceKm === "number" ? b.distanceKm : Infinity;
         return da - db;
@@ -208,16 +210,20 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
      setActiveCourseId(null);
   }, [setActiveCourseId]);
 
-  const renderListContent = (currentSnap: number, scrollRef: React.RefObject<HTMLDivElement>, dRef: React.RefObject<any>) => {
-    const courseCount = courseList ? courseList.filter((i: any) => !i.isDivider).length : 0;
-    const visibleRealCoursesCount = visibleData.filter((i: any) => i && !i.isDivider).length;
+  const renderListContent = (
+    currentSnap: number,
+    scrollRef: React.RefObject<HTMLDivElement | null>,
+    dRef: React.RefObject<ASRDataTableRef | null>,
+  ) => {
+    const courseCount = courseList ? courseList.filter((i) => !i.isDivider).length : 0;
+    const visibleRealCoursesCount = visibleData.filter((i) => i && !i.isDivider).length;
     
     return (
     <div className="flex flex-col h-full bg-transparent">
       <div className="px-4 pb-2 pt-2 shrink-0 pointer-events-auto flex flex-col gap-2">
         <ASRSearchInput
           value={search}
-          onChange={(e: any) => setSearch(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           theme={theme}
           placeholder={`search ${courseCount} courses...`}
           enableFocusShortcut="slash"
@@ -342,11 +348,11 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
             <ASRDataTable
               ref={dRef}
               scrollElementRef={scrollRef}
-              data={visibleData}
+              data={visibleData as unknown as Record<string, unknown>[]}
               isLoading={isLoading}
               viewType="card"
               isCompact={true}
-              onItemClick={handleItemClick}
+              onItemClick={handleItemClick as unknown as (item: Record<string, unknown>) => void}
               middleLabel={userLocation && courseSortMode === "nearest" ? "COURSE • DISTANCE" : "COURSE"}
               columns={columns}
               showVideoColumn={true}
@@ -372,7 +378,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
           <ASRMap
             ref={mapRef}
             courses={searchedData}
-            totalCourses={courseList.filter((c: any) => c && !c.isDivider).length}
+            totalCourses={courseList.filter((c) => c && !c.isDivider).length}
             searchQuery={debouncedSearch}
             theme={theme}
             onCourseClick={handleItemClick}

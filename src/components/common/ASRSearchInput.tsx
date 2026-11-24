@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React from "react";
 import { Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -140,7 +138,7 @@ export const ASRSearchInput = React.memo(
             onChange={onChange}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                onChange({ target: { value: "" } } as any);
+                onChange({ target: { value: "" } });
                 inputRef.current?.blur();
               }
               if (onKeyDown) onKeyDown(e);
@@ -176,7 +174,7 @@ export const ASRSearchInput = React.memo(
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => {
-                    onChange({ target: { value: "" } } as any);
+                    onChange({ target: { value: "" } });
                     inputRef.current?.focus();
                   }}
                   aria-label="Clear search"

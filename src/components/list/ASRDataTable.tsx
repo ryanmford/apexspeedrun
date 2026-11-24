@@ -35,9 +35,29 @@ interface ASRDataTableProps<T = Record<string, unknown>> {
  showVideoColumn?: boolean;
 }
 
+interface VirtualTableRowItem extends Record<string, unknown> {
+  isDivider?: boolean;
+  label?: string;
+  rank?: number | string;
+  currentRank?: number | string;
+  name?: string;
+  displayName?: string;
+  subtitle?: React.ReactNode;
+  pKey?: string;
+  id?: string;
+  region?: string;
+  flag?: string;
+  country?: string;
+  videoUrl?: string;
+  demoVideo?: string;
+  mapUrl?: string;
+  shouldFade?: boolean;
+  badgeContent?: React.ReactNode;
+}
+
 interface MemoizedVirtualRowProps<T> {
   virtualRow: import("@tanstack/react-virtual").VirtualItem;
-  item: T & { isDivider?: boolean; rank?: number; name?: string; pKey?: string; id?: string };
+  item: T & VirtualTableRowItem;
   viewType: "table" | "card";
   isCompact?: boolean;
   statColumns: ColumnDef<T>[];
@@ -67,7 +87,9 @@ const MemoizedVirtualRow = React.memo(({
   const stats = React.useMemo(() => {
     if (!item) return [];
     return statColumns.map((c) => ({
-      value: typeof c.getValue === "function" ? c.getValue(item) : item[c.key as keyof typeof item],
+      value: (typeof c.getValue === "function"
+        ? c.getValue(item)
+        : item[c.key as keyof typeof item]) as React.ReactNode,
       color: c.color,
       label: c.label,
     }));
@@ -197,7 +219,7 @@ export const ASRDataTable = React.memo(
  const virtualizer = scrollElementRef ? elementVirtualizer : windowVirtualizer;
 
  React.useImperativeHandle(ref, () => ({
-   scrollToIndex: (index, align = 'center') => {
+   scrollToIndex: (index: number, align: "start" | "center" | "end" | "auto" = 'center') => {
      virtualizer.scrollToIndex(index, { align });
    }
  }), [virtualizer]);

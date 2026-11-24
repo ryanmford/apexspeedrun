@@ -1,31 +1,48 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     base: '/',
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        injectRegister: 'auto',
+        injectRegister: null,
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-          globIgnores: ['**/assets/aistudio/**', '**/og/**'],
+          globIgnores: ['**/assets/aistudio/**', '**/og/**', '**/social-exports/**'],
           runtimeCaching: [
+            {
+              urlPattern: ({ url }) => url.pathname === '/api/snapshot',
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'asr-snapshot-cache',
+                expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/(?:[a-c]\.basemaps\.cartocdn\.com|[a-c]\.tile\.openstreetmap\.org|server\.arcgisonline\.com)\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'asr-map-tiles-cache',
+                expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'google-fonts-cache',
                 expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                cacheableResponse: { statuses: [0, 200] }
-              }
+                cacheableResponse: { statuses: [0, 200] },
+              },
             },
             {
               urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -33,13 +50,13 @@ export default defineConfig(({mode}) => {
               options: {
                 cacheName: 'gstatic-fonts-cache',
                 expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            }
-          ]
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
         },
-        manifest: false // We already have manifest.json in public folder, just need the SW generated
-      })
+        manifest: false,
+      }),
     ],
     build: {
       rollupOptions: {
@@ -47,14 +64,10 @@ export default defineConfig(({mode}) => {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'ui-vendor': ['lucide-react', 'motion', 'clsx', 'tailwind-merge'],
-            'chart-vendor': ['recharts'],
-            'state-vendor': ['zustand']
-          }
-        }
-      }
-    },
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+            'state-vendor': ['zustand'],
+          },
+        },
+      },
     },
     resolve: {
       alias: {
@@ -63,7 +76,7 @@ export default defineConfig(({mode}) => {
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };

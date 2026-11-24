@@ -13,7 +13,42 @@ import { ModalScrollContext } from "../common/ASRBaseModal";
 import { ASRSectionHeading } from "../common/ASRSectionHeading";
 import { ASRListItem } from "../ASRListItems";
 
-import { ASRDataContext } from "../../types";
+import { ASRDataContext, CourseData, PlayerProfile } from "../../types";
+
+type RankListTuple = [string, number | string, string?];
+
+interface RankListItemObject {
+  pKey?: string;
+  label?: string;
+  id?: string;
+  name?: string;
+  pts?: number;
+  points?: number;
+  time?: number | string;
+  timeDisplay?: string;
+  value?: number | string;
+  num?: number | string;
+  impact?: number;
+  runs?: number;
+  rank?: number | string;
+  currentRank?: number | string;
+  videoUrl?: string;
+  demoVideo?: string;
+  mapUrl?: string;
+  coordinates?: string;
+  city?: string;
+  location?: string;
+  countryName?: string;
+  flag?: string;
+  region?: string;
+  date?: string | number | Date;
+  isUnclaimed?: boolean;
+  isInterim?: boolean;
+  shouldFade?: boolean;
+  rawCourse?: Partial<CourseData> & { mapUrl?: string };
+}
+
+type RankListEntry = RankListTuple | RankListItemObject;
 
 interface ASRRankListProps {
   title?: string;
@@ -182,9 +217,16 @@ export const ASRRankList = ({
       // Fallback to scroll/timer if IntersectionObserver fails
     }
 
-    // 2. Setup scroll & touch event listeners for immediate responsiveness during rapid scrolling
+    // 2. Setup scroll & touch event listeners with a single trailing post-scroll check
     let rafId: number | null = null;
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
     const onScrollOrTouch = () => {
+      if (settleTimer !== null) clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        settleTimer = null;
+        checkVisibility();
+      }, 300);
+
       if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         rafId = null;
@@ -203,16 +245,10 @@ export const ASRRankList = ({
     // 3. Initial check right after mount / visibleCount increment
     checkVisibility();
 
-    // 4. Stalled-recovery interval: guarantees that even if inertia flicking coalesced events,
-    // visible records are never stuck for more than 400ms
-    const recoveryInterval = setInterval(() => {
-      checkVisibility();
-    }, 400);
-
     return () => {
       if (observer) observer.disconnect();
       if (rafId !== null) cancelAnimationFrame(rafId);
-      clearInterval(recoveryInterval);
+      if (settleTimer !== null) clearTimeout(settleTimer);
       container.removeEventListener("scroll", onScrollOrTouch);
       if (isElement) {
         window.removeEventListener("scroll", onScrollOrTouch);
@@ -242,30 +278,34 @@ export const ASRRankList = ({
       >
         {finalAthletes && finalAthletes.length > 0 ? (
           <div className="flex flex-col">
-            {finalAthletes.slice(0, visibleCount).map((item, i) => {
-              const isArray = Array.isArray(item);
+            {finalAthletes.slice(0, visibleCount).map((rawEntry, i) => {
+              const entry = rawEntry as RankListEntry;
+              const isArray = Array.isArray(entry);
+              const item: RankListItemObject = isArray ? {} : entry;
               const pKey = isArray
-                ? item[0]
+                ? String(entry[0] ?? "")
                 : item.pKey || item.label || item.id || "";
               const points = isArray ? undefined : (item.pts ?? item.points);
               const time = isArray
-                ? item[1]
+                ? entry[1]
                 : (item.time ?? item.value ?? item.num);
-              const explicitVideoUrl = isArray ? item[2] : item.videoUrl;
+              const explicitVideoUrl = isArray ? entry[2] : item.videoUrl;
 
-              const meta =
+              const meta: Partial<Omit<PlayerProfile, "currentRank">> &
+                Partial<Omit<CourseData, "currentRank">> &
+                RankListItemObject =
                 atMet[pKey] ||
                 cMet[String(pKey).toUpperCase()] ||
                 (isArray ? { name: pKey } : item);
               if (
                 isPlaceholderPlayer(meta.name) &&
                 pKey !== "UNCLAIMED RANK" &&
-                !(item as any).isInterim
+                !item.isInterim
               )
                 return null;
 
               const stats = [];
-              const isUnclaimedItem = item.isUnclaimed;
+              const isUnclaimedItem = Boolean(item.isUnclaimed);
 
               if (isUnclaimedItem) {
                 stats.push({ value: "---", label: "PTS" });
@@ -306,7 +346,7 @@ export const ASRRankList = ({
                 });
               } else {
                 const value = isArray
-                  ? item[1]
+                  ? entry[1]
                   : (item.pts ??
                     item.points ??
                     item.value ??
@@ -337,12 +377,12 @@ export const ASRRankList = ({
                 });
               }
 
-              const courseMeta =
+              const courseMeta: Partial<CourseData> & { mapUrl?: string } =
                 cMet[String(pKey).toUpperCase()] || item.rawCourse || {};
 
               const titleStr = isUnclaimedItem
                 ? "--"
-                : (item as any).isInterim
+                : item.isInterim
                   ? "INTERIM TOP TIME"
                   : String(
                       isArray
@@ -359,7 +399,7 @@ export const ASRRankList = ({
                   key={`${pKey}-${i}`}
                   data-index={i}
                   className={
-                    (item as any).isInterim
+                    item.isInterim
                       ? "opacity-60 grayscale pointer-events-none"
                       : ""
                   }
@@ -376,24 +416,24 @@ export const ASRRankList = ({
                             (isUnclaimedItem ? i + 1 : "UR")
                       }
                       title={titleStr}
-                      isUnclaimed={isUnclaimedItem || (item as any).isInterim}
-                      shouldFade={isUnclaimedItem || item.shouldFade}
+                      isUnclaimed={isUnclaimedItem || Boolean(item.isInterim)}
+                      shouldFade={isUnclaimedItem || Boolean(item.shouldFade)}
                       subtitle={
                         isUnclaimedItem ? (
                           "--"
                         ) : hideSubtitle ? null : showDateSubtitle ? (
-                          (item as any).date ? (
+                          item.date ? (
                             <span className="flex items-center gap-1">
                               <Calendar size={10} className="opacity-70" />{" "}
-                              {formatYYYYMMDD(new Date((item as any).date))}
+                              {formatYYYYMMDD(new Date(item.date))}
                             </span>
                           ) : null
                         ) : (
                           (() => {
                             const locText = isArray
                               ? meta.location || meta.countryName || null
-                              : (item as any).city ||
-                                (item as any).location ||
+                              : item.city ||
+                                item.location ||
                                 meta.location ||
                                 meta.city;
                             if (!locText || locText === "UNKNOWN") return null;
@@ -428,7 +468,8 @@ export const ASRRankList = ({
                         courseMeta.mapUrl
                       }
                       onClick={() => {
-                        if (entityType) onEntityClick(entityType, meta);
+                        const entityPayload = meta as Record<string, unknown>;
+                        if (entityType) onEntityClick(entityType, entityPayload);
                         else if (!isArray && item.label)
                           onEntityClick("course", { name: item.label });
                         else if (
@@ -437,8 +478,8 @@ export const ASRRankList = ({
                           valueLabel === "IMPACT"
                         )
                           onEntityClick("course", { name: item.name });
-                        else if (onPlayerClick) onPlayerClick(meta);
-                        else onEntityClick("player", meta);
+                        else if (onPlayerClick) onPlayerClick(entityPayload);
+                        else onEntityClick("player", entityPayload);
                       }}
                       showVideoIcon={true}
                     />

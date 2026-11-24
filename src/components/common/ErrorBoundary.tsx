@@ -13,6 +13,8 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  public declare props: Readonly<Props>;
+  public declare setState: (state: Partial<State>) => void;
   public state: State = {
     hasError: false,
     error: null,

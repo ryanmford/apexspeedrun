@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
- 
 import React, { useState, useEffect, useMemo, useContext } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -210,11 +208,17 @@ export const ASROnboarding = ({ isOpen, onClose }: ASROnboardingProps) => {
                 )}
               >
                 <div className="absolute inset-0 bg-blue-500 animate-pulse opacity-10" />
-                {React.cloneElement(steps[step].icon as React.ReactElement<any>, {
-                  className:
-                    "relative z-10 w-10 h-10 sm:w-12 sm:h-12 text-blue-500",
-                  strokeWidth: 2.5,
-                })}
+                {React.cloneElement(
+                  steps[step].icon as React.ReactElement<{
+                    className?: string;
+                    strokeWidth?: number;
+                  }>,
+                  {
+                    className:
+                      "relative z-10 w-10 h-10 sm:w-12 sm:h-12 text-blue-500",
+                    strokeWidth: 2.5,
+                  },
+                )}
               </motion.div>
 
               <div className="space-y-3 sm:space-y-4 w-full flex-1 flex flex-col justify-center">

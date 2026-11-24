@@ -1,12 +1,27 @@
-import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
-import { getPageMeta } from '../src/meta-injector.ts';
 import { normalizeName, createSlug, CONFIG, getCombinedFlags, toTitleCase } from '../src/lib/asr-utils.ts';
 import { computeAllState } from '../src/lib/asr-data-compute.ts';
+import type { CourseData, PlayerProfile } from '../src/types.ts';
+
+interface MapTile {
+  url: string;
+  x: number;
+  y: number;
+  dataUri: string | null;
+}
+
+function escapeHtml(str: string): string {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,7 +64,7 @@ async function fetchSheets() {
   });
 }
 
-function getOgImageSvg(title: string, desc: string, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: any[]) {
+function getOgImageSvg(title: string, desc: string, _type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: MapTile[]) {
   return {
     type: 'div',
     props: {
@@ -271,7 +286,7 @@ function getOgImageSvg(title: string, desc: string, type?: 'player' | 'course', 
         },
       ],
     },
-  } as any;
+  } as Parameters<typeof satori>[0];
 }
 
 function toCodePoint(unicodeSurrogates: string) {
@@ -325,7 +340,7 @@ async function fetchEmojiDataUri(segment: string): Promise<string> {
   }
 }
 
-async function generateOgImage(title: string, desc: string, outputPath: string, fontData: Buffer, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: any[]) {
+async function generateOgImage(title: string, desc: string, outputPath: string, fontData: Buffer, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: MapTile[]) {
   const svg = await satori(getOgImageSvg(title, desc, type, stats, mapTiles), {
     width: 1200,
     height: 630,
@@ -356,14 +371,17 @@ async function generateOgImage(title: string, desc: string, outputPath: string, 
 }
 
 function injectMeta(html: string, title: string, desc: string, ogImageUrl: string) {
+  const safeTitle = escapeHtml(title);
+  const safeDesc = escapeHtml(desc);
+  const safeOgImageUrl = escapeHtml(ogImageUrl);
   return html
-    .replace(/<title>.*?<\/title>/i, `<title>${title}</title>`)
-    .replace(/<meta property="og:title"[^>]*>/i, `<meta property="og:title" content="${title}">`)
-    .replace(/<meta property="og:description"[^>]*>/i, `<meta property="og:description" content="${desc}">`)
-    .replace(/<meta property="og:image"[^>]*>/i, `<meta property="og:image" content="${ogImageUrl}">`)
-    .replace(/<meta name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${title}">`)
-    .replace(/<meta name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${desc}">`)
-    .replace(/<meta name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${ogImageUrl}">`);
+    .replace(/<title>.*?<\/title>/i, `<title>${safeTitle}</title>`)
+    .replace(/<meta property="og:title"[^>]*>/i, `<meta property="og:title" content="${safeTitle}">`)
+    .replace(/<meta property="og:description"[^>]*>/i, `<meta property="og:description" content="${safeDesc}">`)
+    .replace(/<meta property="og:image"[^>]*>/i, `<meta property="og:image" content="${safeOgImageUrl}">`)
+    .replace(/<meta name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${safeTitle}">`)
+    .replace(/<meta name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${safeDesc}">`)
+    .replace(/<meta name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${safeOgImageUrl}">`);
 }
 
 const tileCache = new Map<string, string | null>();
@@ -399,9 +417,9 @@ async function fetchTile(url: string): Promise<string | null> {
   }
 }
 
-const courseTilesCache = new Map<string, any[]>();
+const courseTilesCache = new Map<string, MapTile[]>();
 
-async function getMapTiles(coords: [number, number] | null) {
+async function getMapTiles(coords: [number, number] | null): Promise<MapTile[]> {
   if (!coords) return [];
   const key = `${coords[0].toFixed(4)},${coords[1].toFixed(4)}`;
   if (courseTilesCache.has(key)) return courseTilesCache.get(key)!;
@@ -481,7 +499,7 @@ async function run() {
   });
   
   const players = [...(data.openData || []), ...(data.data || [])];
-  const uniquePlayers = new Map<string, any>();
+  const uniquePlayers = new Map<string, PlayerProfile>();
   players.forEach(p => {
     if (p.name) uniquePlayers.set(createSlug(p.name), p);
   });
@@ -514,14 +532,17 @@ async function run() {
       { value: rank === 'UR' ? 'UR' : `#${rank}`, label: 'RANK' }
     ];
     
-    const completedCourses = [];
+    const pKey = player.pKey || normalizeName(player.name);
+    const completedCourses: string[] = [];
     for (const c of allCourses) {
-      if (data.lbAT?.M?.[c]?.[player.name] || data.lbAT?.F?.[c]?.[player.name] || data.lbSeason26?.M?.[c]?.[player.name] || data.lbSeason26?.F?.[c]?.[player.name]) {
+      if (data.lbAT?.M?.[c]?.[pKey] || data.lbAT?.F?.[c]?.[pKey] || data.lbSeason26?.M?.[c]?.[pKey] || data.lbSeason26?.F?.[c]?.[pKey]) {
         completedCourses.push(c);
       }
     }
-    const representativeCourse = completedCourses.length > 0 ? completedCourses[0] : null;
-    const mapTiles = await getMapTiles(representativeCourse && data.cMet[representativeCourse] ? data.cMet[representativeCourse].parsedCoords : null);
+    const representativeCourse =
+      completedCourses.find(c => data.cMet[c]?.parsedCoords) ||
+      (completedCourses.length > 0 ? completedCourses[0] : null);
+    const mapTiles = await getMapTiles(representativeCourse && data.cMet[representativeCourse] ? data.cMet[representativeCourse].parsedCoords || null : null);
     
     await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'player', stats, mapTiles);
     
@@ -537,7 +558,7 @@ async function run() {
   
   await runWithConcurrency(allCourses, 12, async (courseStr) => {
     const slug = createSlug(courseStr);
-    const courseInfo = data.cMet[courseStr] || {};
+    const courseInfo: CourseData = data.cMet[courseStr] || { name: courseStr };
     const flags = getCombinedFlags(courseInfo).trim();
     const titlePrefix = flags ? `${flags} ` : '';
     const title = `${titlePrefix}${courseStr.toUpperCase()} SPEED RUN`;
