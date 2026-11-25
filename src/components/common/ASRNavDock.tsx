@@ -147,6 +147,11 @@ export const ASRNavDock = React.memo(
                       return;
                     }
                     if (isActive || (item.id === "hof" && currentView === "hof")) {
+                      if (item.id === "courses") {
+                        setIsCompact(false);
+                        triggerRefresh();
+                        return;
+                      }
                       window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
                       if (document.scrollingElement) {
                         document.scrollingElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });

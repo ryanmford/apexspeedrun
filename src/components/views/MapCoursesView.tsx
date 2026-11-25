@@ -31,6 +31,9 @@ interface MapBounds {
   west: number;
 }
 
+const DEFAULT_MAP_SHEET_SNAP = 0.2;
+const MAP_SHEET_SNAP_POINTS = [0, 0.2, 0.5, 0.85];
+
 export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }) => {
   const isLoading = useDataStore(s => s.isLoading);
   const { navigateToEntity } = useAppNavigation();
@@ -48,9 +51,11 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   const scrollContainerRefMobile = React.useRef<HTMLDivElement>(null);
   const mapRef = useRef<ASRMapHandle>(null);
   const [visibleBounds, setVisibleBounds] = React.useState<MapBounds | null>(null);
-  const [snap, setSnap] = React.useState<number>(0.2);
+  const [snap, setSnap] = React.useState<number>(DEFAULT_MAP_SHEET_SNAP);
+  const [snapResetKey, setSnapResetKey] = React.useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
+  const setIsNavCompact = useAppStore(s => s.setIsNavCompact);
   const userLocation = useAppStore(s => s.userLocation);
   const courseSortMode = useAppStore(s => s.courseSortMode);
   const setCourseSortMode = useAppStore(s => s.setCourseSortMode);
@@ -79,10 +84,15 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   React.useEffect(() => {
     if (refreshTrigger > prevRefreshTrigger.current) {
       prevRefreshTrigger.current = refreshTrigger;
-      // Reset view to default when nav dock button is clicked while active
+      // Reset view & bottom sheet to default when nav dock map button is clicked while active
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       setSearch("");
       setActiveCourseId(null);
-      setSnap(0.2);
+      setIsNavCompact(false);
+      setSnap(DEFAULT_MAP_SHEET_SNAP);
+      setSnapResetKey((k) => k + 1);
       if (mapRef.current?.resetView) {
         mapRef.current.resetView();
       }
@@ -93,7 +103,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
         scrollContainerRefMobile.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [refreshTrigger, setActiveCourseId, setSnap]);
+  }, [refreshTrigger, setActiveCourseId, setIsNavCompact]);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -205,9 +215,16 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
   }, [navigateToEntity, setActiveCourseId]);
 
   const handleMapBackgroundClick = React.useCallback(() => {
-     setSnap(0.2);
-     setActiveCourseId(null);
+    setSnap((prev) => (prev > DEFAULT_MAP_SHEET_SNAP ? DEFAULT_MAP_SHEET_SNAP : prev));
+    setActiveCourseId(null);
   }, [setActiveCourseId]);
+
+  const handleSheetSnapChange = React.useCallback((nextSnap: number) => {
+    setSnap(nextSnap);
+    if (nextSnap < 0.8) {
+      setIsNavCompact(false);
+    }
+  }, [setIsNavCompact]);
 
   const renderListContent = (
     currentSnap: number,
@@ -272,6 +289,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
       </div>
       <div 
         ref={scrollRef}
+        data-sheet-scrollable="true"
         onScroll={(e) => {
           if (window.innerWidth < 768) {
             const target = e.target as HTMLDivElement;
@@ -422,12 +440,14 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
       {/* Mobile Bottom Sheet */}
       <div className="md:hidden pointer-events-none absolute inset-0 z-50">
         <ASRBottomSheet
-          snapPoints={[0.2, 0.5, 0.85]}
-          activeSnap={snap as number}
-          onSnapChange={setSnap}
+          snapPoints={MAP_SHEET_SNAP_POINTS}
+          initialSnap={DEFAULT_MAP_SHEET_SNAP}
+          activeSnap={snap}
+          onSnapChange={handleSheetSnapChange}
+          resetSignal={snapResetKey}
         >
           <div className="flex-1 overflow-hidden h-full pt-2">
-            {renderListContent(snap as number, scrollContainerRefMobile, listRefMobile)}
+            {renderListContent(snap, scrollContainerRefMobile, listRefMobile)}
           </div>
         </ASRBottomSheet>
       </div>

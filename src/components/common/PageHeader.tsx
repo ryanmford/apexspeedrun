@@ -20,7 +20,7 @@ export const PageHeader = ({ title, theme, children }: PageHeaderProps) => {
       {children && (
         <div
           className={cn(
-            "mb-4 sticky z-[50] transition-all",
+            "mb-4 sticky z-[50]",
             "top-[calc(60px+max(12px,var(--safe-top)))] sm:top-[calc(64px+max(16px,var(--safe-top)))]",
           )}
         >
