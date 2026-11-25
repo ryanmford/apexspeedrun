@@ -231,12 +231,7 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
         </React.Suspense>
       )}
 
-      <div 
-        className={cn(
-          "w-full flex flex-col pointer-events-auto transition-all duration-300",
-          "sticky top-0 z-[70]"
-        )}
-      >
+      <div className="w-full flex flex-col pointer-events-auto sticky top-0 z-[70]">
         {view === "home" && !isLoading && (
           <ASRLiveTicker
             theme={theme}
