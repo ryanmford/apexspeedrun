@@ -34,10 +34,10 @@ export const ASRHeader = React.memo(
     return (
       <header
         className={cn(
-          "z-[60] w-full px-4 pb-3 sm:pb-4 flex items-center border-b backdrop-blur-xl pointer-events-auto transition-all duration-500 gap-2 select-none",
+          "z-[60] w-full px-4 pb-3 sm:pb-4 flex items-center backdrop-blur-xl pointer-events-auto transition-all duration-500 gap-2 select-none",
           isTransparent
-            ? "bg-transparent border-transparent shadow-none pt-2 sm:pt-4"
-            : "pt-[max(0.75rem,var(--safe-top))] sm:pt-[max(1rem,var(--safe-top))]",
+            ? "bg-transparent shadow-none pt-2 sm:pt-4"
+            : "border-b pt-[max(0.75rem,var(--safe-top))] sm:pt-[max(1rem,var(--safe-top))]",
           !isTransparent && theme === "dark"
             ? "bg-zinc-950/70 border-white/[0.05] shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
             : "",

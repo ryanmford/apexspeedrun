@@ -180,19 +180,17 @@ export const ASRLiveTicker = React.memo(
       return (
         <div
           className={cn(
-            "relative z-[40] w-full h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] border-b flex items-center justify-center select-none overflow-hidden transition-colors duration-500",
-            theme === "dark"
-              ? "border-white/5 text-zinc-100"
-              : "border-zinc-200/50 text-slate-800",
+            "relative z-[40] w-full h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] flex items-center justify-center select-none transition-colors duration-500",
+            theme === "dark" ? "text-zinc-100" : "text-slate-800",
           )}
         >
           <div
             aria-hidden="true"
             className={cn(
-              "absolute inset-0 pointer-events-none backdrop-blur-md transition-colors duration-500",
+              "absolute inset-x-0 top-0 -bottom-px pointer-events-none backdrop-blur-md border-b transition-colors duration-500",
               theme === "dark"
-                ? "bg-zinc-950/80 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
-                : "bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
+                ? "bg-zinc-950/80 border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+                : "bg-white/90 border-zinc-200/50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
             )}
           />
           <div className="relative z-10 opacity-30 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse ticker-edge-mask px-6">
@@ -297,10 +295,7 @@ export const ASRLiveTicker = React.memo(
 
     return (
       <div
-        className={cn(
-          "relative z-[40] w-full overflow-hidden border-b h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] flex items-center select-none transition-colors duration-500",
-          theme === "dark" ? "border-white/5" : "border-zinc-200/50",
-        )}
+        className="relative z-[40] w-full h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] flex items-center select-none transition-colors duration-500"
         onPointerEnter={(e) => {
           if (e.pointerType === "mouse") {
             isHoveredRef.current = true;
@@ -312,14 +307,14 @@ export const ASRLiveTicker = React.memo(
           }
         }}
       >
-        {/* Isolated frosted backdrop so backdrop-blur never affects text rasterization */}
+        {/* Isolated frosted backdrop extending 1px below to seal any subpixel seam above ASRHeader */}
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-0 pointer-events-none backdrop-blur-md transition-colors duration-500",
+            "absolute inset-x-0 top-0 -bottom-px pointer-events-none backdrop-blur-md border-b transition-colors duration-500",
             theme === "dark"
-              ? "bg-zinc-950/80 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
-              : "bg-white/90 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
+              ? "bg-zinc-950/80 border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
+              : "bg-white/90 border-zinc-200/50 shadow-[0_4px_30px_rgba(0,0,0,0.03)]",
           )}
         />
         {/* Viewport-sized edge fade mask (never applied to the wide scrolling track) */}
