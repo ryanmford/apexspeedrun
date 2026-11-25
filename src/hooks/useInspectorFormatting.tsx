@@ -1,5 +1,10 @@
 import { useMemo, type ReactNode } from "react";
-import { normalizeName } from "../lib/asr-utils";
+import {
+  normalizeName,
+  getNormalizedNameList,
+  cleanNumeric,
+  isPlaceholderPlayer,
+} from "../lib/asr-utils";
 import { Zap, Medal, Waypoints } from "lucide-react";
 import {
   PlayerProfile,
@@ -26,9 +31,7 @@ const EMPTY_PLAYER_LB: GenderedPlayerMap = { M: {}, F: {} };
 const EMPTY_COURSE_LB: GenderedCourseBoards = { M: {}, F: {} };
 
 const toSetterList = (val?: string | string[]): string[] => {
-  if (!val) return [];
-  const raw = Array.isArray(val) ? val : val.split(",");
-  return raw.map((s) => normalizeName(s)).filter(Boolean);
+  return getNormalizedNameList(val);
 };
 
 export const usePlayerDetailsData = (
@@ -120,17 +123,20 @@ export const usePlayerDetailsData = (
 
   const allTimeAvgTime = useMemo(() => {
     if (!allRuns.length) return "--:--";
-    const total = allRuns.reduce(
-      (sum: number, r: { num?: number }) => sum + (r.num || 0),
+    const totalCenti = allRuns.reduce(
+      (sum: number, r: { num?: number }) => sum + Math.round((r.num || 0) * 100),
       0,
     );
-    return (total / allRuns.length).toFixed(2);
+    return (Math.round(totalCenti / allRuns.length) / 100).toFixed(2);
   }, [allRuns]);
 
   const avgTime = useMemo(() => {
     if (!runs.length) return "--:--";
-    const total = runs.reduce((sum: number, r: { num?: number }) => sum + (r.num || 0), 0);
-    return (total / runs.length).toFixed(2);
+    const totalCenti = runs.reduce(
+      (sum: number, r: { num?: number }) => sum + Math.round((r.num || 0) * 100),
+      0,
+    );
+    return (Math.round(totalCenti / runs.length) / 100).toFixed(2);
   }, [runs]);
 
   const setterInfo = setterMet?.[pKey];
@@ -149,10 +155,14 @@ export const usePlayerDetailsData = (
           (course) => String(course.name).toUpperCase() === normName,
         );
         const courseRuns =
-          mc?.totalAllTimeRuns ||
-          (courseRunsHistory[normName] || []).length ||
-          Object.keys(lbAT_Courses.M?.[name] || {}).length +
-            Object.keys(lbAT_Courses.F?.[name] || {}).length;
+          mc?.totalAllTimeRuns ??
+          courseRunsHistory[normName]?.length ??
+          (Object.keys(lbAT_Courses.M?.[name] || {}).filter(
+            (k) => !isPlaceholderPlayer(k),
+          ).length +
+            Object.keys(lbAT_Courses.F?.[name] || {}).filter(
+              (k) => !isPlaceholderPlayer(k),
+            ).length);
         return {
           ...c,
           name,
@@ -178,10 +188,8 @@ export const usePlayerDetailsData = (
 
   const calculatedAvgLength = useMemo(() => {
     const lengths = coursesSet
-      .filter(
-        (c: { length?: string | number }) => !isNaN(parseFloat(String(c.length))) && parseFloat(String(c.length)) > 0,
-      )
-      .map((c: { length?: string | number }) => parseFloat(String(c.length)));
+      .map((c: { length?: string | number }) => cleanNumeric(c.length))
+      .filter((len): len is number => len !== null && len > 0);
     if (!lengths.length) return 0;
     return (
       lengths.reduce((sum: number, l: number) => sum + l, 0) / lengths.length
@@ -384,67 +392,108 @@ export const useTeamDetailsData = (
   const lbAT = dataContext?.lbAT || EMPTY_PLAYER_LB;
   const teamsAggregated = dataContext?.teamsAggregated;
 
-  const teamCategory: keyof TeamsAggregated =
-    team?.category === "teams" ? "teams" : "gyms";
   const contextStr = mode === "all-time" ? "allTime" : mode === "2026" ? "season26" : "open";
-  const teamsAggregatedMap =
-    teamsAggregated?.[teamCategory] || teamsAggregated?.gyms;
-  const teamsAgg = teamsAggregatedMap?.[contextStr] || [];
+  const targetUpper = (team?.name || "").toUpperCase();
+  const targetNorm = normalizeName(team?.name || "");
 
-  const tMeta = Array.isArray(teamsAgg)
-    ? teamsAgg.find(
-        (t) =>
-          (t.name || "").toUpperCase() === (team?.name || "").toUpperCase(),
-      ) || team
-    : team;
+  const matchesTeamName = (candidate?: string) => {
+    if (!candidate) return false;
+    return candidate.toUpperCase() === targetUpper || (targetNorm !== "" && normalizeName(candidate) === targetNorm);
+  };
+
+  const categoryOrder: (keyof TeamsAggregated)[] =
+    team?.category === "teams"
+      ? ["teams", "gyms"]
+      : team?.category === "gyms"
+        ? ["gyms", "teams"]
+        : ["teams", "gyms"];
+
+  let matchedInContext: TeamProfile | undefined;
+  let matchedCategory: keyof TeamsAggregated | undefined;
+  for (const cat of categoryOrder) {
+    const list = teamsAggregated?.[cat]?.[contextStr] || [];
+    const idx = list.findIndex((t) => matchesTeamName(t.name));
+    if (idx !== -1) {
+      matchedInContext = { ...list[idx], currentRank: list[idx].currentRank ?? idx + 1, category: cat };
+      matchedCategory = cat;
+      break;
+    }
+  }
+
+  let allTimeMetaFallback: TeamProfile | undefined;
+  if (!matchedInContext) {
+    for (const cat of categoryOrder) {
+      const list = teamsAggregated?.[cat]?.allTime || [];
+      const found = list.find((t) => matchesTeamName(t.name));
+      if (found) {
+        allTimeMetaFallback = {
+          ...found,
+          players: undefined as unknown as TeamProfile["players"],
+          category: cat,
+        };
+        matchedCategory = cat;
+        break;
+      }
+    }
+  }
+
+  const tMeta: TeamProfile =
+    matchedInContext ||
+    (allTimeMetaFallback
+      ? { ...team, ...allTimeMetaFallback, players: undefined as unknown as TeamProfile["players"] }
+      : team);
 
   const players = useMemo(() => {
-    if (tMeta?.players) {
-      return [...tMeta.players].sort(
+    if (matchedInContext?.players) {
+      return [...matchedInContext.players].sort(
         (a, b) => (b.contribution || 0) - (a.contribution || 0),
       );
     }
+    const allTimeData =
+      dataContext.data && dataContext.data.length > 0
+        ? dataContext.data
+        : Object.values(atMet);
     const season26Data = dataContext.season26Data;
-    const source = mode === "all-time" ? Object.values(atMet) : mode === "2026" ? (season26Data || []) : openData;
+    const source = mode === "all-time" ? allTimeData : mode === "2026" ? (season26Data || []) : openData;
     return source
       .filter((p: PlayerProfile) => {
-        const normalizedTarget = (team?.name || "").toUpperCase();
-        if (!normalizedTarget) return false;
+        if (!targetUpper && !targetNorm) return false;
         const gymMatch =
-          Boolean(p.homeGym && p.homeGym.toUpperCase() === normalizedTarget);
+          matchedCategory !== "teams" && Boolean(p.homeGym && matchesTeamName(p.homeGym));
         const teamsMatch =
+          matchedCategory !== "gyms" &&
           Boolean(
             p.teams &&
               p.teams.some(
                 (t: { name?: string } | string) =>
-                  (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+                  matchesTeamName(typeof t === "string" ? t : t?.name || ""),
               ),
           );
         return gymMatch || teamsMatch;
       })
       .map((p: PlayerProfile) => ({ ...p, contribution: p.pts || 0 }))
       .sort((a, b) => (b.contribution || 0) - (a.contribution || 0));
-  }, [atMet, openData, dataContext.season26Data, mode, team.name, tMeta]);
+  }, [dataContext.data, atMet, openData, dataContext.season26Data, mode, targetUpper, targetNorm, matchedInContext, matchedCategory]);
 
   const setters = useMemo(() => {
     return settersWithImpact
       .filter((s: SetterProfile) => {
-        const normalizedTarget = (team?.name || "").toUpperCase();
-        if (!normalizedTarget) return false;
+        if (!targetUpper && !targetNorm) return false;
         const gymMatch =
-          Boolean(s.homeGym && s.homeGym.toUpperCase() === normalizedTarget);
+          matchedCategory !== "teams" && Boolean(s.homeGym && matchesTeamName(s.homeGym));
         const teamsMatch =
+          matchedCategory !== "gyms" &&
           Boolean(
             s.teams &&
               s.teams.some(
                 (t: { name?: string } | string) =>
-                  (typeof t === "string" ? t : (t?.name || "")).toUpperCase() === normalizedTarget,
+                  matchesTeamName(typeof t === "string" ? t : t?.name || ""),
               ),
           );
         return gymMatch || teamsMatch;
       })
       .sort((a: SetterProfile, b: SetterProfile) => (b.impact || 0) - (a.impact || 0));
-  }, [settersWithImpact, team.name]);
+  }, [settersWithImpact, targetUpper, targetNorm, matchedCategory]);
 
   const playerStats = useMemo(
     () => ({

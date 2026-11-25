@@ -1,6 +1,12 @@
 import crypto from "crypto";
 import zlib from "zlib";
-import { normalizeName, CONFIG, getCombinedFlags, toTitleCase } from "./lib/asr-utils.ts";
+import {
+  normalizeName,
+  CONFIG,
+  getCombinedFlags,
+  toTitleCase,
+  isPlaceholderPlayer,
+} from "./lib/asr-utils.ts";
 import { computeAllState } from "./lib/asr-data-compute.ts";
 import { dehydrateSnapshot } from "./lib/asr-snapshot.ts";
 import type { ComputedASRState, CourseData, PlayerProfile } from "./types.ts";
@@ -182,7 +188,11 @@ export function resolvePageMeta(
         const coursesCount = player.courses || 0;
         const runsCount = player.runs || 0;
         const winsCount = player.wins || 0;
-        const firesCount = player.allTimeFireCount || 0;
+        const firesCount = isAllTime
+          ? player.allTimeFireCount || 0
+          : eventType === "2026"
+            ? player.season26FireCount || 0
+            : player.openFireCount || 0;
 
         let newDesc = `COURSES: ${coursesCount} | RUNS: ${runsCount}`;
         if (winsCount > 0) newDesc += ` | WR: ${winsCount}`;
@@ -239,9 +249,19 @@ export function resolvePageMeta(
       }
     } else if (parts[0] === "courses" && parts[1]) {
       const slug = normalizeName(decodeURIComponent(parts[1]));
-      const courseStr = Object.keys(state.cMet || {}).find((c) => normalizeName(c) === slug);
+      const masterCourse = (state.masterCourseList || []).find(
+        (c) => normalizeName(c.name || "") === slug,
+      );
+      const courseStr =
+        masterCourse?.name?.toUpperCase() ||
+        Object.keys(state.cMet || {}).find((c) => normalizeName(c) === slug);
       if (courseStr) {
-        const courseInfo: CourseData = state.cMet?.[courseStr] || { name: courseStr };
+        const cMetInfo = state.cMet?.[courseStr];
+        const courseInfo: CourseData = {
+          ...(cMetInfo || {}),
+          ...(masterCourse || {}),
+          name: masterCourse?.name || cMetInfo?.name || courseStr,
+        };
         const flags = getCombinedFlags(courseInfo).trim();
         const titlePrefix = flags ? `${flags} ` : "";
         title = `${titlePrefix}${courseStr.toUpperCase()} SPEED RUN`;
@@ -264,7 +284,14 @@ export function resolvePageMeta(
           const mTimes = Object.values(mData);
           const fTimes = Object.values(fData);
 
-          totalClears = mTimes.length + fTimes.length;
+          const realMClears = Object.keys(mData).filter(
+            (k) => !isPlaceholderPlayer(state.dnMap?.[k] || k),
+          ).length;
+          const realFClears = Object.keys(fData).filter(
+            (k) => !isPlaceholderPlayer(state.dnMap?.[k] || k),
+          ).length;
+
+          totalClears = realMClears + realFClears;
           if (mTimes.length) mBest = Math.min(...mTimes);
           if (fTimes.length) fBest = Math.min(...fTimes);
         }
@@ -275,12 +302,17 @@ export function resolvePageMeta(
             ? toTitleCase(courseInfo.country)
             : "Secret Location";
 
-        const totalRunsCount = courseInfo.totalAllTimeRuns || courseInfo.totalRuns || totalClears;
+        const totalRunsCount = isAllTime
+          ? (courseInfo.totalAllTimeRuns ?? courseInfo.totalRuns ?? totalClears)
+          : eventType === "2026"
+            ? (courseInfo.season26Runs ?? totalClears)
+            : (courseInfo.openRuns ?? courseInfo.totalAllTimeRuns ?? totalClears);
         description = `RUNS: ${totalRunsCount} | 📍 ${locStr}`.toUpperCase();
         ogType = "course";
+        const recordPrefix = isAllTime ? "WR" : eventType === "2026" ? "2026" : "OPEN";
         ogStats = [
-          { value: mBest !== Infinity ? mBest.toFixed(2) : "--", label: "WR (M)" },
-          { value: fBest !== Infinity ? fBest.toFixed(2) : "--", label: "WR (W)" },
+          { value: mBest !== Infinity ? mBest.toFixed(2) : "--", label: `${recordPrefix} (M)` },
+          { value: fBest !== Infinity ? fBest.toFixed(2) : "--", label: `${recordPrefix} (W)` },
         ];
         ogMapCoords = courseInfo.parsedCoords || null;
       }

@@ -263,7 +263,7 @@ export const TeamDetails = React.memo(
           {contentTab === "setters" && (
             <InspectorTabContainer>
               <div className="grid grid-cols-2 gap-4">
-                <ASRStatCard label="IMPACT" value={setterStats.impact.toFixed(2)} />
+                <ASRStatCard label="IMPACT" value={setterStats.impact} />
                 <ASRStatCard label="SETS" value={setterStats.sets} />
               </div>
 

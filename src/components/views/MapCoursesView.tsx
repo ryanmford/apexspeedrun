@@ -356,6 +356,7 @@ export const MapCoursesView = React.memo(({ theme }: { theme: "light" | "dark" }
               middleLabel={userLocation && courseSortMode === "nearest" ? "COURSE • DISTANCE" : "COURSE"}
               columns={columns}
               showVideoColumn={true}
+              enableMapHighlight={true}
             />
           )}
         </ErrorBoundary>

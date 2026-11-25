@@ -144,23 +144,19 @@ export const HomeView = React.memo(() => {
         forcedPlayer ||
         uniquePlayers[seededRandomIndex(seedStr + "feature_player", uniquePlayers.length)];
 
-      let gRank: number;
-      if (chosenPlayer.gender === "F") {
-        const atIdx =
-          playerList_F_AT?.findIndex((p) => p.name === chosenPlayer.name) ?? -1;
-        gRank =
-          atIdx >= 0
-            ? atIdx + 1
-            : (playerList_F_OP?.findIndex((p) => p.name === chosenPlayer.name) ?? 0) + 1;
-      } else {
-        const atIdx =
-          playerList_M_AT?.findIndex((p) => p.name === chosenPlayer.name) ?? -1;
-        gRank =
-          atIdx >= 0
-            ? atIdx + 1
-            : (playerList_M_OP?.findIndex((p) => p.name === chosenPlayer.name) ?? 0) + 1;
-      }
-      pOfDay = { ...chosenPlayer, _gRank: gRank };
+      const atList = chosenPlayer.gender === "F" ? playerList_F_AT : playerList_M_AT;
+      const opList = chosenPlayer.gender === "F" ? playerList_F_OP : playerList_M_OP;
+      const atPlayer = atList?.find((p) => !p.isDivider && p.pKey === chosenPlayer.pKey);
+      const opPlayer = opList?.find((p) => !p.isDivider && p.pKey === chosenPlayer.pKey);
+      const resolvedRank =
+        typeof atPlayer?.currentRank === "number"
+          ? atPlayer.currentRank
+          : typeof opPlayer?.currentRank === "number"
+            ? opPlayer.currentRank
+            : typeof chosenPlayer.currentRank === "number"
+              ? chosenPlayer.currentRank
+              : 1;
+      pOfDay = { ...chosenPlayer, _gRank: resolvedRank };
     }
 
     let cOfDay: CourseData | null = null;
@@ -291,11 +287,16 @@ export const HomeView = React.memo(() => {
   } = useMemo(() => {
     const tGyms = Math.max(teamList_gyms_AT?.length || 0, 1);
     const tTeams = Math.max(teamList_teams_AT?.length || 0, 1);
-    const tMedals = masterCourseList.reduce((acc, c) => {
-      const mCount = Math.min(3, c.allTimeAthletesM?.length || 0);
-      const fCount = Math.min(3, c.allTimeAthletesF?.length || 0);
-      return acc + mCount + fCount;
-    }, 0);
+    let tMedals = 0;
+    if (atPerfs) {
+      Object.values(atPerfs).forEach((runs) => {
+        if (Array.isArray(runs)) {
+          runs.forEach((r) => {
+            if (r.rank >= 1 && r.rank <= 3) tMedals++;
+          });
+        }
+      });
+    }
 
     const cTrendData = kpiTrends?.courses || [];
     const rTrendData = kpiTrends?.runs || [];
@@ -310,20 +311,9 @@ export const HomeView = React.memo(() => {
 
     const pFlags = new Set<string>();
     [...(playerList_M_AT || []), ...(playerList_F_AT || [])].forEach((p) => {
-      [p.gymFlag, p.townFlag, p.region].forEach((f) => {
-        if (f) {
-          const matches = String(f).match(flagRegex);
-          if (matches) matches.forEach((m) => pFlags.add(m));
-        }
-      });
-      if (Array.isArray(p.teams)) {
-        p.teams.forEach((t) => {
-          if (t.flag) {
-            const matches = String(t.flag).match(flagRegex);
-            if (matches) matches.forEach((m) => pFlags.add(m));
-          }
-        });
-      }
+      if (p.isDivider || !p.region) return;
+      const matches = String(p.region).match(flagRegex);
+      if (matches) matches.forEach((m) => pFlags.add(m));
     });
 
     const tFlags = new Set<string>();
@@ -369,7 +359,6 @@ export const HomeView = React.memo(() => {
     kpiStats,
     teamList_gyms_AT,
     teamList_teams_AT,
-    masterCourseList,
     kpiTrends,
     playerList_M_AT,
     playerList_F_AT,

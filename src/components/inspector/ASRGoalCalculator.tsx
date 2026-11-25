@@ -92,6 +92,7 @@ export const ASRGoalCalculator = ({
             : `This places you approx #${computeSimulatedPlacement(
                 requiredTimeForPts,
                 records,
+                courseRecord,
               )} in ${gender === "M" ? "Men's" : "Women's"}`}
         </div>
       </div>

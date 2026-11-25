@@ -18,16 +18,65 @@ import { ASRLiveTicker } from "./components/common/ASRLiveTicker";
 import { ASRBaseModal } from "./components/common/ASRBaseModal";
 import { ASRFooter } from "./components/common/ASRFooter";
 
-const ASRIntroOverlay = React.lazy(() => import("./components/common/ASRIntroOverlay").then(m => ({ default: m.ASRIntroOverlay })));
-const ASROnboarding = React.lazy(() => import("./components/common/ASROnboarding").then(m => ({ default: m.ASROnboarding })));
-const ASRVideoModal = React.lazy(() => import("./components/common/ASRVideoModal").then(m => ({ default: m.ASRVideoModal })));
-const ASRSubmitModal = React.lazy(() => import("./components/common/ASRSubmitModal").then(m => ({ default: m.ASRSubmitModal })));
-const RankingsView = React.lazy(() => import("./components/views/RankingsView").then(m => ({ default: m.RankingsView })));
-const HomeView = React.lazy(() => import("./components/views/HomeView").then(m => ({ default: m.HomeView })));
-const MapCoursesView = React.lazy(() => import("./components/views/MapCoursesView").then(m => ({ default: m.MapCoursesView })));
-const ASRHOF = React.lazy(() => import("./components/views/ASRHOF").then(m => ({ default: m.ASRHOF })));
-const ASRVideoAnnotator = React.lazy(() => import("./components/views/ASRVideoAnnotator").then(m => ({ default: m.ASRVideoAnnotator })));
-const InspectorBody = React.lazy(() => import("./components/inspector/InspectorBody").then(m => ({ default: m.InspectorBody })));
+const CHUNK_RELOAD_KEY = "asr_chunk_reload_ts";
+
+const isChunkLoadError = (err: unknown): boolean => {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return (
+    msg.includes("Failed to fetch dynamically imported module") ||
+    msg.includes("Importing a module script failed") ||
+    msg.includes("error loading dynamically imported module") ||
+    msg.includes("ChunkLoadError") ||
+    msg.includes("Loading chunk")
+  );
+};
+
+function lazyWithRetry<T extends React.ComponentType<never>>(
+  importer: () => Promise<{ default: T }>,
+  retries = 2,
+): React.LazyExoticComponent<T> {
+  return React.lazy(async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await importer();
+      } catch (err) {
+        lastError = err;
+        if (!isChunkLoadError(err)) throw err;
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        }
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const lastReload = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
+        const now = Date.now();
+        if (!lastReload || now - lastReload > 15000) {
+          sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now));
+          window.location.reload();
+          return await new Promise<never>(() => {});
+        }
+      } catch {
+        // Ignore sessionStorage errors in restricted frames
+      }
+    }
+
+    throw lastError;
+  });
+}
+
+const ASRIntroOverlay = lazyWithRetry(() => import("./components/common/ASRIntroOverlay").then(m => ({ default: m.ASRIntroOverlay })));
+const ASROnboarding = lazyWithRetry(() => import("./components/common/ASROnboarding").then(m => ({ default: m.ASROnboarding })));
+const ASRVideoModal = lazyWithRetry(() => import("./components/common/ASRVideoModal").then(m => ({ default: m.ASRVideoModal })));
+const ASRSubmitModal = lazyWithRetry(() => import("./components/common/ASRSubmitModal").then(m => ({ default: m.ASRSubmitModal })));
+const RankingsView = lazyWithRetry(() => import("./components/views/RankingsView").then(m => ({ default: m.RankingsView })));
+const HomeView = lazyWithRetry(() => import("./components/views/HomeView").then(m => ({ default: m.HomeView })));
+const MapCoursesView = lazyWithRetry(() => import("./components/views/MapCoursesView").then(m => ({ default: m.MapCoursesView })));
+const ASRHOF = lazyWithRetry(() => import("./components/views/ASRHOF").then(m => ({ default: m.ASRHOF })));
+const ASRVideoAnnotator = lazyWithRetry(() => import("./components/views/ASRVideoAnnotator").then(m => ({ default: m.ASRVideoAnnotator })));
+const InspectorBody = lazyWithRetry(() => import("./components/inspector/InspectorBody").then(m => ({ default: m.InspectorBody })));
 
 import { motion } from "motion/react";
 import { RouteScrollRestoration } from "./components/common/RouteScrollRestoration";
@@ -147,11 +196,6 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
     navigate(`/${v}`);
   }, [navigate]);
 
-  const lastInspectorLayoutId = React.useRef<string | null>(null);
-  if (inspectorData?.data) {
-    lastInspectorLayoutId.current = `card-${inspectorData.data.id || inspectorData.data.name || 'empty'}`;
-  }
-
   return (
     <div
       className={cn(
@@ -252,7 +296,7 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
         )}
       >
         <div className="flex-1 flex flex-col">
-            <RouteErrorBoundary>
+            <RouteErrorBoundary resetKey={backgroundLocation.pathname}>
             <React.Suspense fallback={
               <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
                 <div className="w-10 h-10 border-4 border-zinc-900 dark:border-zinc-100 border-t-transparent dark:border-t-transparent rounded-full animate-spin opacity-50" />
@@ -350,7 +394,6 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
 
       {/* Details Modal */}
       <ASRBaseModal
-        layoutId={lastInspectorLayoutId.current || undefined}
         isOpen={Boolean(inspectorData)}
         onClose={closeModals}
         onBack={goBackOne}
@@ -381,7 +424,13 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
           "Detail"
         }
       >
-        <RouteErrorBoundary>
+        <RouteErrorBoundary
+          resetKey={
+            inspectorData
+              ? `${inspectorData.type}-${inspectorData.data?.name || inspectorData.data?.pKey}`
+              : "closed"
+          }
+        >
             <React.Suspense fallback={
           <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
             <div className="w-10 h-10 border-4 border-zinc-900 dark:border-zinc-100 border-t-transparent dark:border-t-transparent rounded-full animate-spin opacity-50" />

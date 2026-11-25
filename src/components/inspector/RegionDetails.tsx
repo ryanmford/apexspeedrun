@@ -1,5 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { cn, formatLocation, normalizeName, fixCountryEntity, getCombinedFlags } from "../../lib/asr-utils";
+import {
+  cn,
+  normalizeName,
+  fixCountryEntity,
+  getCombinedFlags,
+  matchesRegionTarget,
+} from "../../lib/asr-utils";
 import { ASRStatCard } from "../common/ASRStatCard";
 import { FallbackAvatar } from "../common/FallbackAvatar";
 import { ProfileHeader, InspectorTabContainer } from "./InspectorComponents";
@@ -10,24 +16,10 @@ import { ModalScrollContext } from "../common/ASRBaseModal";
 import { ASREmptyState } from "../common/ASREmptyState";
 import { useDataStore } from "../../store/useDataStore";
 
-import { ASRDataContext, CourseData, PlayerProfile, PlayerTeamRef } from "../../types";
-
-interface RegionMatchable {
-  flag?: string;
-  country?: string;
-  countryName?: string;
-  location?: string;
-  region?: string;
-  state?: string;
-  stateProv?: string;
-  city?: string;
-  teamLocation?: string;
-  homeGym?: string;
-  teams?: PlayerTeamRef[];
-}
+import { ASRDataContext, CourseData, PlayerProfile } from "../../types";
 
 interface RegionDetailsProps {
-  region: { name: string; flag?: string };
+  region: { name: string; flag?: string; type?: string };
   dataContext: ASRDataContext;
   onEntityClick: (type: string, data: Record<string, unknown> | string | { name?: string; pKey?: string }) => void;
   theme: "light" | "dark";
@@ -35,8 +27,9 @@ interface RegionDetailsProps {
 
 export const RegionDetails = React.memo(
   ({ region, dataContext, onEntityClick, theme }: RegionDetailsProps) => {
-    const { atMet = {} } = dataContext || {};
+    const { atMet = {}, data: contextData } = dataContext || {};
 
+    const storeData = useDataStore((s) => s.data);
     const playerList_M_AT = useDataStore((s) => s.playerList_M_AT);
     const playerList_F_AT = useDataStore((s) => s.playerList_F_AT);
 
@@ -63,8 +56,6 @@ export const RegionDetails = React.memo(
     };
 
     const regionNameUpper = region.name.toUpperCase().replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim();
-    const targetTokens = regionNameUpper.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-
     const parts = regionNameUpper.split(",");
     const potentialCountry = parts[parts.length - 1]?.trim() || "";
     const computedFlagInfo = fixCountryEntity(potentialCountry, region.flag || "");
@@ -72,68 +63,10 @@ export const RegionDetails = React.memo(
       ? computedFlagInfo.flag 
       : getCombinedFlags(region.name);
 
-    const isTokenMatch = (objTokens: string[]): boolean => {
-      if (!objTokens || objTokens.length === 0) return false;
-      
-      if (objTokens.length >= targetTokens.length) {
-        // Object provides as much or more detail as region. 
-        // All region requirements must be satisfied by object.
-        return targetTokens.every(t => objTokens.includes(t));
-      } else {
-        // Object provides less detail than region (e.g. missing state).
-        // It must be referring to the same specific place (tokens[0] === targetTokens[0])
-        // And have no conflicts (all tokens are in targetTokens).
-        return objTokens[0] === targetTokens[0] && objTokens.every(t => targetTokens.includes(t));
-      }
-    };
-
-    const matchRegion = (obj: RegionMatchable): boolean => {
-      const locStr = formatLocation(obj);
-      if (!locStr || locStr === "UNKNOWN") return false;
-
-      const regionFlags = getCombinedFlags(region.flag, finalFlag).split(" ").filter(Boolean);
-      if (regionFlags.length > 0) {
-        const playerFlags = getCombinedFlags(obj.flag, obj.country, obj.location, obj.region, obj.state, locStr).split(" ").filter(Boolean);
-        
-        for (const flag of regionFlags) {
-          if (flag !== "🏳️" && playerFlags.includes(flag)) {
-            return true;
-          }
-        }
-      }
-
-      const strippedLocStr = locStr.replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim();
-
-      const objTokens = strippedLocStr.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-
-      if (isTokenMatch(objTokens)) {
-         return true;
-      }
-      
-      const rawValues = [
-        obj.city, obj.country, obj.state, obj.stateProv, obj.location, obj.region, obj.teamLocation, obj.homeGym
-      ].filter(Boolean).map(v => String(v).toUpperCase().replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim());
-      
-      if (Array.isArray(obj.teams)) {
-          obj.teams.forEach((t: PlayerTeamRef) => {
-              if (t.location) rawValues.push(String(t.location).toUpperCase().replace(/[\uD83C][\uDDE6-\uDDFF]|\p{Extended_Pictographic}/gu, '').trim());
-          });
-      }
-      
-      for (const rv of rawValues) {
-          const rvTokens = rv.split(',').map(s => s.trim()).filter(Boolean);
-          if (isTokenMatch(rvTokens)) {
-              return true;
-          }
-      }
-
-      return false;
-    };
-
     const regionalCourses = useMemo(() => {
       const allCourses: CourseData[] = dataContext.masterCourseList || [];
       return allCourses
-        .filter(matchRegion)
+        .filter((c) => matchesRegionTarget(region, c))
         .map(c => ({
           ...c,
           runs: c.totalAllTimeRuns || c.totalRuns || 0,
@@ -142,56 +75,51 @@ export const RegionDetails = React.memo(
         .sort((a, b) => (b.runs) - (a.runs));
     }, [dataContext.masterCourseList, region]);
 
+    const totalRegionalRuns = useMemo(
+      () => regionalCourses.reduce((sum, c) => sum + (c.runs || 0), 0),
+      [regionalCourses],
+    );
+
     const regionalPlayers = useMemo(() => {
-      const regionStats: Record<string, { runs: number; lqSum: number }> = {};
+      const competedPKeys = new Set<string>();
 
       regionalCourses.forEach((c) => {
-        const mRecord = c.allTimeMRecord || c.mRecord;
-        const fRecord = c.allTimeFRecord || c.fRecord;
-
         const mMAll = c.allTimeAthletesM || c.athletesMAll;
-        if (Array.isArray(mMAll) && mRecord) {
+        if (Array.isArray(mMAll)) {
           mMAll.forEach((a) => {
             if (a && a[0]) {
-              const pKey = normalizeName(a[0]);
-              if (!regionStats[pKey]) regionStats[pKey] = { runs: 0, lqSum: 0 };
-              regionStats[pKey].runs += 1;
-              regionStats[pKey].lqSum += (mRecord / a[1]) * 100;
+              competedPKeys.add(normalizeName(a[0]));
             }
           });
         }
 
         const fFAll = c.allTimeAthletesF || c.athletesFAll;
-        if (Array.isArray(fFAll) && fRecord) {
+        if (Array.isArray(fFAll)) {
           fFAll.forEach((a) => {
             if (a && a[0]) {
-              const pKey = normalizeName(a[0]);
-              if (!regionStats[pKey]) regionStats[pKey] = { runs: 0, lqSum: 0 };
-              regionStats[pKey].runs += 1;
-              regionStats[pKey].lqSum += (fRecord / a[1]) * 100;
+              competedPKeys.add(normalizeName(a[0]));
             }
           });
         }
       });
 
-      return Object.values(atMet)
+      const playersPool =
+        contextData && contextData.length > 0
+          ? contextData
+          : storeData && storeData.length > 0
+            ? storeData
+            : Object.values(atMet);
+
+      return playersPool
         .filter((p: PlayerProfile) => {
           const pKey = p.pKey || normalizeName(p.name);
           if (!allTimeRankedPKeys.has(pKey)) return false;
-          const isFromRegion = matchRegion(p);
-          const competedHere = !!regionStats[pKey];
+          const isFromRegion = matchesRegionTarget(region, p);
+          const competedHere = competedPKeys.has(pKey);
           return isFromRegion || competedHere;
         })
-        .map((p: PlayerProfile) => {
-          const pKey = p.pKey || normalizeName(p.name);
-          const stats = regionStats[pKey] || { runs: 0, lqSum: 0 };
-          return {
-            ...p,
-            runs: stats.runs,
-          };
-        })
         .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    }, [atMet, region, regionalCourses, allTimeRankedPKeys]);
+    }, [contextData, storeData, atMet, region, regionalCourses, allTimeRankedPKeys]);
 
     return (
       <div
@@ -247,10 +175,7 @@ export const RegionDetails = React.memo(
             <InspectorTabContainer>
               <div className="grid grid-cols-2 gap-4">
                 <ASRStatCard label="PLAYERS" value={regionalPlayers.length} />
-                <ASRStatCard 
-                  label="RUNS" 
-                  value={regionalPlayers.reduce((sum, p) => sum + (p.runs || 0), 0)} 
-                />
+                <ASRStatCard label="RUNS" value={totalRegionalRuns} />
               </div>
 
               {regionalPlayers.length > 0 ? (
@@ -283,10 +208,7 @@ export const RegionDetails = React.memo(
             <InspectorTabContainer>
               <div className="grid grid-cols-2 gap-4">
                 <ASRStatCard label="COURSES" value={regionalCourses.length} />
-                <ASRStatCard 
-                  label="RUNS" 
-                  value={regionalCourses.reduce((sum, c) => sum + (c.runs || 0), 0)} 
-                />
+                <ASRStatCard label="RUNS" value={totalRegionalRuns} />
               </div>
 
               <div className="flex flex-col gap-4 mt-4 mb-8">

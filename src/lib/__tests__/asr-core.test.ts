@@ -6,8 +6,12 @@ import {
   isQualifiedAthlete,
   parseCoords,
   normalizeName,
+  getSetterLevel,
+  matchesRegionTarget,
+  splitNameList,
+  getNormalizedNameList,
 } from "../asr-utils";
-import { processSetListData, processRankingData } from "../asr-data";
+import { processSetListData, processRankingData, calculateWofStats } from "../asr-data";
 import {
   computeAllState,
   computeSimulatedPlacement,
@@ -174,8 +178,8 @@ describe("computeAllState LQ math, tie-breakers, coin formula, and Open aggregat
     expect(charlie.rank).toBe(2);
     expect(bob.rank).toBe(3);
 
-    // Coin formula: (runs * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1)
-    // Alice: 8 runs (0.8) + 8 wins (0.8) + 2 leads (0.4) + 1 assist (0.1) = 2.10
+    // Coin formula: (courses * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1)
+    // Alice: 8 courses (0.8) + 8 wins (0.8) + 2 leads (0.4) + 1 assist (0.1) = 2.10
     expect(state.atMet[normalizeName("Alice Alpha")].contributionScore).toBeCloseTo(2.1, 2);
 
     // Open team aggregation uses opPerfs cleanly without throwing
@@ -354,4 +358,309 @@ describe("Updated Google Sheet schema & Unicode difficulty regression", () => {
     expect(state.atMet[normalizeName("https://youtu.be/realrun")]).toBeUndefined();
   });
 });
+
+describe("Stats audit regressions (coins, setter levels, medals, course run counts, recentFeed, ties)", () => {
+  it("enforces updated setter level thresholds (L1: 20/10, L2: 250/50, L3: 1000/100)", () => {
+    expect(getSetterLevel(19, 10)).toBeNull();
+    expect(getSetterLevel(20, 9)).toBeNull();
+    expect(getSetterLevel(20, 10)).toBe("1");
+    expect(getSetterLevel(249, 50)).toBe("1");
+    expect(getSetterLevel(250, 49)).toBe("1");
+    expect(getSetterLevel(250, 50)).toBe("2");
+    expect(getSetterLevel(999, 100)).toBe("2");
+    expect(getSetterLevel(1000, 99)).toBe("2");
+    expect(getSetterLevel(1000, 100)).toBe("3");
+  });
+
+  it("rewards coins on unique courses only, excludes placeholders from 2026/Open run counts & HOF golds, and computes non-PB recentFeed ranks", () => {
+    const mensCsv = [
+      "Name,Country,Flag,LQ,Courses,Runs,Reruns,Points,Wins,Win %,🔥,IG",
+      "Taylor Runner,USA,🇺🇸,0,0,0,0,0,0,0,0,@taylor",
+      "Sam Tied,Canada,🇨🇦,0,0,0,0,0,0,0,0,@sam",
+    ].join("\n");
+
+    const setsCsv = [
+      "Course,City,State,Country,Flag,Lead,Assistant,Open?,2026?,All-Time?",
+      "Alpha Course,Boulder,CO,USA,🇺🇸,Taylor Runner,,YES,YES,YES",
+      "Beta Course,Denver,CO,USA,🇺🇸,,,YES,YES,YES",
+    ].join("\n");
+
+    // Interim Top Time holds #1 on Alpha Course (9.00s); Taylor has PB 10.00s and a slower rerun 11.00s;
+    // Sam ties Taylor at 10.00s on Alpha Course; blank-time stub row should be ignored in recentFeed.
+    const liveCsv = [
+      "Athlete,Course,Result,Div,Date,Tag,Proof,🔥,Filmer",
+      "INTERIM TOP TIME,Alpha Course,9.00,M,2026-03-01,Open,,0,",
+      "Taylor Runner,Alpha Course,10.00,M,2026-03-05,Open,https://youtu.be/t1,0,",
+      "Taylor Runner,Alpha Course,11.00,M,2026-03-10,Open,https://youtu.be/t2,0,",
+      "Sam Tied,Alpha Course,10.00,M,2026-03-06,Open,https://youtu.be/s1,0,",
+      "Taylor Runner,Beta Course,,M,2026-03-12,Open,,0,",
+    ].join("\n");
+
+    const state = computeAllState({
+      rM: mensCsv,
+      rF: "",
+      rLive: liveCsv,
+      rSet: setsCsv,
+      hasTotalError: false,
+      hasPartialError: false,
+    });
+
+    const tKey = normalizeName("Taylor Runner");
+    // Coins: 1 unique course (0.1) + 0 wins (0.0, Interim holds #1) + 1 lead (0.2) = 0.30 (rerun does NOT add 0.1)
+    expect(state.atMet[tKey].contributionScore).toBeCloseTo(0.3, 4);
+
+    // 2026 & Open course run counts: 3 real runs (Taylor x2 + Sam x1), excluding INTERIM TOP TIME
+    const alpha2026 = state.courseList_2026.find((c) => c.name === "ALPHA COURSE");
+    const alphaOpen = state.courseList_OP.find((c) => c.name === "ALPHA COURSE");
+    expect(alpha2026?.season26Runs).toBe(3);
+    expect(alphaOpen?.openRuns).toBe(3);
+
+    // RecentFeed ignores blank-time row and assigns rank >= 1 (never 0) for Taylor's slower 11.00s rerun
+    expect(state.recentFeed).toHaveLength(3);
+    const slowerRerun = state.recentFeed.find((r) => r.time === 11.0);
+    expect(slowerRerun).toBeDefined();
+    expect(slowerRerun?.rank).toBe(4); // behind Interim 9.00, Taylor 10.00, Sam 10.00
+    expect(slowerRerun?.isCR).toBe(false);
+
+    // HOF Medal Count: Interim is #1 -> Taylor (USA) & Sam (Canada) tie at rank #2 -> 0 Golds, 2 Silvers (1 USA, 1 Canada)
+    const wof = calculateWofStats(
+      state.data,
+      state.atPerfs,
+      state.lbAT,
+      state.atMet,
+      null,
+      state.settersWithImpact,
+      state.cMet,
+      state.courseRunsHistory,
+    );
+    const usa = wof?.medalCount.find((m) => m.name === "USA");
+    const canada = wof?.medalCount.find((m) => m.name === "CANADA");
+    expect(usa?.gold).toBe(0);
+    expect(usa?.silver).toBe(1);
+    expect(canada?.gold).toBe(0);
+    expect(canada?.silver).toBe(1);
+  });
+
+  it("matches city/state regions strictly without leaking entire countries via flag short-circuit", () => {
+    const boulderCourse = { city: "Boulder", stateProv: "Colorado", country: "USA", flag: "🇺🇸" };
+    const denverCourse = { city: "Denver", stateProv: "Colorado", country: "USA", flag: "🇺🇸" };
+    const boulderMontanaCourse = { city: "Boulder", stateProv: "Montana", country: "USA", flag: "🇺🇸" };
+    const londonCourse = { city: "London", stateProv: "", country: "United Kingdom", flag: "🇬🇧" };
+    const denverPlayerWithBoulderTeam = {
+      location: "Denver, Colorado, USA",
+      country: "USA",
+      region: "🇺🇸",
+      teamLocation: "Boulder, Colorado, USA",
+    };
+
+    // City + State + Country target must NOT match other US cities or same-name city in another state
+    const boulderTarget = { name: "BOULDER, COLORADO, USA", flag: "🇺🇸" };
+    expect(matchesRegionTarget(boulderTarget, boulderCourse)).toBe(true);
+    expect(matchesRegionTarget(boulderTarget, denverCourse)).toBe(false);
+    expect(matchesRegionTarget(boulderTarget, boulderMontanaCourse)).toBe(false);
+    expect(matchesRegionTarget(boulderTarget, londonCourse)).toBe(false);
+    expect(matchesRegionTarget(boulderTarget, denverPlayerWithBoulderTeam)).toBe(true);
+
+    // Single-city target (even if passed a country flag) must NOT match other US cities
+    expect(matchesRegionTarget({ name: "BOULDER", flag: "🇺🇸" }, boulderCourse)).toBe(true);
+    expect(matchesRegionTarget({ name: "BOULDER", flag: "🇺🇸" }, denverCourse)).toBe(false);
+
+    // Country-level targets still match all courses in that country via flag/alias
+    expect(matchesRegionTarget({ name: "USA", flag: "🇺🇸", type: "country" }, boulderCourse)).toBe(true);
+    expect(matchesRegionTarget({ name: "USA", flag: "🇺🇸", type: "country" }, denverCourse)).toBe(true);
+    expect(matchesRegionTarget({ name: "USA", flag: "🇺🇸", type: "country" }, londonCourse)).toBe(false);
+    expect(matchesRegionTarget({ name: "UK", flag: "🇬🇧", type: "country" }, londonCourse)).toBe(true);
+  });
+
+  it("splits multi-setter strings consistently across commas, ampersands, slashes, and 'and'", () => {
+    expect(splitNameList("Ryan Ford, Joey Jepsen & Taylor Carpenter / Alex One and Sam Two")).toEqual([
+      "Ryan Ford",
+      "Joey Jepsen",
+      "Taylor Carpenter",
+      "Alex One",
+      "Sam Two",
+    ]);
+    expect(getNormalizedNameList(["Ryan Ford & Joey Jepsen", "Sam Two / Alex One"])).toEqual([
+      normalizeName("Ryan Ford"),
+      normalizeName("Joey Jepsen"),
+      normalizeName("Sam Two"),
+      normalizeName("Alex One"),
+    ]);
+  });
+
+  it("keeps simulator newRank as 'UR' when an unranked athlete stays below qualification threshold", () => {
+    const pool: PlayerProfile[] = [
+      { pKey: "p1", name: "Ranked One", gender: "M", rating: 95, runs: 8, courses: 8, currentRank: 1 },
+      { pKey: "p2", name: "Still Unranked", gender: "M", rating: 99, runs: 5, courses: 5, currentRank: "UR" },
+    ];
+    const fullLeaderboards: Record<string, Record<string, number>> = {
+      C1: { p1: 10, p2: 10 },
+      C2: { p1: 10, p2: 10 },
+      C3: { p1: 10, p2: 10 },
+      C4: { p1: 10, p2: 10 },
+      C5: { p1: 10, p2: 10 },
+      C6: { p1: 10 },
+      C7: { p1: 10 },
+      C8: { p1: 10 },
+    };
+    const originalRanks = computeOriginalRanks(pool);
+    const impact = computeSimulatedGlobalImpact(
+      pool[1], // 5 courses -> simulating C6 gives 6 courses (< 8 required for M)
+      9.5,
+      "C6",
+      fullLeaderboards,
+      pool,
+      10.0,
+      originalRanks,
+    );
+    expect(impact.originalRank).toBe("UR");
+    expect(impact.newRank).toBe("UR");
+    expect(impact.athletesDemoted).toBe(0);
+  });
+
+  it("ignores zero and negative run times in LIVE FEED so they cannot corrupt course records", () => {
+    const mensCsv = [
+      "Name,Country,Flag,LQ,Courses,Runs,Reruns,Points,Wins,Win %,🔥,IG",
+      "Valid Runner,USA,🇺🇸,0,0,0,0,0,0,0,0,@valid",
+      "Bad Row,USA,🇺🇸,0,0,0,0,0,0,0,0,@bad",
+    ].join("\n");
+    const setsCsv = [
+      "Course,City,State,Country,Flag,Lead,Assistant,Open?,2026?,All-Time?",
+      "Zero Guard,Boulder,CO,USA,🇺🇸,,,YES,YES,YES",
+    ].join("\n");
+    const liveCsv = [
+      "Athlete,Course,Result,Div,Date,Tag,Proof,🔥,Filmer",
+      "Bad Row,Zero Guard,0,M,2026-03-01,Open,,0,",
+      "Bad Row,Zero Guard,-4.50,M,2026-03-02,Open,,0,",
+      "Valid Runner,Zero Guard,12.50,M,2026-03-03,Open,,0,",
+    ].join("\n");
+
+    const state = computeAllState({
+      rM: mensCsv,
+      rF: "",
+      rLive: liveCsv,
+      rSet: setsCsv,
+      hasTotalError: false,
+      hasPartialError: false,
+    });
+
+    const validKey = normalizeName("Valid Runner");
+    expect(state.lbAT.M["ZERO GUARD"]?.[validKey]).toBe(12.5);
+    expect(Object.keys(state.lbAT.M["ZERO GUARD"] || {})).toHaveLength(1);
+    expect(state.playerLB_AT.M[validKey]?.rating).toBeCloseTo(100, 4);
+    expect(state.playerLB_AT.M[validKey]?.wins).toBe(1);
+  });
+
+  it("does not report #1 in simulator placement or live ladder when slower than an unlisted interim course record", () => {
+    const interimCR = 17.0;
+    const realRecords = [
+      { pKey: "ryan", time: 20.35, pts: (17 / 20.35) * 100, rank: 2 },
+      { pKey: "manuel", time: 21.85, pts: (17 / 21.85) * 100, rank: 3 },
+      { pKey: "ramses", time: 22.09, pts: (17 / 22.09) * 100, rank: 4 },
+    ];
+    const pool: PlayerProfile[] = [
+      { pKey: "ryan", name: "Ryan", gender: "M", rating: 83.54, runs: 1 },
+      { pKey: "manuel", name: "Manuel", gender: "M", rating: 77.8, runs: 1 },
+      { pKey: "ramses", name: "Ramses", gender: "M", rating: 76.96, runs: 1 },
+    ];
+
+    expect(computeSimulatedPlacement(17.5, realRecords, interimCR)).toBe(2);
+    expect(computeSimulatedPlacement(17.0, realRecords, interimCR)).toBe(1);
+    expect(computeSimulatedPlacement(16.5, realRecords, interimCR)).toBe(1);
+
+    const ladderSlower = computeLiveLadderWindow(
+      realRecords,
+      "SIMULATED_USER",
+      "YOU",
+      17.5,
+      (17 / 17.5) * 100,
+      pool,
+      interimCR,
+    );
+    expect(ladderSlower.find((r) => r.isMe)?.rank).toBe(2);
+    expect(ladderSlower.find((r) => r.pKey === "ryan")?.rank).toBe(3);
+
+    const ladderFaster = computeLiveLadderWindow(
+      realRecords,
+      "SIMULATED_USER",
+      "YOU",
+      16.5,
+      100,
+      pool,
+      interimCR,
+    );
+    expect(ladderFaster.find((r) => r.isMe)?.rank).toBe(1);
+    expect(ladderFaster.find((r) => r.pKey === "ryan")?.rank).toBe(2);
+  });
+
+  it("respects the 2026? eligibility column when filtering Season 2026 runs", () => {
+    const mensCsv = [
+      "Name,Country,Flag,LQ,Courses,Runs,Reruns,Points,Wins,Win %,🔥,IG",
+      "Fast Athlete,USA,🇺🇸,0,0,0,0,0,0,0,0,@fast",
+    ].join("\n");
+
+    const setsCsv = [
+      "Course,City,State,Country,Flag,Lead,Assistant,Open?,2026?,All-Time?",
+      "Included 2026,Boulder,CO,USA,🇺🇸,Fast Athlete,,YES,YES,YES",
+      "Excluded 2026,Denver,CO,USA,🇺🇸,Fast Athlete,,NO,NO,YES",
+    ].join("\n");
+
+    const liveCsv = [
+      "Athlete,Course,Result,Div,Date,Tag,Proof,🔥,Filmer",
+      "Fast Athlete,Included 2026,9.00,M,2026-06-01,,https://youtu.be/f1,0,",
+      "Fast Athlete,Excluded 2026,12.00,M,2026-06-03,,https://youtu.be/e1,0,",
+    ].join("\n");
+
+    const state = computeAllState({
+      rM: mensCsv,
+      rF: "",
+      rLive: liveCsv,
+      rSet: setsCsv,
+      hasTotalError: false,
+      hasPartialError: false,
+    });
+
+    const fastKey = normalizeName("Fast Athlete");
+    expect(state.atPerfs[fastKey]).toHaveLength(2);
+    expect(state.season26Perfs[fastKey]).toHaveLength(1);
+    expect(state.season26Perfs[fastKey]?.[0]?.label.toUpperCase()).toBe("INCLUDED 2026");
+  });
+
+  it("keeps computeOriginalRanks and computeSimulatedGlobalImpact consistent on exact LQ ties", () => {
+    const athleteA: PlayerProfile = {
+      pKey: "athletea",
+      name: "Athlete A",
+      gender: "M",
+      rating: 100,
+      runs: 10,
+      courses: 8,
+      currentRank: 1,
+      latestRunDate: "2026-01-01T00:00:00.000Z",
+    };
+    const athleteB: PlayerProfile = {
+      pKey: "athleteb",
+      name: "Athlete B",
+      gender: "M",
+      rating: 100,
+      runs: 8,
+      courses: 8,
+      currentRank: 2,
+      latestRunDate: "2026-01-02T00:00:00.000Z",
+    };
+    const pool = [athleteA, athleteB];
+    const lb: Record<string, Record<string, number>> = {
+      "COURSE 1": { athletea: 10, athleteb: 10 },
+    };
+    const origRanks = computeOriginalRanks(pool);
+    expect(origRanks.athletea).toBe(1);
+    expect(origRanks.athleteb).toBe(2);
+
+    // Simulating Athlete B's exact existing time must NOT report a fake rank jump to #1
+    const sim = computeSimulatedGlobalImpact(athleteB, 10, "COURSE 1", lb, pool, 10, origRanks);
+    expect(sim.newRank).toBe(2);
+    expect(sim.athletesDemoted).toBe(0);
+  });
+});
+
+
 

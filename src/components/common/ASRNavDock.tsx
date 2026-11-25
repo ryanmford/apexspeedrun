@@ -133,16 +133,14 @@ export const ASRNavDock = React.memo(
                   key={item.id}
                   aria-label={`View ${item.label}`}
                   onMouseEnter={() => {
-                    if (item.id === "map") import("../views/MapCoursesView");
+                    if (item.id === "courses") import("../views/MapCoursesView");
                     if (item.id === "rankings") import("../views/RankingsView");
-                    if (item.id === "wall-of-fame")
-                      import("../views/ASRHOF");
+                    if (item.id === "hof") import("../views/ASRHOF");
                   }}
                   onTouchStart={() => {
-                    if (item.id === "map") import("../views/MapCoursesView");
+                    if (item.id === "courses") import("../views/MapCoursesView");
                     if (item.id === "rankings") import("../views/RankingsView");
-                    if (item.id === "wall-of-fame")
-                      import("../views/ASRHOF");
+                    if (item.id === "hof") import("../views/ASRHOF");
                   }}
                   onClick={() => {
                     if (item.id === "submit") {

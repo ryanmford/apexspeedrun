@@ -68,6 +68,8 @@ export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const tileLayersRef = useRef<{ light?: L.TileLayer; dark?: L.TileLayer; satellite?: L.TileLayer }>({});
+  const activeTileLayerRef = useRef<L.TileLayer | null>(null);
+  const layerSwapCleanupRef = useRef<(() => void) | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const courseCoordsRef = useRef<Map<string, [number, number]>>(new Map());
   const prevActiveCourseIdRef = useRef<string | null>(null);
@@ -233,19 +235,13 @@ export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
     const lightLayer = L.tileLayer(lightTileUrl, {
       maxZoom: 20,
       noWrap: true,
-      className: "transition-opacity duration-[1000ms] ease-in-out",
-    }).addTo(map);
-
-    let darkLayerClass = "transition-opacity duration-[1000ms] ease-in-out";
-    if (!mapboxToken) {
-      darkLayerClass += " map-tiles-dark";
-    }
+    });
 
     const darkLayer = L.tileLayer(darkTileUrl, {
       maxZoom: 20,
       noWrap: true,
-      className: darkLayerClass,
-    }).addTo(map);
+      className: mapboxToken ? "" : "map-tiles-dark",
+    });
 
     const satelliteUrl = mapboxToken
       ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`
@@ -255,19 +251,18 @@ export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
       maxZoom: 20,
       maxNativeZoom: 19,
       noWrap: true,
-      className: "transition-opacity duration-[600ms] ease-in-out",
-    }).addTo(map);
+    });
 
     const initialLayerMode = useAppStore.getState().mapLayerMode;
-    if (initialLayerMode === "satellite") {
-      satelliteLayer.setOpacity(1);
-      lightLayer.setOpacity(0);
-      darkLayer.setOpacity(0);
-    } else {
-      satelliteLayer.setOpacity(0);
-      lightLayer.setOpacity(isDarkRef.current ? 0 : 1);
-      darkLayer.setOpacity(isDarkRef.current ? 1 : 0);
-    }
+    const initialLayer =
+      initialLayerMode === "satellite"
+        ? satelliteLayer
+        : isDarkRef.current
+          ? darkLayer
+          : lightLayer;
+
+    initialLayer.addTo(map);
+    activeTileLayerRef.current = initialLayer;
     tileLayersRef.current = { light: lightLayer, dark: darkLayer, satellite: satelliteLayer };
 
     const getClusterIcon = (cluster: L.MarkerCluster) => {
@@ -333,6 +328,12 @@ export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
         window.removeEventListener("deviceorientationabsolute", orientationListenerRef.current as EventListener, true);
         orientationListenerRef.current = null;
       }
+      if (layerSwapCleanupRef.current) {
+        layerSwapCleanupRef.current();
+        layerSwapCleanupRef.current = null;
+      }
+      activeTileLayerRef.current = null;
+      tileLayersRef.current = {};
       setIsLocating(false);
       userMarkerRef.current = null;
       markersRef.current.clear();
@@ -418,25 +419,61 @@ export const ASRMap = forwardRef<ASRMapHandle, ASRMapProps>(({
     return () => clearTimeout(timer);
   }, [mapReady]);
 
-  // Theme & Satellite synchronization for Tiles
+  // Theme & Satellite synchronization for Tiles (only active layer remains mounted)
   useEffect(() => {
-    if (!tileLayersRef.current) return;
+    const map = mapRef.current;
     const { light, dark, satellite } = tileLayersRef.current;
-    if (light && dark && satellite) {
-      if (mapLayerMode === "satellite") {
-        satellite.setOpacity(1);
-        dark.setOpacity(0);
-        light.setOpacity(0);
-      } else {
-        satellite.setOpacity(0);
-        if (isDark) {
-          dark.setOpacity(1);
-          light.setOpacity(0);
-        } else {
-          light.setOpacity(1);
-          dark.setOpacity(0);
-        }
+    if (!map || !light || !dark || !satellite) return;
+
+    const nextLayer =
+      mapLayerMode === "satellite"
+        ? satellite
+        : isDark
+          ? dark
+          : light;
+
+    const prevLayer = activeTileLayerRef.current;
+    if (prevLayer === nextLayer && map.hasLayer(nextLayer)) {
+      return;
+    }
+
+    if (layerSwapCleanupRef.current) {
+      layerSwapCleanupRef.current();
+      layerSwapCleanupRef.current = null;
+    }
+
+    const allLayers = [light, dark, satellite];
+    allLayers.forEach((layer) => {
+      if (layer !== nextLayer && layer !== prevLayer && map.hasLayer(layer)) {
+        map.removeLayer(layer);
       }
+    });
+
+    if (!map.hasLayer(nextLayer)) {
+      nextLayer.addTo(map);
+    }
+    nextLayer.bringToFront();
+    activeTileLayerRef.current = nextLayer;
+
+    if (prevLayer && prevLayer !== nextLayer && map.hasLayer(prevLayer)) {
+      let cleaned = false;
+      const removePrev = () => {
+        if (cleaned) return;
+        cleaned = true;
+        nextLayer.off("load", removePrev);
+        clearTimeout(fallbackTimer);
+        if (mapRef.current && mapRef.current.hasLayer(prevLayer) && activeTileLayerRef.current !== prevLayer) {
+          mapRef.current.removeLayer(prevLayer);
+        }
+      };
+
+      const fallbackTimer = setTimeout(removePrev, 800);
+      nextLayer.once("load", removePrev);
+      layerSwapCleanupRef.current = () => {
+        cleaned = true;
+        nextLayer.off("load", removePrev);
+        clearTimeout(fallbackTimer);
+      };
     }
   }, [isDark, mapLayerMode]);
 

@@ -113,22 +113,27 @@ export const ASRWhatIfSlider = ({
       if (isGenderChange) {
         setSelectedAthlete(null);
       }
-    } else if (records.length === 0 && isGenderChange && courseRecord > 0) {
-      setRawTargetTime(courseRecord);
-      setSelectedAthlete(null);
+    } else if (records.length === 0 && (!isOpen || isGenderChange) && courseRecord > 0) {
+      setRawTargetTime(Number(courseRecord.toFixed(2)));
+      if (isGenderChange) {
+        setSelectedAthlete(null);
+      }
     }
     
     prevGenderRef.current = gender;
   }, [records, courseRecord, isOpen, gender]);
 
   const { minTime, maxTime } = useMemo(() => {
-    if (!courseRecord || records.length === 0)
-      return { minTime: 0, maxTime: 0 };
-    const absoluteMax = Math.max(...records.map((r) => r.time));
+    if (!courseRecord) return { minTime: 0, maxTime: 0 };
     const minT = courseRecord * 0.8;
     let maxT = courseRecord * 3;
     if (existingTime) maxT = Math.max(maxT, existingTime * 1.2);
-    maxT = Math.min(maxT, absoluteMax * 1.1);
+    if (records.length > 0) {
+      const absoluteMax = Math.max(...records.map((r) => r.time));
+      maxT = Math.min(maxT, absoluteMax * 1.1);
+    } else {
+      maxT = Math.max(courseRecord * 2.5, existingTime ? existingTime * 1.2 : 0);
+    }
     if (maxT < courseRecord) maxT = courseRecord * 1.5;
     return { minTime: minT, maxTime: maxT };
   }, [courseRecord, records, existingTime]);
@@ -164,8 +169,8 @@ export const ASRWhatIfSlider = ({
       : 0;
 
   const simulatedPlacement = useMemo(() => {
-    return computeSimulatedPlacement(deferredTargetTime, records);
-  }, [deferredTargetTime, records]);
+    return computeSimulatedPlacement(deferredTargetTime, records, courseRecord);
+  }, [deferredTargetTime, records, courseRecord]);
 
   const [liveLadderWindow, setLiveLadderWindow] = useState<LiveLadderEntry[]>([]);
 
@@ -195,13 +200,14 @@ export const ASRWhatIfSlider = ({
         deferredTargetTime,
         simulatedPts,
         athletePool,
+        courseRecord,
       },
     });
 
     return () => {
       dataWorker?.removeEventListener("message", handleMessage);
     };
-  }, [records, selectedAthlete, deferredTargetTime, simulatedPts, athletePool]);
+  }, [records, selectedAthlete, deferredTargetTime, simulatedPts, athletePool, courseRecord]);
 
   const [popEffect, setPopEffect] = useState<"cr" | "pr" | null>(null);
   const prevBeatsCR = useRef(false);
@@ -272,7 +278,7 @@ export const ASRWhatIfSlider = ({
     originalRanks,
   ]);
 
-  if (!courseRecord || records.length === 0) return null;
+  if (!courseRecord) return null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -306,11 +312,7 @@ export const ASRWhatIfSlider = ({
                     <span>LQ: {(selectedAthlete.rating || 0).toFixed(2)}</span>
                     <span className="opacity-50">|</span>
                     <span>
-                      PTS:{" "}
-                      {(
-                        (selectedAthlete.rating || 0) *
-                        (selectedAthlete.runs || 0)
-                      ).toFixed(2)}
+                      PTS: {(selectedAthlete.pts || 0).toFixed(2)}
                     </span>
                   </span>
                 </div>
@@ -658,7 +660,13 @@ export const ASRWhatIfSlider = ({
                     globalImpact.isImprovement ? "text-blue-500" : "",
                   )}
                 >
-                  #<RollingNumber value={globalImpact.newRank} decimals={0} />
+                  {globalImpact.newRank === "UR" ? (
+                    "UR"
+                  ) : (
+                    <>
+                      #<RollingNumber value={globalImpact.newRank} decimals={0} />
+                    </>
+                  )}
                 </div>
               </div>
             </div>

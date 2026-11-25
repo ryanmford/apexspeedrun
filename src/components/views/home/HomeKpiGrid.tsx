@@ -305,7 +305,7 @@ export const HomeKpiGrid = React.memo(
               </span>
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={totalCoins || 0} />
+                  <CountUp end={Number((totalCoins || 0).toFixed(2))} decimals={2} />
                 </strong>{" "}
                 COINS
               </span>

@@ -33,7 +33,7 @@ export const ASRStatCard = React.memo(
     }, [isFlipped]);
 
     const statInfoMap: Record<string, React.ReactNode> = {
-      LQ: "LOCOMOTIVE QUOTIENT = POINTS / RUNS",
+      LQ: "LOCOMOTIVE QUOTIENT = POINTS / COURSES",
       "AVG POINTS": "AVERAGE POINTS PER RUN",
       "🔥": (
         <>
@@ -41,7 +41,7 @@ export const ASRStatCard = React.memo(
           <span className="block mt-0.5 whitespace-nowrap">W: &lt;11 🔥, &lt;10 🔥🔥, &lt;9 🔥🔥🔥</span>
         </>
       ),
-      "🪙": "COINS EARNED FROM RUNS, SETS, & WR",
+      "🪙": "COINS EARNED FROM COURSES, SETS, & WR",
       RANK: "CURRENT WORLD RANK",
       POINTS: "TOTAL POINTS",
       PLAYERS: "TOTAL PLAYERS",
@@ -52,7 +52,7 @@ export const ASRStatCard = React.memo(
       RATING: "CURRENT PLAYER RATING",
       RUNS: "TOTAL VERIFIED RUNS",
       "WR %": "TOTAL WORLD RECORDS / TOTAL COURSES COMPLETED",
-      "AVG TIME": "AVERAGE RUN TIME",
+      "AVG TIME": "AVERAGE PB TIME",
       COURSES: "TOTAL COURSES COMPLETED",
       "CR (M)": "MEN'S COURSE RECORD",
       "CR (W)": "WOMEN'S COURSE RECORD",

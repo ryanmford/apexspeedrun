@@ -28,6 +28,7 @@ self.onmessage = (e: MessageEvent) => {
         deferredTargetTime,
         simulatedPts,
         athletePool,
+        courseRecord,
       } = payload;
       const result = computeLiveLadderWindow(
         records,
@@ -36,6 +37,7 @@ self.onmessage = (e: MessageEvent) => {
         deferredTargetTime,
         simulatedPts,
         athletePool,
+        courseRecord,
       );
       self.postMessage({
         type: "LIVE_LADDER_READY",

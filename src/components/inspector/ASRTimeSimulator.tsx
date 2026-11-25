@@ -73,27 +73,19 @@ export const ASRTimeSimulator = ({
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<"slider" | "goal">("slider");
   const [targetPts, setTargetPts] = useState<number>(90);
-  const [simGender, setSimGender] = useState<"M" | "F">(() =>
-    courseRecordM > 0 && recordsM.length > 0 ? "M" : "F",
-  );
+  const [simGender, setSimGender] = useState<"M" | "F">(() => {
+    if (courseRecordM > 0 && recordsM.length > 0) return "M";
+    if (courseRecordF > 0 && recordsF.length > 0) return "F";
+    return courseRecordM > 0 ? "M" : "F";
+  });
 
   useEffect(() => {
-    if (
-      simGender === "M" &&
-      (!courseRecordM || recordsM.length === 0) &&
-      courseRecordF > 0 &&
-      recordsF.length > 0
-    ) {
+    if (simGender === "M" && !courseRecordM && courseRecordF > 0) {
       setSimGender("F");
-    } else if (
-      simGender === "F" &&
-      (!courseRecordF || recordsF.length === 0) &&
-      courseRecordM > 0 &&
-      recordsM.length > 0
-    ) {
+    } else if (simGender === "F" && !courseRecordF && courseRecordM > 0) {
       setSimGender("M");
     }
-  }, [simGender, courseRecordM, courseRecordF, recordsM.length, recordsF.length]);
+  }, [simGender, courseRecordM, courseRecordF]);
 
   const gender = simGender;
   const courseRecord = gender === "M" ? courseRecordM : courseRecordF;
@@ -108,7 +100,7 @@ export const ASRTimeSimulator = ({
       : playerList_F_AT.filter((p) => !p.isDivider);
   }, [gender, playerList_M_AT, playerList_F_AT]);
 
-  if ((!courseRecordM && !courseRecordF) || (recordsM.length === 0 && recordsF.length === 0)) return null;
+  if (!courseRecordM && !courseRecordF) return null;
 
   return (
     <div

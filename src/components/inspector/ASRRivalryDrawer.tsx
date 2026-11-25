@@ -237,7 +237,7 @@ export const ASRRivalryDrawer = React.memo(
       const q = normalizeForSearch(searchQuery);
       if (!q) return candidateAthletes.filter((c) => c.sameGender).slice(0, 25);
       return candidateAthletes
-        .filter((c) => c.searchStr.includes(q))
+        .filter((c) => c.sameGender && c.searchStr.includes(q))
         .slice(0, 40);
     }, [candidateAthletes, searchQuery]);
 

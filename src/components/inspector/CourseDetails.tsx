@@ -21,6 +21,7 @@ import {
   getCombinedFlags,
   normalizeName,
   getSetterLevel,
+  splitNameList,
 } from "../../lib/asr-utils";
 import { useAppStore } from "../../store/useAppStore";
 import { ProfileHeader, ASRPatronPill, SectionTitle, InspectorTabContainer } from "./InspectorComponents";
@@ -62,7 +63,8 @@ const SetterDisplay = ({
   isLead?: boolean;
 }) => {
   if (!text) return null;
-  const rawNames = text.split(",").map((s: string) => s.trim());
+  const rawNames = splitNameList(text);
+  if (rawNames.length === 0) return null;
   
   const names = [...rawNames].sort((a, b) => {
     const aKey = normalizeName(a);

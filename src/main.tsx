@@ -5,9 +5,27 @@ import App from "./App.tsx";
 import "./index.css";
 import { registerSW } from 'virtual:pwa-register';
 
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
+// Register Service Worker for PWA only in production to avoid stale dev interception
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });
+}
+
+// Recover automatically from Vite preload errors (stale chunks or transient network blips)
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (event) => {
+    try {
+      const key = "asr_chunk_reload_ts";
+      const last = Number(sessionStorage.getItem(key) || "0");
+      const now = Date.now();
+      if (!last || now - last > 15000) {
+        event.preventDefault();
+        sessionStorage.setItem(key, String(now));
+        window.location.reload();
+      }
+    } catch {
+      // ignore storage errors
+    }
+  });
 }
 
 // Global incredibly subtle haptic feedback for all tactile elements

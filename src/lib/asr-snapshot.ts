@@ -100,11 +100,15 @@ export function buildPlayerList(
   mode: boolean | string,
   gen: "M" | "F",
 ): PlayerProfile[] {
-  const athletePool =
-    mode === true || mode === "all-time" ? data : mode === "2026" ? season26Data : openData;
+  const isAllTime = mode === true || mode === "all-time";
+  const athletePool = isAllTime ? data : mode === "2026" ? season26Data : openData;
   const allTimeRankedKeys = new Set((data || []).map((p) => p.pKey));
   const filtered = (athletePool || []).filter(
-    (p) => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0,
+    (p) =>
+      p &&
+      p.gender === gen &&
+      !isPlaceholderPlayer(p.name) &&
+      ((p.runs || 0) > 0 || (isAllTime && ((p.sets || 0) > 0 || (p.contributionScore || 0) > 0))),
   );
 
   filtered.sort(sortAthletesWithTiebreakers);
@@ -124,12 +128,32 @@ export function buildPlayerList(
     }
   });
 
-  const fQual: PlayerProfile[] = qual.map((p, i) => ({
-    ...p,
-    currentRank: i + 1,
-    isQualified: true,
-    shouldFade: false,
-  }));
+  let currRank = 1;
+  let prevRating = -1;
+  let prevRuns = -1;
+  let prevDate = -1;
+  const fQual: PlayerProfile[] = qual.map((p, i) => {
+    const r = p.rating || 0;
+    const runs = p.runs || 0;
+    const dt = toTimestamp(p.latestRunDate);
+    if (i > 0) {
+      const sameRating = Math.abs(r - prevRating) <= 0.000001;
+      const sameRuns = runs === prevRuns;
+      const sameDate = dt === prevDate;
+      if (!sameRating || !sameRuns || !sameDate) {
+        currRank = i + 1;
+      }
+    }
+    prevRating = r;
+    prevRuns = runs;
+    prevDate = dt;
+    return {
+      ...p,
+      currentRank: currRank,
+      isQualified: true,
+      shouldFade: false,
+    };
+  });
   const fUnranked: PlayerProfile[] = unranked.map((p) => ({
     ...p,
     currentRank: "UR",
@@ -198,8 +222,13 @@ export function buildCourseLists(
   const courseList_OP: CourseData[] = list
     .filter((c) => c.isOpenCourse)
     .map((c) => {
-      const mCount = Object.keys(lbOpen?.M?.[String(c.name).toUpperCase()] || {}).length;
-      const fCount = Object.keys(lbOpen?.F?.[String(c.name).toUpperCase()] || {}).length;
+      if (typeof c.openRuns === "number") return c;
+      const mCount = Object.keys(lbOpen?.M?.[String(c.name).toUpperCase()] || {}).filter(
+        (k) => !isPlaceholderPlayer(k),
+      ).length;
+      const fCount = Object.keys(lbOpen?.F?.[String(c.name).toUpperCase()] || {}).filter(
+        (k) => !isPlaceholderPlayer(k),
+      ).length;
       return { ...c, openRuns: mCount + fCount };
     })
     .sort((a, b) => (b.openRuns || 0) - (a.openRuns || 0))
@@ -208,8 +237,13 @@ export function buildCourseLists(
   const courseList_2026: CourseData[] = list
     .filter((c) => c.is2026Course)
     .map((c) => {
-      const mCount = Object.keys(lbSeason26?.M?.[String(c.name).toUpperCase()] || {}).length;
-      const fCount = Object.keys(lbSeason26?.F?.[String(c.name).toUpperCase()] || {}).length;
+      if (typeof c.season26Runs === "number") return c;
+      const mCount = Object.keys(lbSeason26?.M?.[String(c.name).toUpperCase()] || {}).filter(
+        (k) => !isPlaceholderPlayer(k),
+      ).length;
+      const fCount = Object.keys(lbSeason26?.F?.[String(c.name).toUpperCase()] || {}).filter(
+        (k) => !isPlaceholderPlayer(k),
+      ).length;
       return { ...c, season26Runs: mCount + fCount };
     })
     .sort((a, b) => (b.season26Runs || 0) - (a.season26Runs || 0))

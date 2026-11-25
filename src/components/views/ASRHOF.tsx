@@ -167,7 +167,7 @@ export const ASRHOF = React.memo(
  }
 
  const sections: Array<{ l: string; subtitle: React.ReactNode; k: HOFStatKey }> = [
- { l: "TOP LQ", subtitle: "LOCOMOTIVE QUOTIENT = POINTS / RUNS", k: "rating" },
+ { l: "TOP LQ", subtitle: "LOCOMOTIVE QUOTIENT = POINTS / COURSES", k: "rating" },
  { l: "MOST COURSES", subtitle: "TOTAL COURSES COMPLETED", k: "courses" },
  { l: "MOST RUNS", subtitle: "TOTAL VERIFIED RUNS", k: "runs" },
  { l: "MOST RERUNS", subtitle: "TOTAL VERIFIED RERUNS", k: "reruns" },
@@ -175,7 +175,7 @@ export const ASRHOF = React.memo(
  { l: "MOST COUNTRIES", subtitle: "TOTAL COUNTRIES RUN IN", k: "countries" },
  { l: "MOST WR", subtitle: "TOTAL WORLD RECORDS", k: "wins" },
  { l: "HIGHEST WR %", subtitle: "TOTAL WORLD RECORDS / TOTAL COURSES COMPLETED", k: "winPercentage" },
- { l: "MOST 🪙", subtitle: "COINS EARNED FROM RUNS, WORLD RECORDS, & SETS", k: "contributionScore" },
+ { l: "MOST 🪙", subtitle: "COINS EARNED FROM COURSES, WORLD RECORDS, & SETS", k: "contributionScore" },
  { l: "MOST 🔥", subtitle: <><span className="block whitespace-nowrap">M: &lt;9 🔥, &lt;8 🔥🔥, &lt;7 🔥🔥🔥</span><span className="block mt-0.5 whitespace-nowrap">W: &lt;11 🔥, &lt;10 🔥🔥, &lt;9 🔥🔥🔥</span></>, k: "totalFireCount" },
  { l: "MOST IMPACT", subtitle: "TOTAL RUNS ON ALL COURSES SET", k: "impact" },
  { l: "MOST SETS", subtitle: "TOTAL SETS", k: "sets" },
@@ -304,27 +304,38 @@ export const ASRHOF = React.memo(
  {(() => {
    const limit = visibleCounts[sec.k] || 10;
    const items = (stats.topStats[sec.k] || []) as HOFEntry[];
+   const formatDisplayVal = (a: HOFEntry): string | number => {
+     if (sec.k === "rating")
+       return ((a as PlayerProfile).rating || 0).toFixed(2);
+     if (sec.k === "winPercentage")
+       return (a.winPercentage || 0).toFixed(2);
+     if (sec.k === "contributionScore")
+       return ((a as PlayerProfile).contributionScore || 0).toFixed(2);
+     if (sec.k === "totalFireCount")
+       return (a as PlayerProfile).allTimeFireCount || 0;
+     if (sec.k === "impact") return a.impact || 0;
+     if (sec.k === "sets") return a.sets || 0;
+     if (sec.k === "reruns") return a.reruns || 0;
+     if (sec.k === "cities") return a.cities || 0;
+     if (sec.k === "countries") return a.countries || 0;
+     return Number((a as unknown as Record<string, unknown>)[sec.k]) || 0;
+   };
+   let currentRank = 1;
+   let prevValKey: string | null = null;
+   const rankedItems = items.slice(0, limit).map((a, i) => {
+     const displayVal = formatDisplayVal(a);
+     const valKey = String(displayVal);
+     if (valKey !== prevValKey) {
+       currentRank = i + 1;
+       prevValKey = valKey;
+     }
+     return { item: a, displayVal, rank: currentRank };
+   });
    return (
      <>
-       {items.slice(0, limit).map((a, i) => {
+       {rankedItems.map(({ item: a, displayVal, rank }, i) => {
          const isSetterBoard = ["impact", "sets"].includes(sec.k);
- let displayVal: string | number;
- if (sec.k === "rating")
- displayVal = ((a as PlayerProfile).rating || 0).toFixed(2);
- else if (sec.k === "winPercentage")
- displayVal = (a.winPercentage || 0).toFixed(2);
- else if (sec.k === "contributionScore")
- displayVal = ((a as PlayerProfile).contributionScore || 0).toFixed(2);
- else if (sec.k === "totalFireCount")
- displayVal = (a as PlayerProfile).allTimeFireCount || 0;
- else if (sec.k === "impact") displayVal = a.impact || 0;
- else if (sec.k === "sets") displayVal = a.sets || 0;
- else if (sec.k === "reruns") displayVal = a.reruns || 0;
- else if (sec.k === "cities") displayVal = a.cities || 0;
- else if (sec.k === "countries") displayVal = a.countries || 0;
- else displayVal = Number((a as unknown as Record<string, unknown>)[sec.k]) || 0;
-
- const isTop3 = i < 3;
+ const isTop3 = rank <= 3;
  const flags = getCombinedFlags(a);
  const hoverClass =
  theme === "dark"
@@ -344,11 +355,11 @@ export const ASRHOF = React.memo(
  className={cn(
  "flex items-center justify-between py-1.5 xs:py-2 sm:py-5 px-3.5 sm:px-6 transition-colors duration-150 group relative overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset select-none",
  hoverClass,
- i === 0 && (theme === "dark" ? "bg-white/[0.02]" : "bg-black/[0.02]")
+ rank === 1 && (theme === "dark" ? "bg-white/[0.02]" : "bg-black/[0.02]")
  )}
  >
  <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 z-10 relative flex-1 pr-2 sm:pr-4">
- <ASRRankBadge rank={i + 1} />
+ <ASRRankBadge rank={rank} />
  <div className="flex flex-col text-left min-w-0">
  <span
  className={cn(
@@ -356,7 +367,7 @@ export const ASRHOF = React.memo(
  theme === "dark"
  ? "text-zinc-100"
  : "text-zinc-900",
- i === 0 ? "text-zinc-900 dark:text-white group-hover:text-blue-500" : "group-hover:text-blue-500"
+ rank === 1 ? "text-zinc-900 dark:text-white group-hover:text-blue-500" : "group-hover:text-blue-500"
  )}
  >
  {flags} {a.name}
@@ -369,13 +380,12 @@ export const ASRHOF = React.memo(
  "text-[13px] xs:text-[14px] sm:text-[24px] lg:text-[28px] font-mono font-black tracking-tight whitespace-nowrap transition-all tabular-nums text-right group-hover:text-blue-500",
  theme === "dark" ? "text-white" : "text-zinc-900",
  isTop3 ? "scale-105 sm:scale-110" : "opacity-100",
- i === 0 && ""
  )}
  >
  {displayVal}
  </span>
  </div>
- {isTop3 && i === 0 && (
+ {rank === 1 && (
  <>
    <div className="absolute top-0 right-0 w-32 h-32 bg-zinc-500/10 rotate-45 translate-x-16 -translate-y-16 pointer-events-none blur-xl" />
    <div className="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />

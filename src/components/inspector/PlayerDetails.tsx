@@ -211,6 +211,18 @@ export const PlayerDetails = React.memo(
         const d = parseLocalDate(r.date);
         if (d) dates.push(d);
       });
+      const playerKey = meta?.pKey || player.pKey;
+      const historyMap = dataContext.courseRunsHistory;
+      if (playerKey && historyMap) {
+        Object.values(historyMap).forEach((entries) => {
+          entries.forEach((entry) => {
+            if (entry.pKey === playerKey && entry.date) {
+              const d = parseLocalDate(entry.date);
+              if (d) dates.push(d);
+            }
+          });
+        });
+      }
       rankListSets.forEach((s: Record<string, unknown>) => {
         const d = parseLocalDate(s.dateSet || s.date);
         if (d) dates.push(d);
@@ -223,7 +235,7 @@ export const PlayerDetails = React.memo(
       dates.sort((a, b) => a.getTime() - b.getTime());
       const earliestDate = dates[0];
       return formatYYYYMMDD(earliestDate);
-    }, [allRuns, rankListSets]);
+    }, [allRuns, rankListSets, dataContext.courseRunsHistory, meta?.pKey, player.pKey]);
 
     return (
       <div
@@ -340,26 +352,17 @@ export const PlayerDetails = React.memo(
                       label: "WR %",
                       value:
                         (stats.courses || stats.runs) > 0
-                          ? `${((stats.wins / (stats.courses || stats.runs)) * 100).toFixed(2)}`
-                          : "0.00",
+                          ? `${((stats.wins / (stats.courses || stats.runs)) * 100).toFixed(2)}%`
+                          : "0.00%",
                     },
-                  ].map((s, i) => (
-                    <motion.div
-                      key={s.label}
-                      className="flex"
-                      initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{
-                        delay: i * 0.05,
-                        duration: 0.3
-                      }}
-                    >
+                  ].map((s) => (
+                    <div key={s.label} className="flex">
                       <ASRStatCard
                         label={s.label}
                         value={s.value}
                         glowClass={s.glow}
                       />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
 
@@ -624,7 +627,7 @@ export const PlayerDetails = React.memo(
                       icon={<Building2 size={18} />}
                       label="GYM"
                       value={String(meta.homeGym)}
-                      onClick={() => onEntityClick("team", { name: String(meta.homeGym) })}
+                      onClick={() => onEntityClick("team", { name: String(meta.homeGym), category: "gyms" })}
                     />
                   )}
                   {meta.teams && meta.teams.length > 0
@@ -637,7 +640,7 @@ export const PlayerDetails = React.memo(
                             icon={<Users size={18} />}
                             label={meta.teams && meta.teams.length > 1 ? `TEAM ${i + 1}` : "TEAM"}
                             value={String(teamName)}
-                            onClick={() => onEntityClick("team", { name: String(teamName) })}
+                            onClick={() => onEntityClick("team", { name: String(teamName), category: "teams" })}
                           />
                         );
                       })

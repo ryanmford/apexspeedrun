@@ -18,6 +18,7 @@ import {
   normalizeName,
   isQualifiedAthlete,
   parseCoords,
+  splitNameList,
 } from "./asr-utils.ts";
 import {
   processRankingData,
@@ -226,6 +227,14 @@ export function computeAllState(payload: {
     const normName = String(name).toUpperCase();
     const totalAllTimeRuns =
       (courseRunsHistory?.[normName] || []).length || filteredM.length + filteredF.length;
+    const openRuns = processed.openCourseRunsCount?.[normName] || 0;
+    const season26Runs = processed.season26CourseRunsCount?.[normName] || 0;
+    if (cMet?.[name]) {
+      cMet[name].totalRuns = totalAllTimeRuns;
+      cMet[name].totalAllTimeRuns = totalAllTimeRuns;
+      cMet[name].openRuns = openRuns;
+      cMet[name].season26Runs = season26Runs;
+    }
     return {
       ...meta,
       name,
@@ -247,6 +256,8 @@ export function computeAllState(payload: {
       athletesFAll,
       totalAllTimeAthletes: filteredM.length + filteredF.length,
       totalAllTimeRuns,
+      openRuns,
+      season26Runs,
       parsedCoords,
       searchKey:
         meta.searchKey ||
@@ -305,6 +316,15 @@ export function computeAllState(payload: {
   };
 
   // KPI TRENDS (Sparklines)
+  const parseTrendTimeMs = (d?: string | Date): number => {
+    if (!d) return NaN;
+    const s = typeof d === "string" ? d.trim() : d;
+    if (typeof s === "string" && /^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+      return new Date(s.replace(/-/g, "/")).getTime();
+    }
+    return new Date(s).getTime();
+  };
+
   let allRuns: CourseRunEntry[] = [];
   Object.values(courseRunsHistory || {}).forEach((runsArray) => {
     allRuns = allRuns.concat(runsArray);
@@ -312,26 +332,97 @@ export function computeAllState(payload: {
 
   const parsedRuns = allRuns.map((r) => ({
     ...r,
-    timeMs: r.date ? new Date(r.date).getTime() : NaN,
+    timeMs: parseTrendTimeMs(r.date),
   }));
 
   const undatedRuns = parsedRuns.filter((r) => isNaN(r.timeMs));
   const datedRuns = parsedRuns.filter((r) => !isNaN(r.timeMs)).sort((a, b) => a.timeMs - b.timeMs);
 
-  const uniquePlayersAtStart = new Set(undatedRuns.map((r) => r.pKey).filter(Boolean));
-  const uniqueCoursesAtStart = new Set(
-    undatedRuns.map((r) => String(r.course).toUpperCase()).filter(Boolean),
-  );
-  const uniqueCountriesAtStart = new Set(
-    undatedRuns
-      .map((r) => cMet?.[String(r.course).toUpperCase()]?.country)
-      .filter((v): v is string => Boolean(v && v !== "UNKNOWN")),
-  );
+  // Earliest run date per course (fallback if a course has no dateSet)
+  const earliestCourseRunMs: Record<string, number> = {};
+  datedRuns.forEach((r) => {
+    const cKey = String(r.course).toUpperCase();
+    if (!cKey) return;
+    if (earliestCourseRunMs[cKey] === undefined || r.timeMs < earliestCourseRunMs[cKey]) {
+      earliestCourseRunMs[cKey] = r.timeMs;
+    }
+  });
+
+  // Earliest course set date per setter (used for zero-run setters in playersTrend)
+  const earliestSetterCourseMs: Record<string, number> = {};
+  const datedCourseEvents: { courseKey: string; country?: string; timeMs: number }[] = [];
+  const undatedCourseKeys = new Set<string>();
+  const undatedCourseCountries = new Set<string>();
+
+  masterCourseList.forEach((c) => {
+    const cKey = String(c.name).toUpperCase();
+    const setMs = parseTrendTimeMs(c.dateSet);
+    const runMs = earliestCourseRunMs[cKey];
+    const effectiveMs = !isNaN(setMs) ? setMs : runMs;
+    const countryStr = c.country && c.country !== "UNKNOWN" ? c.country : undefined;
+
+    if (effectiveMs !== undefined && !isNaN(effectiveMs)) {
+      datedCourseEvents.push({ courseKey: cKey, country: countryStr, timeMs: effectiveMs });
+    } else {
+      undatedCourseKeys.add(cKey);
+      if (countryStr) undatedCourseCountries.add(countryStr);
+    }
+
+    const setterKeys = new Set<string>([
+      ...(c.leadSettersNormalized || []),
+      ...(c.assistantSettersNormalized || []),
+    ]);
+    setterKeys.forEach((sKey) => {
+      if (!sKey || isNaN(setMs)) return;
+      if (earliestSetterCourseMs[sKey] === undefined || setMs < earliestSetterCourseMs[sKey]) {
+        earliestSetterCourseMs[sKey] = setMs;
+      }
+    });
+  });
+  datedCourseEvents.sort((a, b) => a.timeMs - b.timeMs);
+
+  // Build earliest appearance timestamp for every real player in `data` (including zero-run setters)
+  const earliestRunByPlayer: Record<string, number> = {};
+  const playersWithUndatedRun = new Set<string>();
+  undatedRuns.forEach((r) => {
+    if (r.pKey) playersWithUndatedRun.add(r.pKey);
+  });
+  datedRuns.forEach((r) => {
+    if (!r.pKey) return;
+    if (earliestRunByPlayer[r.pKey] === undefined || r.timeMs < earliestRunByPlayer[r.pKey]) {
+      earliestRunByPlayer[r.pKey] = r.timeMs;
+    }
+  });
+
+  const datedPlayerEvents: { pKey: string; timeMs: number }[] = [];
+  const currentUniquePlayers = new Set<string>();
+  (data || []).forEach((p) => {
+    if (!p || isPlaceholderPlayer(p.name)) return;
+    const pKey = p.pKey;
+    if (!pKey) return;
+    if (playersWithUndatedRun.has(pKey)) {
+      currentUniquePlayers.add(pKey);
+      return;
+    }
+    const runMs = earliestRunByPlayer[pKey];
+    const setMs = earliestSetterCourseMs[pKey];
+    const effectiveMs =
+      runMs !== undefined && setMs !== undefined
+        ? Math.min(runMs, setMs)
+        : runMs !== undefined
+          ? runMs
+          : setMs;
+    if (effectiveMs !== undefined && !isNaN(effectiveMs)) {
+      datedPlayerEvents.push({ pKey, timeMs: effectiveMs });
+    } else {
+      currentUniquePlayers.add(pKey);
+    }
+  });
+  datedPlayerEvents.sort((a, b) => a.timeMs - b.timeMs);
 
   let currentRunsCount = undatedRuns.length;
-  const currentUniquePlayers = new Set<string>(uniquePlayersAtStart);
-  const currentUniqueCourses = new Set<string>(uniqueCoursesAtStart);
-  const currentUniqueCountries = new Set<string>(uniqueCountriesAtStart);
+  const currentUniqueCourses = new Set<string>(undatedCourseKeys);
+  const currentUniqueCountries = new Set<string>(undatedCourseCountries);
 
   const runsTrend = [{ value: currentRunsCount }];
   const playersTrend = [{ value: currentUniquePlayers.size }];
@@ -339,8 +430,24 @@ export function computeAllState(payload: {
   const countriesTrend = [{ value: currentUniqueCountries.size }];
 
   const numDataPoints = 40;
+  const allTimestamps: number[] = [];
+  if (datedRuns.length > 0) {
+    allTimestamps.push(datedRuns[0].timeMs, datedRuns[datedRuns.length - 1].timeMs);
+  }
+  if (datedCourseEvents.length > 0) {
+    allTimestamps.push(
+      datedCourseEvents[0].timeMs,
+      datedCourseEvents[datedCourseEvents.length - 1].timeMs,
+    );
+  }
+  if (datedPlayerEvents.length > 0) {
+    allTimestamps.push(
+      datedPlayerEvents[0].timeMs,
+      datedPlayerEvents[datedPlayerEvents.length - 1].timeMs,
+    );
+  }
 
-  if (datedRuns.length === 0) {
+  if (allTimestamps.length === 0) {
     for (let i = 0; i < numDataPoints - 1; i++) {
       runsTrend.push({ value: currentRunsCount });
       playersTrend.push({ value: currentUniquePlayers.size });
@@ -348,28 +455,31 @@ export function computeAllState(payload: {
       countriesTrend.push({ value: currentUniqueCountries.size });
     }
   } else {
-    const minTime = datedRuns[0].timeMs;
-    const maxTime = datedRuns[datedRuns.length - 1].timeMs;
+    const minTime = Math.min(...allTimestamps);
+    const maxTime = Math.max(...allTimestamps);
     const timeSpan = Math.max(maxTime - minTime, 1);
     const chunkMs = timeSpan / (numDataPoints - 1);
 
     let runIdx = 0;
+    let playerIdx = 0;
+    let courseIdx = 0;
+
     for (let step = 1; step < numDataPoints; step++) {
       const bucketEndTime = minTime + step * chunkMs;
 
       while (runIdx < datedRuns.length && datedRuns[runIdx].timeMs <= bucketEndTime) {
-        const r = datedRuns[runIdx];
         currentRunsCount++;
-        if (r.pKey) currentUniquePlayers.add(r.pKey);
-        const courseKey = String(r.course).toUpperCase();
-        if (courseKey) {
-          currentUniqueCourses.add(courseKey);
-          const countryStr = cMet?.[courseKey]?.country;
-          if (countryStr && countryStr !== "UNKNOWN") {
-            currentUniqueCountries.add(countryStr);
-          }
-        }
         runIdx++;
+      }
+      while (playerIdx < datedPlayerEvents.length && datedPlayerEvents[playerIdx].timeMs <= bucketEndTime) {
+        currentUniquePlayers.add(datedPlayerEvents[playerIdx].pKey);
+        playerIdx++;
+      }
+      while (courseIdx < datedCourseEvents.length && datedCourseEvents[courseIdx].timeMs <= bucketEndTime) {
+        const ce = datedCourseEvents[courseIdx];
+        currentUniqueCourses.add(ce.courseKey);
+        if (ce.country) currentUniqueCountries.add(ce.country);
+        courseIdx++;
       }
 
       runsTrend.push({ value: currentRunsCount });
@@ -379,18 +489,18 @@ export function computeAllState(payload: {
     }
 
     while (runIdx < datedRuns.length) {
-      const r = datedRuns[runIdx];
       currentRunsCount++;
-      if (r.pKey) currentUniquePlayers.add(r.pKey);
-      const courseKey = String(r.course).toUpperCase();
-      if (courseKey) {
-        currentUniqueCourses.add(courseKey);
-        const countryStr = cMet?.[courseKey]?.country;
-        if (countryStr && countryStr !== "UNKNOWN") {
-          currentUniqueCountries.add(countryStr);
-        }
-      }
       runIdx++;
+    }
+    while (playerIdx < datedPlayerEvents.length) {
+      currentUniquePlayers.add(datedPlayerEvents[playerIdx].pKey);
+      playerIdx++;
+    }
+    while (courseIdx < datedCourseEvents.length) {
+      const ce = datedCourseEvents[courseIdx];
+      currentUniqueCourses.add(ce.courseKey);
+      if (ce.country) currentUniqueCountries.add(ce.country);
+      courseIdx++;
     }
 
     runsTrend[runsTrend.length - 1].value = currentRunsCount;
@@ -409,18 +519,32 @@ export function computeAllState(payload: {
   // SETTER STATS
   const leadMap: Record<string, CourseData[]> = {};
   const assistMap: Record<string, CourseData[]> = {};
+  const setterRawNames: Record<string, string> = {};
 
   masterCourseList.forEach((c) => {
+    const rawLeads = splitNameList(c.leadSetters);
+    rawLeads.forEach((rawName) => {
+      if (rawName === "-" || rawName.toLowerCase() === "n/a") return;
+      const norm = normalizeName(rawName);
+      if (norm && !setterRawNames[norm]) setterRawNames[norm] = rawName;
+    });
     const leads =
       c.leadSettersNormalized ||
       (Array.isArray(c.leadSetters) ? c.leadSetters : c.leadSetters ? [c.leadSetters] : []);
     leads.forEach((name) => {
       if (!name) return;
       const norm = normalizeName(name);
+      if (!norm) return;
       if (!leadMap[norm]) leadMap[norm] = [];
       leadMap[norm].push(c);
     });
 
+    const rawAssists = splitNameList(c.assistantsetters);
+    rawAssists.forEach((rawName) => {
+      if (rawName === "-" || rawName.toLowerCase() === "n/a") return;
+      const norm = normalizeName(rawName);
+      if (norm && !setterRawNames[norm]) setterRawNames[norm] = rawName;
+    });
     const assists =
       c.assistantSettersNormalized ||
       (Array.isArray(c.assistantsetters)
@@ -431,17 +555,20 @@ export function computeAllState(payload: {
     assists.forEach((name) => {
       if (!name) return;
       const norm = normalizeName(name);
+      if (!norm) return;
       if (!assistMap[norm]) assistMap[norm] = [];
       assistMap[norm].push(c);
     });
   });
 
+  const seenSetterKeys = new Set<string>();
   const settersWithImpact: SetterProfile[] = (settersData || [])
     .map((s): SetterProfile | null => {
       const sName = s.name ? String(s.name).trim() : "";
       if (!sName) return null;
 
       const sNameNorm = normalizeName(sName);
+      if (!sNameNorm || seenSetterKeys.has(sNameNorm)) return null;
       const leadCourses = leadMap[sNameNorm] || [];
       const assistCourses = assistMap[sNameNorm] || [];
 
@@ -450,6 +577,7 @@ export function computeAllState(payload: {
       const totalCourses = allSetCourses.length;
       if (totalCourses === 0) return null;
 
+      seenSetterKeys.add(sNameNorm);
       const totalRuns = allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
 
       return {
@@ -464,13 +592,51 @@ export function computeAllState(payload: {
     })
     .filter((s): s is SetterProfile => s !== null);
 
+  // Include setters credited in COURSE STATS even if absent from RANKINGS (M)/(F)
+  const allCourseSetterKeys = new Set<string>([...Object.keys(leadMap), ...Object.keys(assistMap)]);
+  allCourseSetterKeys.forEach((sNameNorm) => {
+    if (!sNameNorm || seenSetterKeys.has(sNameNorm)) return;
+    const leadCourses = leadMap[sNameNorm] || [];
+    const assistCourses = assistMap[sNameNorm] || [];
+    const allSetCourses = Array.from(new Set([...leadCourses, ...assistCourses]));
+    if (allSetCourses.length === 0) return;
+
+    const athleteMeta = atMet?.[sNameNorm];
+    const displayName = athleteMeta?.name || setterRawNames[sNameNorm] || sNameNorm;
+    if (isPlaceholderPlayer(displayName)) return;
+
+    seenSetterKeys.add(sNameNorm);
+    const totalRuns = allSetCourses.reduce((sum, c) => sum + (c.totalAllTimeRuns || 0), 0);
+
+    settersWithImpact.push({
+      id: `setter-${sNameNorm}`,
+      name: displayName,
+      pKey: sNameNorm,
+      countryName: athleteMeta?.countryName || "",
+      region: athleteMeta?.region || "🏳️",
+      location: athleteMeta?.location || CONFIG.FALLBACKS.UNKNOWN_LOCATION,
+      homeGym: athleteMeta?.homeGym || CONFIG.FALLBACKS.UNAFFILIATED,
+      teams: athleteMeta?.teams || [],
+      townFlag: athleteMeta?.townFlag || "",
+      gymFlag: athleteMeta?.gymFlag || "",
+      igHandle: athleteMeta?.igHandle || "",
+      sets: allSetCourses.length,
+      leads: leadCourses.length,
+      assists: assistCourses.length,
+      impact: totalRuns,
+      films: athleteMeta?.films || 0,
+      isAthlete: Boolean(athleteMeta),
+      searchKey: normalizeForSearch(`${displayName} ${athleteMeta?.countryName || ""}`),
+    });
+  });
+
   const setterMet: Record<string, SetterProfile> = {};
   settersWithImpact.forEach((s) => {
     setterMet[normalizeName(s.name)] = s;
   });
 
   // RECALCULATE COIN STAT IN REAL TIME
-  // Formula: (runs * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1)
+  // Formula: (courses * 0.1) + (wins * 0.1) + (leads * 0.2) + (assists * 0.1)
   const atDataMap = new Map<string, PlayerProfile>();
   data.forEach((p) => atDataMap.set(p.pKey, p));
 
@@ -478,14 +644,14 @@ export function computeAllState(payload: {
 
   allKeys.forEach((pKey) => {
     const atPlayer = atDataMap.get(pKey);
-    const runs = atPlayer?.runs || atMet[pKey]?.runs || 0;
-    const wins = atPlayer?.wins || atMet[pKey]?.wins || 0;
+    const courses = atPlayer ? (atPlayer.courses ?? 0) : 0;
+    const wins = atPlayer ? (atPlayer.wins ?? 0) : 0;
 
     const setter = setterMet[pKey];
     const leads = setter?.leads || 0;
     const assists = setter?.assists || 0;
 
-    const newCoins = runs * 0.1 + wins * 0.1 + leads * 0.2 + assists * 0.1;
+    const newCoins = courses * 0.1 + wins * 0.1 + leads * 0.2 + assists * 0.1;
 
     if (atMet[pKey]) atMet[pKey].contributionScore = newCoins;
     if (setterMet[pKey]) setterMet[pKey].contributionScore = newCoins;
@@ -520,7 +686,7 @@ export function computeAllState(payload: {
     const aggregated: Record<string, TeamProfile> = {};
     const isAllTime = mode === true || mode === "all-time";
     const sourcePlayers: PlayerProfile[] = isAllTime
-      ? Object.values(atMet || {})
+      ? data
       : mode === "2026"
         ? season26Data
         : openData;
@@ -590,7 +756,7 @@ export function computeAllState(payload: {
         ) {
           aggregated[normName].location = item.location;
         }
-        let playerPts = p.pts || p.contributionScore || 0;
+        let playerPts = p.pts || 0;
         if (!playerPts || playerPts === 0) {
           if (perfsByMode) {
             playerPts = perfsByMode.reduce((sum, perf) => sum + (perf.points || 0), 0);
@@ -704,11 +870,15 @@ export function computeAllState(payload: {
   const playerLB_OP = calculateLeaderboard(openData, false);
 
   const computePlayerList = (mode: boolean | string, gen: "M" | "F"): PlayerProfile[] => {
-    const athletePool =
-      mode === true || mode === "all-time" ? data : mode === "2026" ? season26Data : openData;
+    const isAllTime = mode === true || mode === "all-time";
+    const athletePool = isAllTime ? data : mode === "2026" ? season26Data : openData;
     const allTimeRankedKeys = new Set((data || []).map((p) => p.pKey));
     const filtered = athletePool.filter(
-      (p) => p && p.gender === gen && !isPlaceholderPlayer(p.name) && (p.runs || 0) > 0,
+      (p) =>
+        p &&
+        p.gender === gen &&
+        !isPlaceholderPlayer(p.name) &&
+        ((p.runs || 0) > 0 || (isAllTime && ((p.sets || 0) > 0 || (p.contributionScore || 0) > 0))),
     );
 
     filtered.sort(sortAthletesWithTiebreakers);
@@ -728,9 +898,16 @@ export function computeAllState(payload: {
       }
     });
 
+    const lbMap =
+      mode === true || mode === "all-time"
+        ? playerLB_AT[gen]
+        : mode === "2026"
+          ? playerLB_2026[gen]
+          : playerLB_OP[gen];
+
     const fQual: PlayerProfile[] = qual.map((p, i) => ({
       ...p,
-      currentRank: i + 1,
+      currentRank: lbMap?.[p.pKey]?.rank ?? i + 1,
       isQualified: true,
       shouldFade: false,
     }));
@@ -786,21 +963,13 @@ export function computeAllState(payload: {
 
   const cListOP: CourseData[] = masterCourseList
     .filter((c) => c.isOpenCourse)
-    .map((c) => {
-      const mCount = Object.keys(lbOpen?.M?.[String(c.name).toUpperCase()] || {}).length;
-      const fCount = Object.keys(lbOpen?.F?.[String(c.name).toUpperCase()] || {}).length;
-      return { ...c, openRuns: mCount + fCount };
-    })
+    .map((c) => ({ ...c, openRuns: c.openRuns ?? 0 }))
     .sort((a, b) => (b.openRuns || 0) - (a.openRuns || 0))
     .map((c, i) => ({ ...c, currentRank: i + 1 }));
 
   const cList2026: CourseData[] = masterCourseList
     .filter((c) => c.is2026Course)
-    .map((c) => {
-      const mCount = Object.keys(lbSeason26?.M?.[String(c.name).toUpperCase()] || {}).length;
-      const fCount = Object.keys(lbSeason26?.F?.[String(c.name).toUpperCase()] || {}).length;
-      return { ...c, season26Runs: mCount + fCount };
-    })
+    .map((c) => ({ ...c, season26Runs: c.season26Runs ?? 0 }))
     .sort((a, b) => (b.season26Runs || 0) - (a.season26Runs || 0))
     .map((c, i) => ({ ...c, currentRank: i + 1 }));
 
@@ -911,8 +1080,15 @@ export function computeAllState(payload: {
 export function computeSimulatedPlacement(
   targetTime: number,
   records: Array<{ time: number; rank: number | string }>,
+  courseRecord?: number,
 ) {
-  let rank = 1;
+  const hasFasterUnlistedCR =
+    courseRecord !== undefined &&
+    courseRecord > 0 &&
+    targetTime > courseRecord &&
+    !records.some((r) => r.time > 0 && r.time <= courseRecord);
+
+  let rank = hasFasterUnlistedCR ? 2 : 1;
   for (let i = 0; i < records.length; i++) {
     if (targetTime < records[i].time) {
       break;
@@ -931,8 +1107,25 @@ export function computeOriginalRanks(athletePool: PlayerProfile[]) {
   const sorted = [...athletePool]
     .filter((a) => a.currentRank !== "UR" && a.rating !== undefined)
     .sort(sortAthletesWithTiebreakers);
+  let currRank = 1;
+  let prevRating = -1;
+  let prevRuns = -1;
+  let prevDate = -1;
   sorted.forEach((a, idx) => {
-    ranks[a.pKey] = idx + 1;
+    const r = a.rating || 0;
+    const runs = a.runs || 0;
+    const date = toTimestamp(a.latestRunDate);
+    if (
+      Math.abs(r - prevRating) > 0.000001 ||
+      runs !== prevRuns ||
+      date !== prevDate
+    ) {
+      currRank = idx + 1;
+      prevRating = r;
+      prevRuns = runs;
+      prevDate = date;
+    }
+    ranks[a.pKey] = currRank;
   });
   return ranks;
 }
@@ -944,6 +1137,7 @@ export function computeLiveLadderWindow(
   targetTime: number,
   simulatedPts: number,
   athletePool: PlayerProfile[],
+  courseRecord?: number,
 ) {
   const recordsWithMe = [...records];
   const myIndex = recordsWithMe.findIndex((r) => r.pKey === myKey);
@@ -965,10 +1159,17 @@ export function computeLiveLadderWindow(
 
   namedRecords.sort((a, b) => a.time - b.time);
 
-  let curRank = 1;
+  const hasFasterUnlistedCR =
+    courseRecord !== undefined &&
+    courseRecord > 0 &&
+    targetTime > courseRecord &&
+    !records.some((r) => r.time > 0 && r.time <= courseRecord);
+  const rankOffset = hasFasterUnlistedCR ? 1 : 0;
+
+  let curRank = 1 + rankOffset;
   for (let i = 0; i < namedRecords.length; i++) {
     if (i > 0 && namedRecords[i].time > namedRecords[i - 1].time) {
-      curRank = i + 1;
+      curRank = i + 1 + rankOffset;
     }
     namedRecords[i].rank = curRank;
   }
@@ -1003,18 +1204,24 @@ export function computeSimulatedGlobalImpact(
     }
   }
 
-  const simulatedCR = Math.min(
-    minOtherTime !== Infinity ? minOtherTime : courseRecord,
-    targetTime > 0 ? targetTime : courseRecord,
-  );
+  const baselineCR = minOtherTime !== Infinity ? minOtherTime : courseRecord;
+  const simulatedCR =
+    targetTime > 0
+      ? baselineCR > 0
+        ? Math.min(baselineCR, targetTime)
+        : targetTime
+      : baselineCR;
   const oldCR = courseRecord || 1;
 
+  const allCourseNames = new Set(Object.keys(fullLeaderboards));
+  allCourseNames.add(courseName);
+
   const courseRecords: Record<string, number> = {};
-  for (const cName in fullLeaderboards) {
+  for (const cName of allCourseNames) {
     if (cName === courseName) {
       courseRecords[cName] = simulatedCR;
     } else {
-      const times = Object.values(fullLeaderboards[cName]);
+      const times = Object.values(fullLeaderboards[cName] || {});
       const validTimes = times.filter((t) => typeof t === "number" && t > 0);
       courseRecords[cName] = validTimes.length > 0 ? Math.min(...validTimes) : 0;
     }
@@ -1028,8 +1235,8 @@ export function computeSimulatedGlobalImpact(
     let totalPts = 0;
     let totalRuns = 0;
 
-    for (const cName in fullLeaderboards) {
-      let time = fullLeaderboards[cName][pt.pKey];
+    for (const cName of allCourseNames) {
+      let time = fullLeaderboards[cName]?.[pt.pKey];
 
       if (cName === courseName) {
         if (pt.pKey === selectedAthlete.pKey) {
@@ -1066,18 +1273,6 @@ export function computeSimulatedGlobalImpact(
   }
 
   const mySimRating = Math.round(simulatedRatings[selectedAthlete.pKey] * 1000000) / 1000000;
-  let simulatedGlobalRank = 1;
-
-  for (const pt of athletePool) {
-    if (pt.pKey === selectedAthlete.pKey) continue;
-    if (!pt.currentRank || pt.currentRank === "UR") continue;
-
-    const theirSimRating = Math.round(simulatedRatings[pt.pKey] * 1000000) / 1000000;
-    if (theirSimRating > mySimRating) {
-      simulatedGlobalRank++;
-    }
-  }
-
   const currentRating = Math.round((selectedAthlete.rating || 0) * 1000000) / 1000000;
   const myQualifies =
     Boolean(selectedAthlete.currentRank && selectedAthlete.currentRank !== "UR") ||
@@ -1098,10 +1293,37 @@ export function computeSimulatedGlobalImpact(
         (a.currentRank !== "UR" && a.rating !== undefined) ||
         (a.pKey === selectedAthlete.pKey && myQualifies),
     )
-    .sort((a, b) => simulatedRatings[b.pKey] - simulatedRatings[a.pKey]);
+    .sort((a, b) => {
+      const rA = simulatedRatings[a.pKey] || 0;
+      const rB = simulatedRatings[b.pKey] || 0;
+      if (Math.abs(rB - rA) > 0.000001) return rB - rA;
+      const runsDiff = (b.runs || 0) - (a.runs || 0);
+      if (runsDiff !== 0) return runsDiff;
+      return toTimestamp(a.latestRunDate) - toTimestamp(b.latestRunDate);
+    });
+
+  let currRank = 1;
+  let prevRating = -1;
+  let prevRuns = -1;
+  let prevDate = -1;
   sortedNew.forEach((a, idx) => {
-    newRanks[a.pKey] = idx + 1;
+    const r = simulatedRatings[a.pKey] || 0;
+    const runs = a.runs || 0;
+    const date = toTimestamp(a.latestRunDate);
+    if (
+      Math.abs(r - prevRating) > 0.000001 ||
+      runs !== prevRuns ||
+      date !== prevDate
+    ) {
+      currRank = idx + 1;
+      prevRating = r;
+      prevRuns = runs;
+      prevDate = date;
+    }
+    newRanks[a.pKey] = currRank;
   });
+
+  const simulatedGlobalRank = newRanks[selectedAthlete.pKey] || 1;
 
   let athletesDemoted = 0;
   for (const pKey of Object.keys(originalRanks)) {
@@ -1115,7 +1337,7 @@ export function computeSimulatedGlobalImpact(
     originalRating: selectedAthlete.rating || 0,
     newRating: mySimRating,
     originalRank: selectedAthlete.currentRank || "UR",
-    newRank: simulatedGlobalRank,
+    newRank: myQualifies ? simulatedGlobalRank : ("UR" as const),
     isImprovement: mySimRating > currentRating,
     pointsDestroyed: totalPointsDestroyed,
     athletesDemoted,

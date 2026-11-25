@@ -99,7 +99,7 @@ export const OfTheDaySection = React.memo(
           {
             label: "POINTS",
             value: Number(
-              topPlayer.pts || (topPlayer.rating || 0) * (topPlayer.runs || 0),
+              topPlayer.pts || (topPlayer.rating || 0) * (topPlayer.courses || 0),
             ).toFixed(2),
           },
         ],

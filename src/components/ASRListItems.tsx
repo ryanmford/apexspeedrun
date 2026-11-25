@@ -129,10 +129,8 @@ export const ASRListItem = React.memo(
  <ItemWrapper
  onClick={onClick}
  role={onClick ? "button" : undefined} 
- onMouseEnter={() => onHover && onHover(true)} 
- onMouseLeave={() => onHover && onHover(false)}
- onTouchStart={() => onHover && onHover(true)}
- onTouchEnd={() => onHover && onHover(false)}
+ onPointerEnter={(e) => { if (e.pointerType === "mouse" && onHover) onHover(true); }}
+ onPointerLeave={(e) => { if (e.pointerType === "mouse" && onHover) onHover(false); }}
  tabIndex={onClick ? 0 : undefined}
  onKeyDown={(e) => {
  if (onClick && (e.key === "Enter" || e.key === " ")) {
@@ -229,7 +227,7 @@ export const ASRListItem = React.memo(
  idx === 0
  ? cn(
  "text-sm sm:text-[24px] lg:text-[32px] tracking-tight",
- s.value
+ s.value !== undefined && s.value !== null && s.value !== ""
  ? cn(accentColor, "")
  : "opacity-20",
  )
@@ -241,7 +239,7 @@ export const ASRListItem = React.memo(
  ),
  )}
  >
- {s.value || "--"}
+ {s.value !== undefined && s.value !== null && s.value !== "" ? s.value : "--"}
  </span>
  </div>
  );
@@ -287,10 +285,8 @@ export const ASRListItem = React.memo(
  <ItemWrapper
  onClick={isUnclaimed ? undefined : onClick}
  role={onClick && !isUnclaimed ? "button" : undefined} 
- onMouseEnter={() => onHover && onHover(true)} 
- onMouseLeave={() => onHover && onHover(false)}
- onTouchStart={() => onHover && onHover(true)}
- onTouchEnd={() => onHover && onHover(false)}
+ onPointerEnter={(e) => { if (e.pointerType === "mouse" && onHover) onHover(true); }}
+ onPointerLeave={(e) => { if (e.pointerType === "mouse" && onHover) onHover(false); }}
  tabIndex={onClick && !isUnclaimed ? 0 : undefined}
  onKeyDown={(e) => {
  if (onClick && !isUnclaimed && (e.key === "Enter" || e.key === " ")) {
@@ -299,12 +295,12 @@ export const ASRListItem = React.memo(
  }
  }}
  className={cn(
- "group flex items-center justify-between transition-all duration-300 ios-clip-fix outline-none text-left w-full",
+ "group flex items-center justify-between transition-[transform,background-color,border-color] duration-150 ios-clip-fix outline-none text-left w-full",
  isCompact
  ? "py-3 pl-3 pr-1.5 rounded-[1.25rem] border h-auto min-h-[64px]"
  : "py-3 sm:py-5 lg:py-6 pl-3 sm:pl-6 lg:pl-8 pr-1.5 sm:pr-4 rounded-[1.25rem] sm:rounded-[1.5rem] lg:rounded-[2rem] border h-auto min-h-[64px] sm:min-h-[80px] lg:min-h-[100px] ",
  onClick && !isUnclaimed
- ? `cursor-pointer active:scale-95 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 ${"theme-focus"} ${cardHover}`
+ ? `cursor-pointer active:scale-[0.98] sm:hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 ${"theme-focus"} ${cardHover}`
  : "cursor-default",
  isUnclaimed
  ? cn(
@@ -422,7 +418,7 @@ export const ASRListItem = React.memo(
  idx === 0
  ? cn(
  isCompact ? "text-[15px] sm:text-[16px]" : "text-[16px] sm:text-[24px] lg:text-[28px] tracking-tight",
- s.value
+ s.value !== undefined && s.value !== null && s.value !== ""
  ? cn(accentColor, "")
  : "opacity-20",
  )
@@ -437,7 +433,7 @@ export const ASRListItem = React.memo(
  ),
  )}
  >
- {s.value || "--"}
+ {s.value !== undefined && s.value !== null && s.value !== "" ? s.value : "--"}
  </span>
  ))}
  </div>

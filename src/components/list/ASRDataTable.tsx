@@ -33,6 +33,7 @@ interface ASRDataTableProps<T = Record<string, unknown>> {
  hideSubtitle?: boolean;
  middleLabel?: string;
  showVideoColumn?: boolean;
+ enableMapHighlight?: boolean;
 }
 
 interface VirtualTableRowItem extends Record<string, unknown> {
@@ -168,25 +169,28 @@ export const ASRDataTable = React.memo(
  isCompact = false,
  onItemClick,
  isLoading = false,
- showRankings = true,
- middleLabel = "PLAYER / DATA",
- showVideoColumn = false,
- scrollElementRef,
+  showRankings = true,
+  middleLabel = "PLAYER / DATA",
+  showVideoColumn = false,
+  enableMapHighlight = false,
+  scrollElementRef,
  }, ref) => {
- const theme = useContext(ThemeContext);
- const hasError = useDataStore(s => s.hasError);
- const { prefetchEntity } = useAppNavigation();
- const activeCourseId = useAppStore(s => s.activeCourseId);
- const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
+  const theme = useContext(ThemeContext);
+  const hasError = useDataStore(s => s.hasError);
+  const { prefetchEntity } = useAppNavigation();
+  const activeCourseId = useAppStore(s => (enableMapHighlight ? s.activeCourseId : null));
+  const setActiveCourseId = useAppStore(s => s.setActiveCourseId);
 
- const handleItemHover = React.useCallback((item: Record<string, unknown>, isHovering: boolean) => {
-   if (isHovering) {
-     prefetchEntity(item);
-     setActiveCourseId((item?.id as string) || (item?.pKey as string) || null);
-   } else {
-     setActiveCourseId(null);
-   }
- }, [prefetchEntity, setActiveCourseId]);
+  const handleItemHover = React.useCallback((item: Record<string, unknown>, isHovering: boolean) => {
+    if (isHovering) {
+      prefetchEntity(item);
+      if (enableMapHighlight) {
+        setActiveCourseId((item?.id as string) || (item?.pKey as string) || null);
+      }
+    } else if (enableMapHighlight) {
+      setActiveCourseId(null);
+    }
+  }, [prefetchEntity, setActiveCourseId, enableMapHighlight]);
  
  const estimateSize = React.useCallback(() => {
    return viewType === "card" 
