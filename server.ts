@@ -77,16 +77,23 @@ function injectMetaTags(
   const safeCurrentUrl = escapeHtml(currentUrl);
   const safeOgImageUrl = escapeHtml(ogImageUrl);
 
+  const ogImageTags = `<meta property="og:image" content="${safeOgImageUrl}">\n    <meta property="og:image:type" content="image/png">\n    <meta property="og:image:width" content="${MAPBOX_OG_WIDTH}">\n    <meta property="og:image:height" content="${MAPBOX_OG_HEIGHT}">`;
+
   return template
     .replace(/<title>.*?<\/title>/s, `<title>${safeTitle}</title>`)
+    .replace(/<meta name="title"[^>]*>/i, `<meta name="title" content="${safeTitle}">`)
     .replace(/<meta name="description"[^>]*>/i, `<meta name="description" content="${safeDesc}">`)
+    .replace(/<link rel="canonical"[^>]*>/i, `<link rel="canonical" href="${safeCurrentUrl}">`)
     .replace(/<meta property="og:title"[^>]*>/i, `<meta property="og:title" content="${safeTitle}">`)
     .replace(/<meta property="og:description"[^>]*>/i, `<meta property="og:description" content="${safeDesc}">`)
     .replace(/<meta property="og:url"[^>]*>/i, `<meta property="og:url" content="${safeCurrentUrl}">`)
-    .replace(/<meta property="og:image"[^>]*>/i, `<meta property="og:image" content="${safeOgImageUrl}">`)
-    .replace(/<meta name="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${safeTitle}">`)
-    .replace(/<meta name="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${safeDesc}">`)
-    .replace(/<meta name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${safeOgImageUrl}">`);
+    .replace(/<meta property="og:image"[^>]*>/i, ogImageTags)
+    .replace(/<meta property="og:image:alt"[^>]*>/i, `<meta property="og:image:alt" content="${safeTitle}">`)
+    .replace(/<meta (?:name|property)="twitter:url"[^>]*>/i, `<meta name="twitter:url" content="${safeCurrentUrl}">`)
+    .replace(/<meta (?:name|property)="twitter:title"[^>]*>/i, `<meta name="twitter:title" content="${safeTitle}">`)
+    .replace(/<meta (?:name|property)="twitter:description"[^>]*>/i, `<meta name="twitter:description" content="${safeDesc}">`)
+    .replace(/<meta (?:name|property)="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${safeOgImageUrl}">`)
+    .replace(/<meta (?:name|property)="twitter:image:alt"[^>]*>/i, `<meta name="twitter:image:alt" content="${safeTitle}">`);
 }
 
 function toCodePoint(unicodeSurrogates: string) {
@@ -159,7 +166,8 @@ async function getMapBackground(coords: [number, number] | null): Promise<string
 
   const promise = (async () => {
     // Mapbox Static Images API expects longitude first, latitude second.
-    const url = `https://api.mapbox.com/styles/v1/${style}/static/${lon.toFixed(5)},${lat.toFixed(5)},${MAPBOX_OG_ZOOM},0/${MAPBOX_OG_WIDTH}x${MAPBOX_OG_HEIGHT}?access_token=${encodeURIComponent(token)}`;
+    // Disable default bright corner pill/logo and render dark-themed attribution directly inside the card frame.
+    const url = `https://api.mapbox.com/styles/v1/${style}/static/${lon.toFixed(5)},${lat.toFixed(5)},${MAPBOX_OG_ZOOM},0/${MAPBOX_OG_WIDTH}x${MAPBOX_OG_HEIGHT}?attribution=false&logo=false&access_token=${encodeURIComponent(token)}`;
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) {
@@ -263,8 +271,37 @@ function getOgImageSvg(
                     width: "100%",
                     height: "100%",
                     backgroundImage:
-                      "linear-gradient(to right, rgba(9, 9, 11, 0.95) 0%, rgba(9, 9, 11, 0.7) 40%, rgba(9, 9, 11, 0.1) 100%)",
+                      "linear-gradient(to right, rgba(9, 9, 11, 0.94) 0%, rgba(9, 9, 11, 0.62) 44%, rgba(9, 9, 11, 0.28) 72%, rgba(9, 9, 11, 0.68) 100%)",
                   },
+                },
+              },
+              {
+                type: "div",
+                props: {
+                  style: {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    backgroundImage:
+                      "linear-gradient(to bottom, rgba(9, 9, 11, 0.35) 0%, rgba(9, 9, 11, 0) 30%, rgba(9, 9, 11, 0) 65%, rgba(9, 9, 11, 0.55) 100%)",
+                  },
+                },
+              },
+              {
+                type: "div",
+                props: {
+                  style: {
+                    position: "absolute",
+                    bottom: 16,
+                    right: 24,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "rgba(161, 161, 170, 0.55)",
+                    letterSpacing: "0.02em",
+                  },
+                  children: "© Mapbox © OpenStreetMap",
                 },
               },
             ]
@@ -311,6 +348,7 @@ function getOgImageSvg(
                     flexDirection: "row",
                     justifyContent: "space-between",
                     alignItems: "flex-end",
+                    gap: "32px",
                     width: "100%",
                   },
                   children: [
@@ -320,7 +358,7 @@ function getOgImageSvg(
                         style: {
                           display: "flex",
                           flexDirection: "column",
-                          maxWidth: stats && stats.length > 0 ? "650px" : "1050px",
+                          maxWidth: stats && stats.length > 2 ? "580px" : stats && stats.length > 0 ? "680px" : "1050px",
                         },
                         children: [
                           {
@@ -329,8 +367,8 @@ function getOgImageSvg(
                               style: {
                                 fontSize: stats && stats.length > 0 ? 72 : 96,
                                 fontWeight: 700,
-                                marginBottom: "32px",
-                                lineHeight: 1.1,
+                                marginBottom: "24px",
+                                lineHeight: 1.08,
                                 color: "#ffffff",
                                 letterSpacing: "-0.04em",
                                 textTransform: "uppercase",
@@ -351,11 +389,10 @@ function getOgImageSvg(
                                   props: {
                                     style: {
                                       fontSize: stats && stats.length > 0 ? 32 : 40,
-                                      color: "#a1a1aa",
+                                      color: "#d4d4d8",
                                       lineHeight: 1.2,
                                       letterSpacing: "-0.02em",
                                       fontWeight: 700,
-                                      textTransform: "uppercase",
                                     },
                                     children: desc,
                                   },
@@ -410,7 +447,7 @@ function getOgImageSvg(
                                       style: {
                                         fontSize: stats.length > 2 ? 20 : 24,
                                         fontWeight: 700,
-                                        color: "#a1a1aa",
+                                        color: "#d4d4d8",
                                         textTransform: "uppercase",
                                         letterSpacing: "0.05em",
                                         marginTop: stats.length > 2 ? "8px" : "16px",
@@ -553,7 +590,7 @@ async function startServer() {
         const searchParams = new URLSearchParams(reqQuery || "");
         const meta = await getPageMeta(reqPath, searchParams);
         title = meta.title?.toUpperCase() || title;
-        desc = meta.description?.toUpperCase() || desc;
+        desc = meta.description || desc;
         type = meta.ogType;
         stats = meta.ogStats?.map((s) => ({
           value: s.value?.toUpperCase(),

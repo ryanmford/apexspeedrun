@@ -270,6 +270,109 @@ export const formatLocation = (locObj: string | LocationLike | null | undefined)
   return parts.filter(Boolean).join(", ");
 };
 
+const OG_LOCATION_ACRONYMS = new Set([
+  "USA",
+  "UK",
+  "UAE",
+  "DC",
+  "NSW",
+  "QLD",
+  "VIC",
+  "ACT",
+  "TAS",
+  "CDMX",
+  "SAR",
+]);
+
+const OG_LOCATION_MINOR_WORDS = new Set([
+  "of",
+  "and",
+  "de",
+  "da",
+  "do",
+  "dos",
+  "das",
+  "del",
+  "la",
+  "le",
+  "les",
+  "du",
+  "en",
+  "sur",
+  "y",
+]);
+
+function formatLocationSegment(raw: string, preserveTwoLetterCode = false): string {
+  const cleaned = String(raw || "")
+    .trim()
+    .replace(/,\s*\p{Extended_Pictographic}+/gu, "")
+    .replace(/\p{Extended_Pictographic}+/gu, "")
+    .replace(/,\s*[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g, "")
+    .replace(/[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]/g, "")
+    .trim()
+    .replace(/,$/, "")
+    .trim();
+
+  const upper = cleaned.toUpperCase();
+  if (
+    !upper ||
+    upper === "UNKNOWN" ||
+    upper === "UNDEFINED" ||
+    upper === "NULL" ||
+    upper === "N/A" ||
+    upper === "NONE" ||
+    upper === "-"
+  ) {
+    return "";
+  }
+
+  if (OG_LOCATION_ACRONYMS.has(upper) || (preserveTwoLetterCode && /^[A-Z]{2}$/.test(upper))) {
+    return upper;
+  }
+
+  const formatWord = (word: string, isFirst: boolean): string => {
+    const wordUpper = word.toUpperCase();
+    if (OG_LOCATION_ACRONYMS.has(wordUpper)) return wordUpper;
+    const wordLower = word.toLowerCase();
+    if (!isFirst && OG_LOCATION_MINOR_WORDS.has(wordLower)) return wordLower;
+    return wordLower.charAt(0).toUpperCase() + wordLower.slice(1);
+  };
+
+  return cleaned
+    .split(/\s+/)
+    .map((token, idx) =>
+      token
+        .split("-")
+        .map((sub, subIdx) => formatWord(sub, idx === 0 && subIdx === 0))
+        .join("-"),
+    )
+    .join(" ");
+}
+
+export const formatOgLocation = (locObj: LocationLike | null | undefined): string => {
+  if (!locObj) return "Secret Location";
+
+  const city = formatLocationSegment(locObj.city || locObj.location || "");
+  const state = formatLocationSegment(locObj.state || locObj.stateProv || locObj.region || "", true);
+  const rawCountry = normalizeCountryName(locObj.country || locObj.nation || "");
+  const country = formatLocationSegment(rawCountry);
+
+  const cUpper = city.toUpperCase();
+  const sUpper = state.toUpperCase();
+  const coUpper = country.toUpperCase();
+
+  const parts: string[] = [];
+  if (city) parts.push(city);
+  if (state && sUpper !== cUpper && sUpper !== coUpper && !cUpper.includes(sUpper)) {
+    parts.push(state);
+  }
+  if (country && coUpper !== cUpper && !cUpper.endsWith(coUpper)) {
+    parts.push(country);
+  }
+
+  return parts.length > 0 ? parts.join(", ") : "Secret Location";
+};
+
 export const cleanNumeric = (v: string | number | null | undefined) => {
   if (typeof v === "number") return isNaN(v) ? null : v;
   if (v === undefined || v === null || v === "") return null;

@@ -10,6 +10,7 @@ import {
   matchesRegionTarget,
   splitNameList,
   getNormalizedNameList,
+  formatOgLocation,
 } from "../asr-utils";
 import { processSetListData, processRankingData, calculateWofStats } from "../asr-data";
 import {
@@ -218,8 +219,33 @@ describe("computeAllState LQ math, tie-breakers, coin formula, and Open aggregat
 
     const courseMeta = resolvePageMeta(state, "/courses/course-one", new URLSearchParams());
     expect(courseMeta.ogType).toBe("course");
+    expect(courseMeta.description).toBe("📍 Boulder, CO, USA");
     expect(courseMeta.ogMapCoords).toEqual([40.015, -105.2705]);
     expect(courseMeta.ogStats?.[0]).toEqual({ value: "10.00", label: "WR (M)" });
+  });
+
+  it("formats OG course locations cleanly with and without state/province", () => {
+    expect(formatOgLocation({ city: "BOULDER", stateProv: "COLORADO", country: "USA" })).toBe(
+      "Boulder, Colorado, USA",
+    );
+    expect(formatOgLocation({ city: "CASABLANCA", stateProv: "", country: "MOROCCO" })).toBe(
+      "Casablanca, Morocco",
+    );
+    expect(formatOgLocation({ city: "WASHINGTON", stateProv: "DC", country: "UNITED STATES" })).toBe(
+      "Washington, DC, USA",
+    );
+    expect(formatOgLocation({ city: "LONDON", stateProv: "", country: "UNITED KINGDOM" })).toBe(
+      "London, UK",
+    );
+    expect(formatOgLocation({ city: "RIO DE JANEIRO", stateProv: "", country: "BRAZIL" })).toBe(
+      "Rio de Janeiro, Brazil",
+    );
+    expect(formatOgLocation({ city: "SINGAPORE", stateProv: "", country: "SINGAPORE" })).toBe(
+      "Singapore",
+    );
+    expect(formatOgLocation({ city: "UNKNOWN", stateProv: "", country: "UNKNOWN" })).toBe(
+      "Secret Location",
+    );
   });
 });
 

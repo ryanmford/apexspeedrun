@@ -4,8 +4,7 @@ import {
   normalizeName,
   CONFIG,
   getCombinedFlags,
-  toTitleCase,
-  isPlaceholderPlayer,
+  formatOgLocation,
 } from "./lib/asr-utils.ts";
 import { computeAllState } from "./lib/asr-data-compute.ts";
 import { dehydrateSnapshot } from "./lib/asr-snapshot.ts";
@@ -273,7 +272,6 @@ export function resolvePageMeta(
             ? state.lbSeason26
             : state.lbOpen;
 
-        let totalClears = 0;
         let mBest = Infinity;
         let fBest = Infinity;
 
@@ -284,30 +282,12 @@ export function resolvePageMeta(
           const mTimes = Object.values(mData);
           const fTimes = Object.values(fData);
 
-          const realMClears = Object.keys(mData).filter(
-            (k) => !isPlaceholderPlayer(state.dnMap?.[k] || k),
-          ).length;
-          const realFClears = Object.keys(fData).filter(
-            (k) => !isPlaceholderPlayer(state.dnMap?.[k] || k),
-          ).length;
-
-          totalClears = realMClears + realFClears;
           if (mTimes.length) mBest = Math.min(...mTimes);
           if (fTimes.length) fBest = Math.min(...fTimes);
         }
 
-        const locStr = courseInfo.city
-          ? toTitleCase(courseInfo.city)
-          : courseInfo.country
-            ? toTitleCase(courseInfo.country)
-            : "Secret Location";
-
-        const totalRunsCount = isAllTime
-          ? (courseInfo.totalAllTimeRuns ?? courseInfo.totalRuns ?? totalClears)
-          : eventType === "2026"
-            ? (courseInfo.season26Runs ?? totalClears)
-            : (courseInfo.openRuns ?? courseInfo.totalAllTimeRuns ?? totalClears);
-        description = `RUNS: ${totalRunsCount} | 📍 ${locStr}`.toUpperCase();
+        const locStr = formatOgLocation(courseInfo);
+        description = `📍 ${locStr}`;
         ogType = "course";
         const recordPrefix = isAllTime ? "WR" : eventType === "2026" ? "2026" : "OPEN";
         ogStats = [
