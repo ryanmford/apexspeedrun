@@ -27,7 +27,7 @@ export default defineConfig(() => {
               },
             },
             {
-              urlPattern: /^https:\/\/(?:[a-c]\.basemaps\.cartocdn\.com|[a-c]\.tile\.openstreetmap\.org|server\.arcgisonline\.com)\/.*/i,
+              urlPattern: /^https:\/\/(?:[a-c]\.tile\.openstreetmap\.org|server\.arcgisonline\.com)\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'asr-map-tiles-cache',

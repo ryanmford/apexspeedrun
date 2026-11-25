@@ -8,12 +8,11 @@ import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import crypto from "crypto";
 
-interface MapTile {
-  url: string;
-  x: number;
-  y: number;
-  dataUri?: string | null;
-}
+const MAPBOX_OG_ZOOM = 13;
+const MAPBOX_OG_WIDTH = 1200;
+const MAPBOX_OG_HEIGHT = 630;
+let loggedMissingMapboxToken = false;
+let loggedMapboxAuthError = false;
 
 class OgImageCache {
   private cache = new Map<string, Buffer>();
@@ -109,61 +108,91 @@ function toCodePoint(unicodeSurrogates: string) {
   return r.filter((cp) => cp !== "fe0f").join("-");
 }
 
-const tileCache = new Map<string, string>();
-async function fetchTile(url: string): Promise<string | null> {
-  if (tileCache.has(url)) return tileCache.get(url) || null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const dataUri = `data:image/png;base64,${buffer.toString("base64")}`;
-    tileCache.set(url, dataUri);
-    return dataUri;
-  } catch {
-    return null;
-  }
-}
+const staticMapCache = new Map<string, string | null>();
+const staticMapInflight = new Map<string, Promise<string | null>>();
+const MAX_STATIC_MAP_CACHE_ENTRIES = 200;
 
-async function getMapTiles(coords: [number, number] | null): Promise<MapTile[]> {
-  if (!coords) return [];
-  const [lat, lon] = coords;
-  const Z = 13;
-  const centerTx = ((lon + 180) / 360) * Math.pow(2, Z);
-  const centerTy =
-    ((1 -
-      Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) /
-      2) *
-    Math.pow(2, Z);
-
-  const TILE_SIZE = 256;
-  const svgX = centerTx * TILE_SIZE - 600;
-  const svgY = centerTy * TILE_SIZE - 315;
-
-  const startTx = Math.floor(svgX / TILE_SIZE);
-  const endTx = Math.floor((svgX + 1200) / TILE_SIZE);
-
-  const startTy = Math.floor(svgY / TILE_SIZE);
-  const endTy = Math.floor((svgY + 630) / TILE_SIZE);
-
-  const tiles: MapTile[] = [];
-  for (let tx = startTx; tx <= endTx; tx++) {
-    for (let ty = startTy; ty <= endTy; ty++) {
-      tiles.push({
-        url: `https://a.basemaps.cartocdn.com/dark_nolabels/${Z}/${tx}/${ty}.png`,
-        x: tx * TILE_SIZE - svgX,
-        y: ty * TILE_SIZE - svgY,
-      });
+function setBoundedStaticMapCache(key: string, value: string | null) {
+  if (staticMapCache.has(key)) {
+    staticMapCache.delete(key);
+  } else if (staticMapCache.size >= MAX_STATIC_MAP_CACHE_ENTRIES) {
+    const oldestKey = staticMapCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      staticMapCache.delete(oldestKey);
     }
   }
+  staticMapCache.set(key, value);
+}
 
-  await Promise.all(
-    tiles.map(async (t) => {
-      t.dataUri = await fetchTile(t.url);
-    }),
-  );
+async function getMapBackground(coords: [number, number] | null): Promise<string | null> {
+  if (!coords) return null;
+  const [lat, lon] = coords;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85.0511 || Math.abs(lon) > 180) {
+    return null;
+  }
 
-  return tiles.filter((t) => Boolean(t.dataUri));
+  const token = (process.env.MAPBOX_SERVER_TOKEN || process.env.VITE_MAPBOX_ACCESS_TOKEN || "").trim();
+  if (!token) {
+    if (!loggedMissingMapboxToken) {
+      loggedMissingMapboxToken = true;
+      console.warn(
+        "Mapbox token missing (MAPBOX_SERVER_TOKEN / VITE_MAPBOX_ACCESS_TOKEN); generating OG images without map background.",
+      );
+    }
+    return null;
+  }
+
+  const style = (process.env.MAPBOX_OG_STYLE || process.env.VITE_MAPBOX_DARK_STYLE || "mapbox/dark-v11")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  const key = `${style}:${lat.toFixed(4)},${lon.toFixed(4)}`;
+
+  if (staticMapCache.has(key)) {
+    const cached = staticMapCache.get(key) ?? null;
+    staticMapCache.delete(key);
+    staticMapCache.set(key, cached);
+    return cached;
+  }
+  if (staticMapInflight.has(key)) {
+    return staticMapInflight.get(key)!;
+  }
+
+  const promise = (async () => {
+    // Mapbox Static Images API expects longitude first, latitude second.
+    const url = `https://api.mapbox.com/styles/v1/${style}/static/${lon.toFixed(5)},${lat.toFixed(5)},${MAPBOX_OG_ZOOM},0/${MAPBOX_OG_WIDTH}x${MAPBOX_OG_HEIGHT}?access_token=${encodeURIComponent(token)}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) {
+        if ((res.status === 401 || res.status === 403) && !loggedMapboxAuthError) {
+          loggedMapboxAuthError = true;
+          console.warn(
+            `Mapbox Static Images API returned HTTP ${res.status}. If VITE_MAPBOX_ACCESS_TOKEN is URL-restricted, set MAPBOX_SERVER_TOKEN.`,
+          );
+        }
+        setBoundedStaticMapCache(key, null);
+        return null;
+      }
+      const contentType = (res.headers.get("content-type") || "image/png").split(";")[0].trim().toLowerCase();
+      if (!contentType.startsWith("image/")) {
+        setBoundedStaticMapCache(key, null);
+        return null;
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const dataUri = `data:${contentType};base64,${buffer.toString("base64")}`;
+      setBoundedStaticMapCache(key, dataUri);
+      return dataUri;
+    } catch {
+      return null;
+    }
+  })();
+
+  staticMapInflight.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    staticMapInflight.delete(key);
+  }
 }
 
 function getOgImageSvg(
@@ -171,7 +200,7 @@ function getOgImageSvg(
   desc: string,
   _type?: "player" | "course",
   stats?: { value: string; label: string }[],
-  mapTiles?: MapTile[],
+  mapImageDataUri?: string | null,
 ) {
   return {
     type: "div",
@@ -190,7 +219,7 @@ function getOgImageSvg(
         overflow: "hidden",
       },
       children: [
-        ...(mapTiles && mapTiles.length > 0
+        ...(mapImageDataUri
           ? [
               {
                 type: "div",
@@ -204,21 +233,24 @@ function getOgImageSvg(
                     display: "flex",
                     opacity: 0.9,
                   },
-                  children: mapTiles.map((t) => ({
-                    type: "img",
-                    props: {
-                      src: t.dataUri,
-                      width: 256,
-                      height: 256,
-                      style: {
-                        position: "absolute",
-                        left: t.x,
-                        top: t.y,
-                        width: 256,
-                        height: 256,
+                  children: [
+                    {
+                      type: "img",
+                      props: {
+                        src: mapImageDataUri,
+                        width: MAPBOX_OG_WIDTH,
+                        height: MAPBOX_OG_HEIGHT,
+                        style: {
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        },
                       },
                     },
-                  })),
+                  ],
                 },
               },
               {
@@ -514,7 +546,8 @@ async function startServer() {
 
       let type: "player" | "course" | undefined;
       let stats: { value: string; label: string }[] | undefined;
-      let mapTiles: MapTile[] = [];
+      let mapCoords: [number, number] | null = null;
+      let mapImageDataUri: string | null = null;
 
       if (reqPath) {
         const searchParams = new URLSearchParams(reqQuery || "");
@@ -527,11 +560,13 @@ async function startServer() {
           label: s.label?.toUpperCase(),
         }));
         if (meta.ogMapCoords) {
-          mapTiles = await getMapTiles(meta.ogMapCoords);
+          mapCoords = meta.ogMapCoords;
+          mapImageDataUri = await getMapBackground(meta.ogMapCoords);
         }
       }
 
-      const cacheKeyDesc = `${desc}${JSON.stringify(stats || [])}${mapTiles.length}`;
+      const coordsKey = mapCoords ? `${mapCoords[0].toFixed(4)},${mapCoords[1].toFixed(4)}` : "none";
+      const cacheKeyDesc = `${desc}${JSON.stringify(stats || [])}${coordsKey}:${mapImageDataUri ? "1" : "0"}`;
       const cachedBuffer = ogCache.get(title, cacheKeyDesc);
       if (cachedBuffer) {
         res.setHeader("Content-Type", "image/png");
@@ -542,7 +577,7 @@ async function startServer() {
       const fontData = await getFontData();
 
       const svg = await satori(
-        getOgImageSvg(title, desc, type, stats, mapTiles) as Parameters<typeof satori>[0],
+        getOgImageSvg(title, desc, type, stats, mapImageDataUri) as Parameters<typeof satori>[0],
         {
           width: 1200,
           height: 630,

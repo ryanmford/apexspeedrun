@@ -32,6 +32,8 @@ jobs:
         run: npm run build
         env:
           VITE_MAPBOX_ACCESS_TOKEN: ${{ secrets.VITE_MAPBOX_ACCESS_TOKEN }}
+          MAPBOX_SERVER_TOKEN: ${{ secrets.MAPBOX_SERVER_TOKEN }}
+          MAPBOX_OG_STYLE: ${{ secrets.MAPBOX_OG_STYLE }}
           VITE_STATIC_DEPLOY: "true"
       - name: Prune non-production assets from dist
         run: rm -rf dist/assets/aistudio

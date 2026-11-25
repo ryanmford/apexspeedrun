@@ -7,12 +7,11 @@ import { normalizeName, createSlug, CONFIG, getCombinedFlags, toTitleCase } from
 import { computeAllState } from '../src/lib/asr-data-compute.ts';
 import type { CourseData, PlayerProfile } from '../src/types.ts';
 
-interface MapTile {
-  url: string;
-  x: number;
-  y: number;
-  dataUri: string | null;
-}
+const MAPBOX_OG_ZOOM = 13;
+const MAPBOX_OG_WIDTH = 1200;
+const MAPBOX_OG_HEIGHT = 630;
+let loggedMissingMapboxToken = false;
+let loggedMapboxAuthError = false;
 
 function escapeHtml(str: string): string {
   return String(str || '')
@@ -64,7 +63,7 @@ async function fetchSheets() {
   });
 }
 
-function getOgImageSvg(title: string, desc: string, _type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: MapTile[]) {
+function getOgImageSvg(title: string, desc: string, _type?: 'player' | 'course', stats?: {value: string, label: string}[], mapImageDataUri?: string | null) {
   return {
     type: 'div',
     props: {
@@ -82,7 +81,7 @@ function getOgImageSvg(title: string, desc: string, _type?: 'player' | 'course',
         overflow: 'hidden',
       },
       children: [
-        ...(mapTiles && mapTiles.length > 0 ? [
+        ...(mapImageDataUri ? [
           {
             type: 'div',
             props: {
@@ -93,23 +92,26 @@ function getOgImageSvg(title: string, desc: string, _type?: 'player' | 'course',
                 width: '100%',
                 height: '100%',
                 display: 'flex',
-                opacity: 0.9, // Increased opacity to make map more visible
+                opacity: 0.9,
               },
-              children: mapTiles.map(t => ({
-                type: 'img',
-                props: {
-                  src: t.dataUri,
-                  width: 256,
-                  height: 256,
-                  style: {
-                    position: 'absolute',
-                    left: t.x,
-                    top: t.y,
-                    width: 256,
-                    height: 256,
+              children: [
+                {
+                  type: 'img',
+                  props: {
+                    src: mapImageDataUri,
+                    width: MAPBOX_OG_WIDTH,
+                    height: MAPBOX_OG_HEIGHT,
+                    style: {
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }
                   }
                 }
-              }))
+              ]
             }
           },
           {
@@ -340,8 +342,8 @@ async function fetchEmojiDataUri(segment: string): Promise<string> {
   }
 }
 
-async function generateOgImage(title: string, desc: string, outputPath: string, fontData: Buffer, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapTiles?: MapTile[]) {
-  const svg = await satori(getOgImageSvg(title, desc, type, stats, mapTiles), {
+async function generateOgImage(title: string, desc: string, outputPath: string, fontData: Buffer, type?: 'player' | 'course', stats?: {value: string, label: string}[], mapImageDataUri?: string | null) {
+  const svg = await satori(getOgImageSvg(title, desc, type, stats, mapImageDataUri), {
     width: 1200,
     height: 630,
     fonts: [
@@ -384,82 +386,70 @@ function injectMeta(html: string, title: string, desc: string, ogImageUrl: strin
     .replace(/<meta name="twitter:image"[^>]*>/i, `<meta name="twitter:image" content="${safeOgImageUrl}">`);
 }
 
-const tileCache = new Map<string, string | null>();
-const tileInflight = new Map<string, Promise<string | null>>();
+const staticMapCache = new Map<string, string | null>();
+const staticMapInflight = new Map<string, Promise<string | null>>();
 
-async function fetchTile(url: string): Promise<string | null> {
-  if (tileCache.has(url)) return tileCache.get(url)!;
-  if (tileInflight.has(url)) return tileInflight.get(url)!;
+function getMapboxConfig() {
+  const token = (process.env.MAPBOX_SERVER_TOKEN || process.env.VITE_MAPBOX_ACCESS_TOKEN || '').trim();
+  const style = (process.env.MAPBOX_OG_STYLE || process.env.VITE_MAPBOX_DARK_STYLE || 'mapbox/dark-v11').trim().replace(/^\/+|\/+$/g, '');
+  return { token, style };
+}
+
+async function getMapBackground(coords: [number, number] | null): Promise<string | null> {
+  if (!coords) return null;
+  const [lat, lon] = coords;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85.0511 || Math.abs(lon) > 180) {
+    return null;
+  }
+
+  const { token, style } = getMapboxConfig();
+  if (!token) {
+    if (!loggedMissingMapboxToken) {
+      loggedMissingMapboxToken = true;
+      console.warn('Mapbox token missing (MAPBOX_SERVER_TOKEN / VITE_MAPBOX_ACCESS_TOKEN); generating OG images without map background.');
+    }
+    return null;
+  }
+
+  const key = `${style}:${lat.toFixed(4)},${lon.toFixed(4)}`;
+  if (staticMapCache.has(key)) return staticMapCache.get(key) ?? null;
+  if (staticMapInflight.has(key)) return staticMapInflight.get(key)!;
 
   const promise = (async () => {
+    // Mapbox Static Images API expects longitude first, latitude second.
+    const url = `https://api.mapbox.com/styles/v1/${style}/static/${lon.toFixed(5)},${lat.toFixed(5)},${MAPBOX_OG_ZOOM},0/${MAPBOX_OG_WIDTH}x${MAPBOX_OG_HEIGHT}?access_token=${encodeURIComponent(token)}`;
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) {
-        tileCache.set(url, null);
+        if ((res.status === 401 || res.status === 403) && !loggedMapboxAuthError) {
+          loggedMapboxAuthError = true;
+          console.warn(`Mapbox Static Images API returned HTTP ${res.status}. If VITE_MAPBOX_ACCESS_TOKEN is URL-restricted, set an unrestricted MAPBOX_SERVER_TOKEN secret.`);
+        }
+        staticMapCache.set(key, null);
+        return null;
+      }
+      const contentType = (res.headers.get('content-type') || 'image/png').split(';')[0].trim().toLowerCase();
+      if (!contentType.startsWith('image/')) {
+        staticMapCache.set(key, null);
         return null;
       }
       const arrayBuffer = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const dataUri = `data:image/png;base64,${buffer.toString('base64')}`;
-      tileCache.set(url, dataUri);
+      const dataUri = `data:${contentType};base64,${buffer.toString('base64')}`;
+      staticMapCache.set(key, dataUri);
       return dataUri;
     } catch {
-      tileCache.set(url, null);
+      staticMapCache.set(key, null);
       return null;
     }
   })();
 
-  tileInflight.set(url, promise);
+  staticMapInflight.set(key, promise);
   try {
     return await promise;
   } finally {
-    tileInflight.delete(url);
+    staticMapInflight.delete(key);
   }
-}
-
-const courseTilesCache = new Map<string, MapTile[]>();
-
-async function getMapTiles(coords: [number, number] | null): Promise<MapTile[]> {
-  if (!coords) return [];
-  const key = `${coords[0].toFixed(4)},${coords[1].toFixed(4)}`;
-  if (courseTilesCache.has(key)) return courseTilesCache.get(key)!;
-
-  const [lat, lon] = coords;
-  const Z = 13;
-  const centerTx = (lon + 180) / 360 * Math.pow(2, Z);
-  const centerTy = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, Z);
-  
-  const TILE_SIZE = 256;
-  const svgX = centerTx * TILE_SIZE - 600;
-  const svgY = centerTy * TILE_SIZE - 315;
-  
-  const startTx = Math.floor(svgX / TILE_SIZE);
-  const endTx = Math.floor((svgX + 1200) / TILE_SIZE);
-  
-  const startTy = Math.floor(svgY / TILE_SIZE);
-  const endTy = Math.floor((svgY + 630) / TILE_SIZE);
-  
-  const tiles = [];
-  for (let tx = startTx; tx <= endTx; tx++) {
-    for (let ty = startTy; ty <= endTy; ty++) {
-      tiles.push({
-        url: `https://a.basemaps.cartocdn.com/dark_nolabels/${Z}/${tx}/${ty}.png`,
-        x: tx * TILE_SIZE - svgX,
-        y: ty * TILE_SIZE - svgY
-      });
-    }
-  }
-  
-  const resolved = await Promise.all(
-    tiles.map(async (t) => ({
-      ...t,
-      dataUri: await fetchTile(t.url),
-    }))
-  );
-  
-  const validTiles = resolved.filter((t) => !!t.dataUri);
-  courseTilesCache.set(key, validTiles);
-  return validTiles;
 }
 
 async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<void>) {
@@ -492,10 +482,10 @@ async function run() {
   const BASE_URL = 'https://apexspeedrun.com';
   const allCourses = Object.keys(data.cMet || {});
 
-  console.log(`Pre-warming map tiles for ${allCourses.length} courses...`);
+  console.log(`Pre-warming Mapbox static map backgrounds for ${allCourses.length} courses...`);
   await runWithConcurrency(allCourses, 12, async (courseStr) => {
     const coords = data.cMet[courseStr]?.parsedCoords || null;
-    await getMapTiles(coords);
+    await getMapBackground(coords);
   });
   
   const players = [...(data.openData || []), ...(data.data || [])];
@@ -542,9 +532,9 @@ async function run() {
     const representativeCourse =
       completedCourses.find(c => data.cMet[c]?.parsedCoords) ||
       (completedCourses.length > 0 ? completedCourses[0] : null);
-    const mapTiles = await getMapTiles(representativeCourse && data.cMet[representativeCourse] ? data.cMet[representativeCourse].parsedCoords || null : null);
+    const mapImageDataUri = await getMapBackground(representativeCourse && data.cMet[representativeCourse] ? data.cMet[representativeCourse].parsedCoords || null : null);
     
-    await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'player', stats, mapTiles);
+    await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'player', stats, mapImageDataUri);
     
     const ogImageUrl = `${BASE_URL}/og/${ogFileName}`;
     const pageHtml = injectMeta(baseHtml, title, desc, ogImageUrl);
@@ -590,9 +580,9 @@ async function run() {
       { value: fBest !== Infinity ? fBest.toFixed(2) : '--', label: "WOMEN'S WR" }
     ];
     
-    const mapTiles = await getMapTiles(courseInfo.parsedCoords || null);
+    const mapImageDataUri = await getMapBackground(courseInfo.parsedCoords || null);
     
-    await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'course', stats, mapTiles);
+    await generateOgImage(ogTitle, desc, ogFilePath, fontData, 'course', stats, mapImageDataUri);
     
     const ogImageUrl = `${BASE_URL}/og/${ogFileName}`;
     const pageHtml = injectMeta(baseHtml, title, desc, ogImageUrl);
