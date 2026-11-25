@@ -30,7 +30,22 @@
 
 :root {
   /* Safe Area Insets for modern mobile browsers (PWA/Mobile Notch support) */
-  --safe-top: env(safe-area-inset-top, 0px);
+  --pwa-top-clear: 0px;
+  --safe-top: calc(env(safe-area-inset-top, 0px) + var(--pwa-top-clear));
+}
+
+/* Clear iOS standalone PWA system top-edge progressive blur zone (~48px below safe-area-inset-top)
+   without altering layout on standard mobile browsers, Android, or desktop */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    :root {
+      --pwa-top-clear: 48px;
+    }
+  }
+}
+
+html[data-ios-pwa="true"] {
+  --pwa-top-clear: 48px;
 }
 
 /* Premium Scrollbar Reset - Keeps the UI clean and minimalist */

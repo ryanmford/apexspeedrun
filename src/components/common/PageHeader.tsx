@@ -21,7 +21,7 @@ export const PageHeader = ({ title, theme, children }: PageHeaderProps) => {
         <div
           className={cn(
             "mb-4 sticky z-[50] transition-all",
-            "top-[calc(60px+max(12px,env(safe-area-inset-top)))] sm:top-[calc(64px+max(16px,env(safe-area-inset-top)))]",
+            "top-[calc(60px+max(12px,var(--safe-top)))] sm:top-[calc(64px+max(16px,var(--safe-top)))]",
           )}
         >
           <div

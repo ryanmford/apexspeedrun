@@ -124,8 +124,7 @@ export const ASRVideoModal = () => {
 
             {/* Close Button */}
             <div
-              className="absolute right-0 z-30 flex justify-end p-4 sm:p-6 pointer-events-none"
-              style={{ top: "max(1rem, env(safe-area-inset-top, 2rem))" }}
+              className="absolute right-0 z-30 flex justify-end p-4 sm:p-6 pointer-events-none top-[max(1rem,var(--safe-top))]"
             >
               <button
                 onClick={handleClose}

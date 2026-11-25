@@ -272,7 +272,7 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
         className={cn(
           "flex-1 w-full mx-auto flex flex-col relative",
           (view === "courses" || view === "admin") ? "max-w-none pt-0" : "max-w-7xl pt-0 sm:pt-4",
-          view === "home" ? "pt-0 -mt-[140px] sm:-mt-[160px]" : ""
+          view === "home" ? "pt-0 -mt-[calc(140px+var(--pwa-top-clear))] sm:-mt-[calc(160px+var(--pwa-top-clear))]" : ""
         )}
       >
         <div className="flex-1 flex flex-col">

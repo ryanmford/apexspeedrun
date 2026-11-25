@@ -37,7 +37,7 @@ export const ASRHeader = React.memo(
           "z-[60] w-full px-4 pb-3 sm:pb-4 flex items-center border-b backdrop-blur-xl pointer-events-auto transition-all duration-500 gap-2 select-none",
           isTransparent
             ? "bg-transparent border-transparent shadow-none pt-2 sm:pt-4"
-            : "pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-[max(1rem,env(safe-area-inset-top))]",
+            : "pt-[max(0.75rem,var(--safe-top))] sm:pt-[max(1rem,var(--safe-top))]",
           !isTransparent && theme === "dark"
             ? "bg-zinc-950/70 border-white/[0.05] shadow-[0_4px_30px_rgba(0,0,0,0.1)]"
             : "",

@@ -173,7 +173,7 @@ export const ASRBaseModal = React.memo(
               {/* Modal Header - Sticky */}
               <div
                 className={cn(
-                  "sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b min-h-[60px] sm:backdrop-blur-xl pt-[calc(1rem+env(safe-area-inset-top,0px))]",
+                  "sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b min-h-[60px] sm:backdrop-blur-xl pt-[calc(1rem+var(--safe-top))] sm:pt-4",
                   theme === "dark"
                     ? "bg-[#030303]/95 sm:bg-zinc-950/80 border-white/10"
                     : "bg-white/95 sm:bg-white/80 border-zinc-200",

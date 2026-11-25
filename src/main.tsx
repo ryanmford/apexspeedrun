@@ -5,6 +5,19 @@ import App from "./App.tsx";
 import "./index.css";
 import { registerSW } from 'virtual:pwa-register';
 
+// Tag iOS standalone Home Screen PWAs before first paint to clear the OS top-edge blur zone
+if (typeof window !== "undefined") {
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isStandalone =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches;
+  if (isIOS && isStandalone) {
+    document.documentElement.dataset.iosPwa = "true";
+  }
+}
+
 // Register Service Worker for PWA only in production to avoid stale dev interception
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });

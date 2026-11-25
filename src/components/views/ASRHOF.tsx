@@ -292,7 +292,7 @@ export const ASRHOF = React.memo(
  {/* Leaderboard Grids */}
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-4 sm:px-6">
  {sections.map((sec) => (
- <div key={sec.k} id={`hof-${sec.k}`} className="scroll-mt-[calc(env(safe-area-inset-top,0px)+5.5rem)] sm:scroll-mt-28 flex flex-col gap-1.5 sm:gap-5">
+ <div key={sec.k} id={`hof-${sec.k}`} className="scroll-mt-[calc(var(--safe-top)+5.5rem)] sm:scroll-mt-28 flex flex-col gap-1.5 sm:gap-5">
  <ASRSectionHeading title={sec.l} subtitle={sec.subtitle} theme={theme} className="pt-2 sm:pt-6 pb-0.5 sm:pb-2" />
  <div
  className={cn(
@@ -421,7 +421,7 @@ export const ASRHOF = React.memo(
  </div>
 
  {/* Medal Table */}
- <div id="hof-medals" className="scroll-mt-[calc(env(safe-area-inset-top,0px)+5.5rem)] sm:scroll-mt-28 px-4 sm:px-6">
+ <div id="hof-medals" className="scroll-mt-[calc(var(--safe-top)+5.5rem)] sm:scroll-mt-28 px-4 sm:px-6">
  <ASRSectionHeading title="WORLDWIDE MEDAL COUNT" theme={theme} />
  <div
  className={cn(

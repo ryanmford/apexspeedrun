@@ -180,7 +180,7 @@ export const ASRLiveTicker = React.memo(
       return (
         <div
           className={cn(
-            "relative z-[40] w-full h-[calc(2.5rem+env(safe-area-inset-top))] sm:h-[calc(3rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b flex items-center justify-center select-none overflow-hidden transition-colors duration-500",
+            "relative z-[40] w-full h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] border-b flex items-center justify-center select-none overflow-hidden transition-colors duration-500",
             theme === "dark"
               ? "border-white/5 text-zinc-100"
               : "border-zinc-200/50 text-slate-800",
@@ -298,7 +298,7 @@ export const ASRLiveTicker = React.memo(
     return (
       <div
         className={cn(
-          "relative z-[40] w-full overflow-hidden border-b h-[calc(2.5rem+env(safe-area-inset-top))] sm:h-[calc(3rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] flex items-center select-none transition-colors duration-500",
+          "relative z-[40] w-full overflow-hidden border-b h-[calc(2.5rem+var(--safe-top))] sm:h-[calc(3rem+var(--safe-top))] pt-[var(--safe-top)] flex items-center select-none transition-colors duration-500",
           theme === "dark" ? "border-white/5" : "border-zinc-200/50",
         )}
         onPointerEnter={(e) => {
