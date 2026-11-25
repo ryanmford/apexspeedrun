@@ -148,7 +148,7 @@ export const ASRBaseModal = React.memo(
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={{ left: 0, right: 0.5 }}
               dragThreshold={20}
-              onDragEnd={(e, { offset, velocity }) => {
+              onDragEnd={(_e, { offset, velocity }) => {
                 if (offset.x > 100 || velocity.x > 500) {
                   if (onBack) {
                     onBack();

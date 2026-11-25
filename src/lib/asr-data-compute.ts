@@ -16,6 +16,7 @@ import {
   getContinentData,
   isPlaceholderPlayer,
   normalizeName,
+  normalizeForSearch,
   isQualifiedAthlete,
   parseCoords,
   splitNameList,
@@ -26,22 +27,18 @@ import {
   processSetListData,
   processSettersData,
 } from "./asr-data.ts";
-import { normalizeForSearch } from "./utils";
+import {
+  buildCourseLists,
+  buildPlayerLeaderboardMap,
+  buildPlayerList,
+  buildTeamList,
+  sortAthletesWithTiebreakers,
+} from "./asr-snapshot.ts";
 
 const toTimestamp = (d?: Date | string): number => {
   if (!d) return Infinity;
   const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
   return isNaN(t) ? Infinity : t;
-};
-
-const sortAthletesWithTiebreakers = (a: PlayerProfile, b: PlayerProfile) => {
-  if (Math.abs((b.rating || 0) - (a.rating || 0)) > 0.000001) {
-    return (b.rating || 0) - (a.rating || 0);
-  }
-  if ((b.runs || 0) !== (a.runs || 0)) {
-    return (b.runs || 0) - (a.runs || 0);
-  }
-  return toTimestamp(a.latestRunDate) - toTimestamp(b.latestRunDate);
 };
 
 export function computeAllState(payload: {
@@ -806,172 +803,16 @@ export function computeAllState(payload: {
     },
   };
 
-  // LEADERBOARDS
-  const calculateLeaderboard = (sourceData: PlayerProfile[], mode: boolean | string) => {
-    const qualifiedM = (sourceData || [])
-      .filter((p) => p.gender === "M" && isQualifiedAthlete(p, mode, "M"))
-      .sort(sortAthletesWithTiebreakers);
-    const qualifiedF = (sourceData || [])
-      .filter((p) => p.gender === "F" && isQualifiedAthlete(p, mode, "F"))
-      .sort(sortAthletesWithTiebreakers);
+  // LEADERBOARDS & PRECOMPUTED LISTS (shared with snapshot hydration)
+  const playerLB_AT = buildPlayerLeaderboardMap(data, atMet, true);
+  const playerLB_2026 = buildPlayerLeaderboardMap(season26Data, atMet, "2026");
+  const playerLB_OP = buildPlayerLeaderboardMap(openData, atMet, false);
 
-    const buildRankMap = (qualifiedArr: PlayerProfile[]) => {
-      const rm = new Map<string, number>();
-      let currRank = 1;
-      let prevRating = -1;
-      let prevRuns = -1;
-      let prevDate = -1;
-
-      qualifiedArr.forEach((q, i) => {
-        const r = q.rating || 0;
-        const runs = q.runs || 0;
-        const date = toTimestamp(q.latestRunDate);
-
-        const diffRating = Math.abs(r - prevRating) > 0.000001;
-        const diffRuns = runs !== prevRuns;
-        const diffDate = date !== prevDate;
-
-        if (diffRating || diffRuns || diffDate) {
-          currRank = i + 1;
-          prevRating = r;
-          prevRuns = runs;
-          prevDate = date;
-        }
-        rm.set(q.pKey, currRank);
-      });
-      return rm;
-    };
-
-    const rankMapM = buildRankMap(qualifiedM);
-    const rankMapF = buildRankMap(qualifiedF);
-
-    const mapM: Record<string, PlayerProfile> = {};
-    const mapF: Record<string, PlayerProfile> = {};
-    (sourceData || []).forEach((p) => {
-      const rank: number | "UR" =
-        p.gender === "M" ? rankMapM.get(p.pKey) || "UR" : rankMapF.get(p.pKey) || "UR";
-
-      const metadata = atMet?.[p.pKey];
-
-      const stats: PlayerProfile = {
-        ...p,
-        rank,
-        allTimeFireCount: metadata?.allTimeFireCount ?? p.allTimeFireCount,
-        openFireCount: metadata?.openFireCount ?? p.openFireCount,
-      };
-      if (p.gender === "M") mapM[p.pKey] = stats;
-      else mapF[p.pKey] = stats;
-    });
-    return { M: mapM, F: mapF };
-  };
-
-  const playerLB_AT = calculateLeaderboard(data, true);
-  const playerLB_2026 = calculateLeaderboard(season26Data, "2026");
-  const playerLB_OP = calculateLeaderboard(openData, false);
-
-  const computePlayerList = (mode: boolean | string, gen: "M" | "F"): PlayerProfile[] => {
-    const isAllTime = mode === true || mode === "all-time";
-    const athletePool = isAllTime ? data : mode === "2026" ? season26Data : openData;
-    const allTimeRankedKeys = new Set((data || []).map((p) => p.pKey));
-    const filtered = athletePool.filter(
-      (p) =>
-        p &&
-        p.gender === gen &&
-        !isPlaceholderPlayer(p.name) &&
-        ((p.runs || 0) > 0 || (isAllTime && ((p.sets || 0) > 0 || (p.contributionScore || 0) > 0))),
-    );
-
-    filtered.sort(sortAthletesWithTiebreakers);
-
-    const qual: PlayerProfile[] = [];
-    const unranked: PlayerProfile[] = [];
-    filtered.forEach((p) => {
-      if (isQualifiedAthlete(p, mode, gen)) {
-        qual.push(p);
-      } else if (
-        mode === "2026" ||
-        mode === true ||
-        mode === "all-time" ||
-        allTimeRankedKeys.has(p.pKey)
-      ) {
-        unranked.push(p);
-      }
-    });
-
-    const lbMap =
-      mode === true || mode === "all-time"
-        ? playerLB_AT[gen]
-        : mode === "2026"
-          ? playerLB_2026[gen]
-          : playerLB_OP[gen];
-
-    const fQual: PlayerProfile[] = qual.map((p, i) => ({
-      ...p,
-      currentRank: lbMap?.[p.pKey]?.rank ?? i + 1,
-      isQualified: true,
-      shouldFade: false,
-    }));
-    const fUnranked: PlayerProfile[] = unranked.map((p) => ({
-      ...p,
-      currentRank: "UR",
-      isQualified: false,
-      shouldFade: true,
-    }));
-
-    const dividerLabel =
-      mode === "open" || mode === false
-        ? "RUN 3+ COURSES TO GET RANKED"
-        : mode === "2026"
-          ? gen === "F"
-            ? "RUN 3+ COURSES TO GET RANKED"
-            : "RUN 5+ COURSES TO GET RANKED"
-          : gen === "F"
-            ? "RUN 4+ COURSES TO GET RANKED"
-            : "RUN 8+ COURSES TO GET RANKED";
-
-    const dividerRow: PlayerProfile = {
-      pKey: `divider-${String(mode)}-${gen}`,
-      name: dividerLabel,
-      gender: gen,
-      rating: 0,
-      runs: 0,
-      isDivider: true,
-      label: dividerLabel,
-    };
-
-    if ((mode === false || mode === "open" || mode === "2026") && fQual.length === 0) {
-      return [dividerRow, ...fUnranked];
-    }
-    return fQual.length && fUnranked.length
-      ? [...fQual, dividerRow, ...fUnranked]
-      : [...fQual, ...fUnranked];
-  };
-
-  const computeTeamList = (cat: "gyms" | "teams", mode: boolean | string): TeamProfile[] => {
-    const contextStr =
-      mode === "2026" ? "season26" : mode === true || mode === "all-time" ? "allTime" : "open";
-    const arr = [...(teamsAggregated[cat][contextStr] || [])].sort(
-      (a, b) => (b.pts || 0) - (a.pts || 0),
-    );
-    return arr.map((t, i) => ({ ...t, currentRank: i + 1, category: cat }));
-  };
-
-  const cListAT: CourseData[] = [...masterCourseList]
-    .filter((c) => c.isAllTimeCourse)
-    .sort((a, b) => (b.totalAllTimeRuns || 0) - (a.totalAllTimeRuns || 0))
-    .map((c, i) => ({ ...c, currentRank: i + 1 }));
-
-  const cListOP: CourseData[] = masterCourseList
-    .filter((c) => c.isOpenCourse)
-    .map((c) => ({ ...c, openRuns: c.openRuns ?? 0 }))
-    .sort((a, b) => (b.openRuns || 0) - (a.openRuns || 0))
-    .map((c, i) => ({ ...c, currentRank: i + 1 }));
-
-  const cList2026: CourseData[] = masterCourseList
-    .filter((c) => c.is2026Course)
-    .map((c) => ({ ...c, season26Runs: c.season26Runs ?? 0 }))
-    .sort((a, b) => (b.season26Runs || 0) - (a.season26Runs || 0))
-    .map((c, i) => ({ ...c, currentRank: i + 1 }));
+  const {
+    courseList_AT: cListAT,
+    courseList_OP: cListOP,
+    courseList_2026: cList2026,
+  } = buildCourseLists(masterCourseList, lbOpen, lbSeason26);
 
   const sList: SetterProfile[] = [...settersWithImpact]
     .sort((a, b) => (b.impact || 0) - (a.impact || 0))
@@ -1051,22 +892,22 @@ export function computeAllState(payload: {
     courseRunsHistory: nextState.courseRunsHistory || {},
 
     // PRECOMPUTED FLAT UI ARRAYS
-    playerList_M_AT: computePlayerList(true, "M"),
-    playerList_F_AT: computePlayerList(true, "F"),
-    playerList_M_OP: computePlayerList(false, "M"),
-    playerList_F_OP: computePlayerList(false, "F"),
-    playerList_M_2026: computePlayerList("2026", "M"),
-    playerList_F_2026: computePlayerList("2026", "F"),
+    playerList_M_AT: buildPlayerList(data, season26Data, openData, true, "M"),
+    playerList_F_AT: buildPlayerList(data, season26Data, openData, true, "F"),
+    playerList_M_OP: buildPlayerList(data, season26Data, openData, false, "M"),
+    playerList_F_OP: buildPlayerList(data, season26Data, openData, false, "F"),
+    playerList_M_2026: buildPlayerList(data, season26Data, openData, "2026", "M"),
+    playerList_F_2026: buildPlayerList(data, season26Data, openData, "2026", "F"),
     courseList_AT: cListAT,
     courseList_OP: cListOP,
     courseList_2026: cList2026,
     settersList: sList,
-    teamList_gyms_AT: computeTeamList("gyms", true),
-    teamList_teams_AT: computeTeamList("teams", true),
-    teamList_gyms_OP: computeTeamList("gyms", false),
-    teamList_teams_OP: computeTeamList("teams", false),
-    teamList_gyms_2026: computeTeamList("gyms", "2026"),
-    teamList_teams_2026: computeTeamList("teams", "2026"),
+    teamList_gyms_AT: buildTeamList(teamsAggregated, "gyms", true),
+    teamList_teams_AT: buildTeamList(teamsAggregated, "teams", true),
+    teamList_gyms_OP: buildTeamList(teamsAggregated, "gyms", false),
+    teamList_teams_OP: buildTeamList(teamsAggregated, "teams", false),
+    teamList_gyms_2026: buildTeamList(teamsAggregated, "gyms", "2026"),
+    teamList_teams_2026: buildTeamList(teamsAggregated, "teams", "2026"),
 
     courseRecords_M_AT,
     courseRecords_F_AT,

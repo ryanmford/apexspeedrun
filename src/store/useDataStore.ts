@@ -89,16 +89,7 @@ const EMPTY_TEAMS_AGGREGATED: TeamsAggregated = {
   teams: { open: [], allTime: [], season26: [] },
 };
 
-export const useDataStore = create<ASRDataState>((set) => {
-  let initialData: Partial<ASRDataState> = {};
-  let initialIsLoading = true;
-
-  if (typeof window !== "undefined" && "window" in globalThis && (window as unknown as { __INITIAL_DATA__?: Partial<ASRDataState> }).__INITIAL_DATA__) {
-    initialData = (window as unknown as { __INITIAL_DATA__?: Partial<ASRDataState> }).__INITIAL_DATA__ || {};
-    initialIsLoading = false;
-  }
-
-  return {
+export const useDataStore = create<ASRDataState>((set) => ({
     data: [],
     openData: [],
     season26Data: [],
@@ -152,9 +143,7 @@ export const useDataStore = create<ASRDataState>((set) => {
     teamList_gyms_2026: [],
     teamList_teams_2026: [],
 
-    ...initialData,
-
-    isLoading: initialIsLoading,
+    isLoading: true,
     isSyncing: false,
     hasError: false,
     hasPartialError: false,
@@ -164,5 +153,4 @@ export const useDataStore = create<ASRDataState>((set) => {
     triggerRefresh: () => set((state) => ({ refreshTrigger: state.refreshTrigger + 1 })),
     setData: (payload) => set((state) => ({ ...state, ...payload })),
     setFetchStatus: (status) => set((state) => ({ ...state, ...status })),
-  };
-});
+}));

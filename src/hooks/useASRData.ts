@@ -79,7 +79,6 @@ export const useFetchASRData = () => {
   const setData = useDataStore((s) => s.setData);
   const setFetchStatus = useDataStore((s) => s.setFetchStatus);
   const refreshTrigger = useDataStore((s) => s.refreshTrigger);
-  const initialDataConsumed = useRef(false);
   const lastSyncAtRef = useRef<number>(0);
   const inFlightRef = useRef<boolean>(false);
 
@@ -94,20 +93,7 @@ export const useFetchASRData = () => {
       let restored = false;
 
       if (isInitialFetch) {
-        // Stage 1: Legacy inline SSR Data (if present)
-        if (!initialDataConsumed.current) {
-          const ssrData =
-            typeof window !== "undefined" && "window" in globalThis
-              ? (window as unknown as { __INITIAL_DATA__?: Partial<ASRDataState> }).__INITIAL_DATA__
-              : undefined;
-          if (ssrData) {
-            setData({ ...ssrData, isLoading: false });
-            initialDataConsumed.current = true;
-            restored = true;
-          }
-        }
-
-        // Stage 2: localforage precomputed snapshot (supports both compact & full formats)
+        // Stage 1: localforage precomputed snapshot (supports both compact & full formats)
         if (!restored) {
           try {
             const cachedSnap = await localforage.getItem<CompactSnapshotWire | ComputedASRState>(CONFIG.SNAPSHOT_KEY);

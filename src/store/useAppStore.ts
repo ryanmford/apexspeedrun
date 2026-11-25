@@ -5,8 +5,6 @@ export interface AppState {
   setGen: (gen: "M" | "F") => void;
   teamCategory: "gyms" | "teams";
   setTeamCategory: (cat: "gyms" | "teams") => void;
-  mapMode: "map" | "list";
-  setMapMode: (mode: "map" | "list") => void;
   playingVideoUrl: string | null;
   setPlayingVideoUrl: (url: string | null) => void;
   showOnboarding: boolean;
@@ -39,10 +37,6 @@ export interface AppState {
   setHomeVisibleRuns: (val: number) => void;
   homeVisibleSets: number;
   setHomeVisibleSets: (val: number) => void;
-  homeCarouselIndex: number;
-  setHomeCarouselIndex: (val: number) => void;
-  homeAutoPlayTimer: number;
-  setHomeAutoPlayTimer: (val: number) => void;
 
   // Rivalry Drawer State
   isRivalryOpen: boolean;
@@ -60,9 +54,6 @@ const getInitialTeamCategory = () => {
       if (val === "countries") return "teams";
       return val || "gyms"; 
     } catch { return "gyms"; }
-};
-const getInitialMapMode = () => {
-    try { return JSON.parse(localStorage.getItem("mapMode") || "null") || "map"; } catch { return "map"; }
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -83,15 +74,6 @@ export const useAppStore = create<AppState>((set) => ({
       console.warn("localStorage setItem failed:", e);
     }
     set({ teamCategory });
-  },
-  mapMode: getInitialMapMode(),
-  setMapMode: (mapMode) => {
-    try {
-      localStorage.setItem("mapMode", JSON.stringify(mapMode));
-    } catch (e) {
-      console.warn("localStorage setItem failed:", e);
-    }
-    set({ mapMode });
   },
   playingVideoUrl: null,
   setPlayingVideoUrl: (playingVideoUrl) => set({ playingVideoUrl }),
@@ -123,10 +105,6 @@ export const useAppStore = create<AppState>((set) => ({
   setHomeVisibleRuns: (homeVisibleRuns) => set({ homeVisibleRuns }),
   homeVisibleSets: 10,
   setHomeVisibleSets: (homeVisibleSets) => set({ homeVisibleSets }),
-  homeCarouselIndex: 0,
-  setHomeCarouselIndex: (homeCarouselIndex) => set({ homeCarouselIndex }),
-  homeAutoPlayTimer: 0,
-  setHomeAutoPlayTimer: (homeAutoPlayTimer) => set({ homeAutoPlayTimer }),
 
   isRivalryOpen: false,
   setIsRivalryOpen: (isRivalryOpen) => set({ isRivalryOpen }),

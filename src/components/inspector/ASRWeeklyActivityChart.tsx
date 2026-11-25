@@ -1,5 +1,5 @@
 import React, { useMemo, useContext, useState, useRef } from "react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/asr-utils";
 import { ThemeContext } from "../../theme-context";
 import { motion, AnimatePresence } from "motion/react";
 import { ASREmptyState } from "../common/ASREmptyState";
@@ -59,8 +59,6 @@ export const ASRWeeklyActivityChart = ({
       const diffWeeks = (finalTotalWeeks - 1) - i;
       const wStart = new Date(today);
       wStart.setDate(today.getDate() - today.getDay() - diffWeeks * 7);
-      const wEnd = new Date(wStart);
-      wEnd.setDate(wStart.getDate() + 6);
       return {
         count: 0,
         dateStr: `week of ${wStart.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,

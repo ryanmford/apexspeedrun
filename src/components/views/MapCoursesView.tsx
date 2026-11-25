@@ -9,9 +9,8 @@ import { useDataStore } from "../../store/useDataStore";
 import { useAppNavigation, useCourseList, useURLState } from "../../hooks/useDerivedData";
 import { useDebounce } from "../../hooks/useDataHooks";
 import { useAppStore } from "../../store/useAppStore";
-import { cn } from "../../lib/asr-utils";
+import { cn, normalizeForSearch } from "../../lib/asr-utils";
 import { computeDistanceKm } from "../../lib/geo-utils";
-import { normalizeForSearch } from "../../lib/utils";
 import { ChevronLeft, ChevronRight, Navigation, Compass } from "lucide-react";
 import { ASRSearchInput } from "../common/ASRSearchInput";
 

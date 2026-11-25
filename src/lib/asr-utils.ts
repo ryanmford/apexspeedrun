@@ -14,7 +14,6 @@ export const CONFIG = {
   DATES: {
     OPEN_START: "2026-03-02T00:00:00Z",
     OPEN_END: "2026-05-31T23:59:59Z",
-    COUNTDOWN_TARGET: "2026-06-04T07:00:00Z",
   },
   FALLBACKS: {
     UNKNOWN_LOCATION: "UNKNOWN",
@@ -28,20 +27,8 @@ export const THEME = {
     t === "dark"
       ? "bg-zinc-900/40 border-white/5 shadow-sm text-zinc-100"
       : "bg-white border-zinc-100 shadow-sm text-black",
-  GLASS: (t: string) =>
-    t === "dark"
-      ? "bg-zinc-900/40 border-white/5 backdrop-blur-2xl shadow-xl"
-      : "bg-white/60 border-zinc-100 backdrop-blur-xl shadow-lg",
-  MODAL_SURFACE: (t: string) =>
-    t === "dark"
-      ? "bg-[#050505] border-white/5 text-zinc-100 shadow-2xl"
-      : "bg-white border-zinc-100 text-black shadow-xl",
-  HEADING_SM:
-    "text-[9px] sm:text-[10px] font-display font-black uppercase tracking-[0.35em] opacity-50",
   HEADING_HOF:
     "text-[11px] sm:text-[13px] font-display font-bold uppercase tracking-tight opacity-90",
-  HEADING_MAIN:
-    "text-4xl sm:text-[64px] font-display font-black uppercase tracking-normal italic leading-none",
   LABEL:
     "text-[8px] sm:text-[9.5px] font-display font-black uppercase tracking-widest sm:tracking-[0.15em] opacity-60",
   VALUE: "font-mono font-black tabular-nums tracking-tighter",
@@ -52,34 +39,16 @@ export const THEME = {
         ? "bg-zinc-900/60 border-white/10 shadow-sm hover:bg-white/5 hover:border-white/20"
         : "bg-white border-black/5 shadow-sm hover:bg-black/5 hover:border-black/10"
     ),
-  INPUT: (t: string) =>
-    t === "dark"
-      ? "bg-black/40 text-white focus:bg-white/[0.03] border-white/10 focus:border-blue-500/50 shadow-inner"
-      : "bg-white/80 text-zinc-900 border-zinc-200 focus:border-blue-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]",
-  ICON_BUTTON: (t: string) =>
-    cn(
-      "p-2 sm:p-3 transition-all active:scale-90 text-zinc-500 hover:text-blue-500 flex items-center justify-center",
-      t === "dark" ? "" : "",
-    ),
-  PILL_BASE: (t: string) =>
-    cn(
-      "px-6 py-3 rounded-full font-black uppercase tracking-[0.2em] text-[9.5px] transition-all border shadow-lg backdrop-blur-md",
-      t === "dark"
-        ? "bg-zinc-900/50 text-white border-white/10"
-        : "bg-white/50 text-black border-black/10",
-    ),
-  NAV_ITEM: (t: string, active: boolean) =>
-    cn(
-      "relative z-10 flex-1 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all",
-      active
-        ? "text-white"
-        : t === "dark"
-          ? "text-zinc-500 hover:text-zinc-300"
-          : "text-zinc-400 hover:text-zinc-600",
-    ),
+  ICON_BUTTON: (_t?: string) =>
+    "p-2 sm:p-3 transition-all active:scale-90 text-zinc-500 hover:text-blue-500 flex items-center justify-center",
 };
 
 export const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
+
+export const normalizeForSearch = (str: string | null | undefined): string => {
+  if (!str) return "";
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
 
 const ALIAS_MAP: Record<string, string> = {
   "muhammadsteedbaloch": "muhammadbaloch",

@@ -67,7 +67,6 @@ function lazyWithRetry<T extends React.ComponentType<never>>(
   });
 }
 
-const ASRIntroOverlay = lazyWithRetry(() => import("./components/common/ASRIntroOverlay").then(m => ({ default: m.ASRIntroOverlay })));
 const ASROnboarding = lazyWithRetry(() => import("./components/common/ASROnboarding").then(m => ({ default: m.ASROnboarding })));
 const ASRVideoModal = lazyWithRetry(() => import("./components/common/ASRVideoModal").then(m => ({ default: m.ASRVideoModal })));
 const ASRSubmitModal = lazyWithRetry(() => import("./components/common/ASRSubmitModal").then(m => ({ default: m.ASRSubmitModal })));
@@ -86,7 +85,6 @@ import { useDataStore } from "./store/useDataStore";
 import {
   CONFIG,
   cn,
-  trackEvent,
   trackPageview,
 } from "./lib/asr-utils";
 
@@ -142,8 +140,6 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
 
   const { eventType, setEventType } = useURLState();
   const { navigateToEntity, closeModals, goBackOne, canGoForward, goForwardOne } = useAppNavigation();
-
-  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     try {
@@ -226,17 +222,6 @@ function MainAppContent({ theme, setTheme }: { theme: "light" | "dark", setTheme
 
       <RouteScrollRestoration />
 
-      {showIntro && (
-        <React.Suspense fallback={null}>
-          <ASRIntroOverlay
-            theme={theme}
-            onStart={() => {
-              setShowIntro(false);
-              trackEvent("initialize_app", { source: "intro_button" });
-            }}
-          />
-        </React.Suspense>
-      )}
       {showOnboarding && (
         <React.Suspense fallback={null}>
           <ASROnboarding

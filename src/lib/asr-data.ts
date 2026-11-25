@@ -10,8 +10,8 @@ import {
   getNormalizedNameList,
   parseCourseDifficulty,
   parseCoords,
+  normalizeForSearch,
 } from "./asr-utils";
-import { normalizeForSearch } from "./utils";
 import type {
   CourseData,
   CourseRunEntry,

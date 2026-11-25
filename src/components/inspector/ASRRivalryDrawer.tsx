@@ -13,8 +13,8 @@ import {
   normalizeName,
   isPlaceholderPlayer,
   THEME,
+  normalizeForSearch,
 } from "../../lib/asr-utils";
-import { normalizeForSearch } from "../../lib/utils";
 import { ASRSearchInput } from "../common/ASRSearchInput";
 import { ASREmptyState } from "../common/ASREmptyState";
 import { FallbackAvatar } from "../common/FallbackAvatar";

@@ -5,7 +5,7 @@ import { PageHeader } from "../common/PageHeader";
 import { ASRSearchInput } from "./ASRSearchInput";
 import { ASRDataTable } from "../list/ASRDataTable";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { normalizeForSearch } from "../../lib/utils";
+import { normalizeForSearch } from "../../lib/asr-utils";
 
 interface ListColumnDef<T> {
   key: keyof T | string;

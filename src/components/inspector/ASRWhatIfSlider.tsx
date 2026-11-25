@@ -7,8 +7,7 @@ import React, {
 } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import { Trophy, ArrowRight, X } from "lucide-react";
-import { cn } from "../../lib/asr-utils";
-import { normalizeForSearch } from "../../lib/utils";
+import { cn, normalizeForSearch } from "../../lib/asr-utils";
 import { PlayerProfile, ASRDataContext } from "../../types";
 import { dataWorker } from "../../hooks/useASRData";
 import { ASRSearchInput } from "../common/ASRSearchInput";

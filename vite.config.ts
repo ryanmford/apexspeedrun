@@ -15,7 +15,7 @@ export default defineConfig(() => {
         injectRegister: null,
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-          globIgnores: ['**/assets/aistudio/**', '**/og/**', '**/social-exports/**'],
+          globIgnores: ['**/assets/aistudio/**', '**/og/**'],
           runtimeCaching: [
             {
               urlPattern: ({ url }) => url.pathname === '/api/snapshot',
@@ -63,7 +63,7 @@ export default defineConfig(() => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['lucide-react', 'motion', 'clsx', 'tailwind-merge'],
+            'ui-vendor': ['lucide-react', 'motion'],
             'state-vendor': ['zustand'],
           },
         },

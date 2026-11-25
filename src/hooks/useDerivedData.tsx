@@ -328,8 +328,7 @@ export const useInspectorData = () => {
 };
 
 export const useCourseList = () => {
-  const isAllTimeContext = useURLState().isAllTimeContext;
-  const eventType = useURLState().eventType;
+  const { isAllTimeContext, eventType } = useURLState();
   return useDataStore((s) => isAllTimeContext ? s.courseList_AT : (eventType === "2026" ? s.courseList_2026 : s.courseList_OP)) || [];
 };
 
