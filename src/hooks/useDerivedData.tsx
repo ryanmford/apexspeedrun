@@ -50,15 +50,18 @@ export const useAppNavigation = () => {
   const navType = useNavigationType();
 
   const currentIdx = location.state?.customIdx || 0;
-  const globalMaxIdx = parseInt(sessionStorage.getItem("maxIdx") || "0", 10);
-
-  if (navType === "PUSH") {
-    sessionStorage.setItem("maxIdx", currentIdx.toString());
-  } else if (currentIdx > globalMaxIdx) {
-    sessionStorage.setItem("maxIdx", currentIdx.toString());
+  let updatedMaxIdx = currentIdx;
+  try {
+    const globalMaxIdx = parseInt(sessionStorage.getItem("maxIdx") || "0", 10);
+    if (navType === "PUSH") {
+      sessionStorage.setItem("maxIdx", currentIdx.toString());
+    } else if (currentIdx > globalMaxIdx) {
+      sessionStorage.setItem("maxIdx", currentIdx.toString());
+    }
+    updatedMaxIdx = parseInt(sessionStorage.getItem("maxIdx") || "0", 10);
+  } catch {
+    // Ignore sessionStorage errors in restricted WebViews/frames
   }
-
-  const updatedMaxIdx = parseInt(sessionStorage.getItem("maxIdx") || "0", 10);
   const canGoForward = currentIdx < updatedMaxIdx;
 
   const goForwardOne = useCallback(() => {

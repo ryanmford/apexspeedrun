@@ -58,7 +58,7 @@ const MiniSparkline = React.memo(
 
 interface HomeKpiGridProps {
   isLoading: boolean;
-  kpi: KpiStats;
+  kpi: KpiStats | null;
   totalGyms: number;
   totalTeams: number;
   totalMedals: number;
@@ -155,13 +155,13 @@ export const HomeKpiGrid = React.memo(
             <div className="flex flex-col items-start gap-1 sm:gap-2 font-mono font-medium">
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={kpi.players || 0} />
+                  <CountUp end={kpi?.players || 0} />
                 </strong>{" "}
                 PLAYERS
               </span>
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={kpi.runs || 0} />
+                  <CountUp end={kpi?.runs || 0} />
                 </strong>{" "}
                 RUNS
               </span>
@@ -201,19 +201,19 @@ export const HomeKpiGrid = React.memo(
             <div className="flex flex-col items-start gap-1 sm:gap-2 font-mono font-medium">
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={kpi.courses || 0} />
+                  <CountUp end={kpi?.courses || 0} />
                 </strong>{" "}
                 COURSES
               </span>
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={kpi.cities || 0} />
+                  <CountUp end={kpi?.cities || 0} />
                 </strong>{" "}
                 CITIES
               </span>
               <span className="flex items-baseline gap-1">
                 <strong className="text-zinc-900 dark:text-white tabular-nums text-sm sm:text-base">
-                  <CountUp end={kpi.countries || 0} />
+                  <CountUp end={kpi?.countries || 0} />
                 </strong>{" "}
                 COUNTRIES
               </span>

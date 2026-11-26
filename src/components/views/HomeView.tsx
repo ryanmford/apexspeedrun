@@ -302,7 +302,7 @@ export const HomeView = React.memo(() => {
     const rTrendData = kpiTrends?.runs || [];
     const countryTrendData = kpiTrends?.countries || [];
 
-    const medalsMultiplier = kpiStats.courses ? tMedals / kpiStats.courses : 6;
+    const medalsMultiplier = kpiStats?.courses ? tMedals / kpiStats.courses : 6;
     const mTrendData = rTrendData.map((d) => ({
       value: Math.round(d.value * (medalsMultiplier / 10)),
     }));
